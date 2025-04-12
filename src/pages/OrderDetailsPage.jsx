@@ -1,14 +1,27 @@
 // src/components/OrderDetailsPage.jsx
 import React from 'react';
-import 'boxicons/css/boxicons.min.css';
 import Sidebar from '../components/sidebar';
-import shirt from "../assets/Shirt.jpg"
+import shirt from "../assets/Shirt.jpg";
+import { 
+  FaBars, 
+  FaArrowLeft, 
+  FaCheckCircle, 
+  FaStore, 
+  FaCalendarAlt, 
+  FaUserCircle, 
+  FaClipboard, 
+  FaPercent, 
+  FaTruck, 
+  FaCalculator, 
+  FaEdit, 
+  FaHeart 
+} from 'react-icons/fa';
 
 const Header = () => (
   <header className="bg-white shadow-sm py-4">
     <div className="max-w-screen-xl mx-auto px-4 flex items-center">
       <button className="text-2xl mr-4 focus:outline-none">
-        <i className="bx bx-menu"></i>
+        <FaBars />
       </button>
       <h4
         style={{ fontSize: '13px', color: '#280300' }}
@@ -43,6 +56,8 @@ const ProgressSection = () => {
               style={{ fontSize: '13px', color: '#280300' }}
               className="flex items-center font-medium space-x-2"
             >
+              {/* Replaced bx-arrow-from-left with FaArrowLeft */}
+              <FaArrowLeft className="mr-2" />
               <span>#0758267/90</span>
               <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded">
                 Paid
@@ -107,7 +122,7 @@ const ProgressSection = () => {
           style={{ fontSize: '11px', color: '#000' }}
           className="flex items-center bg-white px-3 py-1 rounded border"
         >
-          <i className="bx bx-arrow-from-left mr-2"></i>
+          <FaArrowLeft className="mr-2" />
           Estimated shipping date:
           <span className="ml-1 font-medium" style={{ color: '#280300' }}>
             Apr 25, 2024
@@ -138,7 +153,7 @@ const ProductSection = () => {
       price: '$80.00',
       text: '$3.00',
       amount: '$83.00',
-      img: {shirt}
+      img: shirt,
     },
     {
       name: 'Dark Green Cargo Pent',
@@ -148,7 +163,7 @@ const ProductSection = () => {
       price: '$330.00',
       text: '$4.00',
       amount: '$334.00',
-      img: '../assets/images/Shirt.jpg',
+      img: shirt,
     },
     {
       name: 'Men Dark Brown Wallet',
@@ -158,7 +173,7 @@ const ProductSection = () => {
       price: '$132.00',
       text: '$5.00',
       amount: '$137.00',
-      img: '../assets/images/Shirt.jpg',
+      img: shirt,
     },
     {
       name: "Kid's Yellow T-shirt",
@@ -168,7 +183,7 @@ const ProductSection = () => {
       price: '$220.00',
       text: '$3.00',
       amount: '$223.00',
-      img: '../assets/images/Shirt.jpg',
+      img: shirt,
     },
   ];
 
@@ -209,7 +224,7 @@ const ProductSection = () => {
                     <div className="bg-gray-100 p-2 rounded-lg">
                       <img
                         src={p.img}
-                        alt=""
+                        alt="Product"
                         className="h-12 w-12 object-cover rounded"
                       />
                     </div>
@@ -296,7 +311,7 @@ const TimelineSection = () => {
         </button>
       ),
       time: 'April 23, 2024, 09:40 am',
-      icon: <i className="bx bx-check-circle text-green-500 text-xl" />,
+      icon: <FaCheckCircle className="text-green-500 text-xl" />,
     },
     {
       title: 'The Invoice has been created',
@@ -314,7 +329,7 @@ const TimelineSection = () => {
         </button>
       ),
       time: 'April 23, 2024, 09:40 am',
-      icon: <i className="bx bx-check-circle text-green-500 text-xl" />,
+      icon: <FaCheckCircle className="text-green-500 text-xl" />,
     },
     {
       title: 'Order Payment',
@@ -325,7 +340,7 @@ const TimelineSection = () => {
         </span>
       ),
       time: 'April 23, 2024, 09:40 am',
-      icon: <i className="bx bx-check-circle text-green-500 text-xl" />,
+      icon: <FaCheckCircle className="text-green-500 text-xl" />,
     },
     {
       title: '4 Orders confirmed by Gaston Lapierre',
@@ -344,14 +359,14 @@ const TimelineSection = () => {
         </div>
       ),
       time: 'April 23, 2024, 09:40 am',
-      icon: <i className="bx bx-check-circle text-green-500 text-xl" />,
+      icon: <FaCheckCircle className="text-green-500 text-xl" />,
     },
   ];
 
   return (
     <div className="flex-1 p-4 bg-gray-100 ml-[80px]">
       <div className="p-6 border-b border-gray-200">
-        <h4 style={{ fontSize: '13px', color: '#280300' }}>
+        <h4 style={{ fontSize: '13px', color: '#280300' }} className="mb-4">
           Order Timeline
         </h4>
       </div>
@@ -388,10 +403,10 @@ const TimelineSection = () => {
 
 const OrderInfoSection = () => {
   const info = [
-    { label: 'Vendor', value: 'Catpiller', icon: 'bx bx-store' },
-    { label: 'Date', value: 'April 23, 2024', icon: 'bx bx-calendar' },
-    { label: 'Paid By', value: 'Gaston Lapierre', icon: 'bx bx-user-circle' },
-    { label: 'Reference #IMEMO', value: '#0758267/90', icon: 'bx bx-clipboard' },
+    { label: 'Vendor', value: 'Catpiller', icon: <FaStore className="text-3xl text-blue-600" /> },
+    { label: 'Date', value: 'April 23, 2024', icon: <FaCalendarAlt className="text-3xl text-blue-600" /> },
+    { label: 'Paid By', value: 'Gaston Lapierre', icon: <FaUserCircle className="text-3xl text-blue-600" /> },
+    { label: 'Reference #IMEMO', value: '#0758267/90', icon: <FaClipboard className="text-3xl text-blue-600" /> },
   ];
 
   return (
@@ -409,7 +424,7 @@ const OrderInfoSection = () => {
               {it.value}
             </p>
           </div>
-          <i className={`${it.icon} text-3xl text-blue-600`} />
+          {it.icon}
         </div>
       ))}
     </div>
@@ -418,10 +433,10 @@ const OrderInfoSection = () => {
 
 const OrderSummary = () => {
   const summary = [
-    { label: 'Sub Total', value: '$777.00', icon: 'bx bx-clipboard' },
-    { label: 'Discount', value: '-$60.00', icon: 'bx bx-discount' },
-    { label: 'Delivery Charge', value: '$00.00', icon: 'bx bx-truck' },
-    { label: 'Estimated Tax (15.5%)', value: '$20.00', icon: 'bx bx-calculator' },
+    { label: 'Sub Total', value: '$777.00', icon: <FaClipboard /> },
+    { label: 'Discount', value: '-$60.00', icon: <FaPercent /> },
+    { label: 'Delivery Charge', value: '$00.00', icon: <FaTruck /> },
+    { label: 'Estimated Tax (15.5%)', value: '$20.00', icon: <FaCalculator /> },
   ];
 
   return (
@@ -435,7 +450,7 @@ const OrderSummary = () => {
         {summary.map((s, i) => (
           <div key={i} className="flex justify-between items-center">
             <div className="flex items-center gap-2">
-              <i className={s.icon}></i>
+              {s.icon}
               <span style={{ fontSize: '11px', color: '#000' }}>{s.label}</span>
             </div>
             <span style={{ fontSize: '11px', color: '#000' }} className="font-medium">
@@ -480,7 +495,7 @@ const PaymentInfo = () => (
             xxxx xxxx xxxx 7812
           </p>
         </div>
-        <i className="bx bx-check-circle text-green-500 text-2xl ml-auto"></i>
+        <FaCheckCircle className="text-green-500 text-2xl ml-auto" />
       </div>
       <p style={{ fontSize: '11px', color: '#000' }}>
         <span className="font-medium">Transaction ID:</span>{' '}
@@ -528,7 +543,7 @@ const CustomerDetails = () => (
             Contact Number
           </h5>
           <button>
-            <i className="bx bx-edit-alt text-gray-600"></i>
+            <FaEdit className="text-gray-600" />
           </button>
         </div>
         <p style={{ fontSize: '11px', color: '#000' }} className="text-gray-600">
@@ -542,7 +557,7 @@ const CustomerDetails = () => (
             Shipping Address
           </h5>
           <button>
-            <i className="bx bx-edit-alt text-gray-600"></i>
+            <FaEdit className="text-gray-600" />
           </button>
         </div>
         <address style={{ fontSize: '11px', color: '#000' }} className="not-italic text-gray-600">
@@ -560,7 +575,7 @@ const CustomerDetails = () => (
             Billing Address
           </h5>
           <button>
-            <i className="bx bx-edit-alt text-gray-600"></i>
+            <FaEdit className="text-gray-600" />
           </button>
         </div>
         <p style={{ fontSize: '11px', color: '#000' }} className="text-gray-600">
@@ -586,7 +601,7 @@ const Footer = () => (
   <footer className="py-4 bg-white shadow-inner">
     <div className="max-w-screen-xl mx-auto px-4 text-center" style={{ fontSize: '11px', color: '#000' }}>
       {new Date().getFullYear()} © xtreative{' '}
-      <i className="bx bx-heart" style={{ color: '#f9622c' }}></i>{' '}
+      <FaHeart style={{ color: '#f9622c' }} />{' '}
       <a
         href="https://1.envato.market/techzaa"
         style={{ fontSize: '11px', color: '#280300' }}
