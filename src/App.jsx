@@ -15,6 +15,7 @@ import "react-toastify/dist/ReactToastify.css";
 import './styles/index.css';
 import OrderList from './pages/OrderList.jsx';
 import OrderDetailsPage from './pages/OrderDetailsPage.jsx';
+import Settings from './pages/Settings.jsx';
 
 
 function App() {
@@ -23,6 +24,7 @@ function App() {
       <Routes>
         <Route path="/" element={<LoginScreen />} />
         <Route path="/admin-dashboard" element={<AdminDashboard />} />
+        <Route path="/Settings" element={<Settings />} /> {/* ✅ Add this */}
         <Route path="/Vendors" element={<Vendors />} />
         <Route path="/Customers" element={<Customers />} />
 
