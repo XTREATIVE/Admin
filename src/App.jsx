@@ -7,7 +7,7 @@ import Customers from './pages/customers.jsx';
 
 import Products from './pages/products.jsx';
 import ProductDetails from './pages/products_details_product.jsx';
-
+import Settings from './pages/Settings.jsx'
 import VendorsDetails from './pages/vendorDetails.jsx';
 import CustomerDetails from './pages/customerDetails.jsx';
 import { ToastContainer } from "react-toastify";
@@ -15,7 +15,7 @@ import "react-toastify/dist/ReactToastify.css";
 import './styles/index.css';
 import OrderList from './pages/OrderList.jsx';
 import Order_Details from './pages/order_order_details.jsx';
-
+import Reports from './pages/Reports.jsx'
 
 
 function App() {
@@ -24,7 +24,7 @@ function App() {
       <Routes>
         <Route path="/" element={<LoginScreen />} />
         <Route path="/admin-dashboard" element={<AdminDashboard />} />
-        <Route path="/Settings" element={<Settings />} /> {/* ✅ Add this */}
+        <Route path="/Settings" element={<Settings />} />
         <Route path="/Vendors" element={<Vendors />} />
         <Route path="/Customers" element={<Customers />} />
         <Route path="/products" element={<Products />} />
