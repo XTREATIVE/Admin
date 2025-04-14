@@ -15,6 +15,7 @@ import "react-toastify/dist/ReactToastify.css";
 import './styles/index.css';
 import OrderList from './pages/OrderList.jsx';
 import OrderDetailsPage from './pages/OrderDetailsPage.jsx';
+import Reports from './pages/Reports.jsx';
 import Settings from './pages/Settings.jsx';
 
 
@@ -27,27 +28,32 @@ function App() {
         <Route path="/Settings" element={<Settings />} /> {/* ✅ Add this */}
         <Route path="/Vendors" element={<Vendors />} />
         <Route path="/Customers" element={<Customers />} />
-
         <Route path="/products" element={<Products />} />
-
         <Route path="/Vendors/details" element={<VendorsDetails />} />
         <Route path="/Customers/details" element={<CustomerDetails />} />
         <Route path="/orders" element={<OrderList />} />
         <Route path="/order/:orderId" element={<OrderDetailsPage />} />
-
         <Route path="/products/product/:publicId/:slug" element={<ProductDetails />} />
+        <Route path="/reports" element={<Reports />} />
 
+        </Routes>
 
-
-
-
-
-      </Routes>
-
-      {/* ToastContainer should be outside of <Routes> */}
-      <ToastContainer position="bottom-right" autoClose={3000} />
-    </>
-  );
+{/* ToastContainer should be outside of <Routes> */}
+<ToastContainer position="bottom-right" autoClose={3000} />
+</>
+);
 }
 
 export default App;
+
+
+
+        
+        
+
+
+
+
+
+
+      
