@@ -1,102 +1,174 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import Sidebar from '../components/sidebar';
-import '../styles/OrderList.css';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import Sidebar from "../components/sidebar";
+import Header from "../components/header";
+import OrderTable from "../components/orderlist_table";
+import RecentClaims from "../components/RecentClaims"; // import the RecentClaims component
+// 1) Install recharts: npm install recharts
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  ResponsiveContainer,
+} from "recharts";
+
 const OrderList = () => {
   const navigate = useNavigate();
 
+  // Date picker state
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  // Time‐range for the return‐rate graph
+  const [range, setRange] = useState("This Month");
+
+  // Example metrics data
   const summaryData = [
-    { title: 'Payment Refund', value: 490, icon: '💸' },
-    { title: 'Order Cancel', value: 241, icon: '🛒' },
-    { title: 'Order Shipping', value: 630, icon: '📦' },
-    { title: 'Order Delivery', value: 170, icon: '🚚' },
-    { title: 'Pending Review', value: 210, icon: '📋' },
-    { title: 'Pending Payment', value: 608, icon: '⏳' },
-    { title: 'Delivered', value: 200, icon: '✅' },
-    { title: 'In Progress', value: 656, icon: '🔄' },
+    { title: "Total Orders", value: 980, icon: "📝" },
+    { title: "Pending Orders", value: 150, icon: "⏳" },
+    { title: "Processing", value: 210, icon: "🔄" },
+    { title: "Shipped", value: 300, icon: "🚚" },
+    { title: "Delivered", value: 250, icon: "✅" },
+    { title: "Cancelled", value: 70, icon: "❌" },
+    { title: "Total sales", value: "UGX 85000", icon: "💰" },
+    { title: "Return Rate", value: "5%", icon: "↩️" },
   ];
 
-  const orders = [
-    { id: '#583488/80', createdAt: 'Apr 23, 2024', customer: 'Gail C. Anderson', priority: 'Normal', total: '$1,230.00', paymentStatus: 'Unpaid', items: 4, deliveryNumber: '-', orderStatus: 'Draft' },
-    { id: '#456754/80', createdAt: 'Apr 20, 2024', customer: 'Jung S. Ayala', priority: 'Normal', total: '$987.00', paymentStatus: 'Paid', items: 2, deliveryNumber: '-', orderStatus: 'Packaging' },
-    { id: '#578246/80', createdAt: 'Apr 19, 2024', customer: 'David A. Arnold', priority: 'High', total: '$1,478.00', paymentStatus: 'Paid', items: 5, deliveryNumber: '#D-578578', orderStatus: 'Completed' },
-    { id: '#348930/80', createdAt: 'Apr 4, 2024', customer: 'Cecilie D. Gordon', priority: 'Normal', total: '$720.00', paymentStatus: 'Refund', items: 4, deliveryNumber: '-', orderStatus: 'Canceled' },
-    { id: '#391367/80', createdAt: 'Apr 2, 2024', customer: 'William Moreno', priority: 'Normal', total: '$1,909.00', paymentStatus: 'Paid', items: 6, deliveryNumber: '#D-89734235', orderStatus: 'Completed' },
+  // Sample return‐rate data over various dates
+  const returnRateData = [
+    { date: "2025-01-15", rate: 3.8 },
+    { date: "2025-02-10", rate: 4.1 },
+    { date: "2025-03-05", rate: 4.7 },
+    { date: "2025-04-08", rate: 4.2 },
+    { date: "2025-04-09", rate: 4.5 },
+    { date: "2025-04-10", rate: 5.0 },
+    { date: "2025-04-11", rate: 4.8 },
+    { date: "2025-04-12", rate: 5.2 },
+    { date: "2025-04-13", rate: 5.0 },
+    { date: "2025-04-14", rate: 4.9 },
   ];
 
-  const handleViewOrder = (orderId) => {
-    const cleanOrderId = orderId.replace(/[#/]/g, '-');
-    navigate(`/order/${cleanOrderId}`);
-  };
+  // Helper for filtering based on range + selectedDate
+  const selectedDateStr = selectedDate.toISOString().split("T")[0];
+  const selectedMonth = selectedDate.getMonth(); // 0–11
+  const selectedYear = selectedDate.getFullYear(); // e.g. 2025
+
+  const filteredReturnData = returnRateData.filter((d) => {
+    const [y, m, day] = d.date.split("-").map(Number);
+    if (range === "Today") {
+      return d.date === selectedDateStr;
+    }
+    if (range === "This Month") {
+      return y === selectedYear && m - 1 === selectedMonth;
+    }
+    if (range === "This Year") {
+      return y === selectedYear;
+    }
+    return true;
+  });
 
   return (
-    <div className="flex flex-1 overflow-hidden">
-      <Sidebar />
-      <div className="flex-1 p-4 bg-gray-100 ml-[80px]">
-        <div className="summary-cards">
-          {summaryData.map((item, index) => (
-            <div key={index} className="card">
-              <div className="card-icon">{item.icon}</div>
-              <div className="card-content">
-                <h3>{item.title}</h3>
-                <p>{item.value}</p>
+    <div className="h-screen font-poppins">
+      <Header />
+      <div className="flex flex-1 overflow-hidden">
+        <Sidebar />
+        <div className="flex-1 p-5 bg-gray-100 ml-[80px]">
+          {/* Date Picker */}
+          <div className="mb-5">
+            <input
+              type="date"
+              id="datePicker"
+              className="border border-gray-300 rounded px-2 py-1 text-[10px] text-gray-500"
+              value={selectedDateStr}
+              onChange={(e) => setSelectedDate(new Date(e.target.value))}
+            />
+          </div>
+
+          {/* Summary Cards */}
+          <div className="grid grid-cols-4 gap-4 mb-5">
+            {summaryData.map((item, index) => (
+              <div
+                key={index}
+                className="flex items-center justify-between p-4 bg-white rounded-lg shadow hover:shadow-lg transition"
+              >
+                <div className="flex flex-col">
+                  <h3 className="text-[11px] font-semibold text-gray-700">
+                    {item.title}
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-1">{item.value}</p>
+                </div>
+                <div className="text-lg">{item.icon}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Graphs & Order List Section */}
+          <div className="flex gap-2 min-h-[300px]">
+            {/* Left Column: Return Rate Graph and Recent Claims */}
+            <div className="flex flex-col gap-2 w-1/3">
+              {/* Return Rate Card */}
+              <div className="p-5 bg-white rounded-lg shadow">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-[11px] font-semibold text-gray-700">
+                    Return Rate
+                  </h3>
+                  <select
+                    value={range}
+                    onChange={(e) => setRange(e.target.value)}
+                    className="text-[10px] border border-gray-300 rounded px-1 py-0.5"
+                  >
+                    <option>Today</option>
+                    <option>This Month</option>
+                    <option>This Year</option>
+                  </select>
+                </div>
+                <ResponsiveContainer width="100%" height={120}>
+                  <LineChart
+                    data={filteredReturnData}
+                    margin={{ top: 0, right: 10, left: 0, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fontSize: 8 }}
+                      interval="preserveStartEnd"
+                    />
+                    <YAxis
+                      domain={[0, "dataMax"]}
+                      tickFormatter={(v) => `${v}%`}
+                      tick={{ fontSize: 8 }}
+                    />
+                    <Tooltip
+                      formatter={(value) => `${value}%`}
+                      labelFormatter={(label) => `Date: ${label}`}
+                      contentStyle={{ fontSize: "10px" }}
+                      itemStyle={{ fontSize: "10px" }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="rate"
+                      stroke="#8884d8"
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Recent Claims Card */}
+              <RecentClaims />
+            </div>
+            
+            <div className="w-2/3">
+              <div className="p-4 bg-white rounded-lg shadow h-full">
+                <h3 className="text-[11px] font-semibold text-gray-700">
+                  Order List
+                </h3>
+                <OrderTable />
               </div>
             </div>
-          ))}
-        </div>
-        <div className="order-list">
-          <div className="table-header">
-            <h2>All Order List</h2>
-            <select>
-              <option>This Month</option>
-              <option>Last Month</option>
-              <option>This Year</option>
-            </select>
           </div>
-          <table>
-            <thead>
-              <tr>
-                <th>Order ID</th>
-                <th>Created At</th>
-                <th>Customer</th>
-                <th>Priority</th>
-                <th>Total</th>
-                <th>Payment Status</th>
-                <th>Items</th>
-                <th>Delivery Number</th>
-                <th>Order Status</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.map((order, index) => (
-                <tr key={index}>
-                  <td>{order.id}</td>
-                  <td>{order.createdAt}</td>
-                  <td>{order.customer}</td>
-                  <td>{order.priority}</td>
-                  <td>{order.total}</td>
-                  <td>
-                    <span className={`status ${order.paymentStatus.toLowerCase() === 'paid' ? 'paid' : order.paymentStatus.toLowerCase() === 'refund' ? 'refund' : 'unpaid'}`}>
-                      {order.paymentStatus}
-                    </span>
-                  </td>
-                  <td>{order.items}</td>
-                  <td>{order.deliveryNumber}</td>
-                  <td>
-                    <span className={`status ${order.orderStatus.toLowerCase() === 'completed' ? 'completed' : order.orderStatus.toLowerCase() === 'canceled' ? 'canceled' : order.orderStatus.toLowerCase() === 'packaging' ? 'packaging' : 'draft'}`}>
-                      {order.orderStatus}
-                    </span>
-                  </td>
-                  <td>
-                    <button className="action-btn" onClick={() => handleViewOrder(order.id)}>🔍</button>
-                    <button className="action-btn">✏️</button>
-                    <button className="action-btn">🗑️</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       </div>
     </div>

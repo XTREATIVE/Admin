@@ -14,7 +14,8 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import './styles/index.css';
 import OrderList from './pages/OrderList.jsx';
-import OrderDetailsPage from './pages/OrderDetailsPage.jsx';
+import Order_Details from './pages/order_order_details.jsx';
+
 
 
 function App() {
@@ -31,7 +32,7 @@ function App() {
         <Route path="/Vendors/details" element={<VendorsDetails />} />
         <Route path="/Customers/details" element={<CustomerDetails />} />
         <Route path="/orders" element={<OrderList />} />
-        <Route path="/order/:orderId" element={<OrderDetailsPage />} />
+        <Route path="/order/:orderId" element={<Order_Details />} />
 
         <Route path="/products/product/:publicId/:slug" element={<ProductDetails />} />
 
