@@ -6,7 +6,7 @@ import Order from "../components/order_left_section";
 
 const Order_Details = () => {
   return (
-    <div className="h-screen">
+    <div className="h-screen font-poppins">
       <Header />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />

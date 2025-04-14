@@ -6,7 +6,7 @@ import CustomersList from "../components/customerslist";
 
 const Customers = () => {
   return (
-    <div className="h-screen flex flex-col">
+    <div className="h-screen flex flex-col font-poppins">
       <Header />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />

@@ -63,7 +63,7 @@ const LoginScreen = () => {
   };
 
   return (
-    <div className="login-screen">
+    <div className="login-screen font-poppins">
       {/* Embedded CSS */}
       <style>{`
         /* Overall layout */

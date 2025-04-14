@@ -6,7 +6,7 @@ import StatsCardsGrid from "../components/cardgrid";
 
 const AdminDashboard = () => {
   return (
-    <div className="h-screen">
+    <div className="h-screen font-poppins">
       <Header />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
