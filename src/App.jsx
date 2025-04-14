@@ -24,29 +24,36 @@ function App() {
       <Routes>
         <Route path="/" element={<LoginScreen />} />
         <Route path="/admin-dashboard" element={<AdminDashboard />} />
+        <Route path="/Settings" element={<Settings />} /> {/* ✅ Add this */}
         <Route path="/Vendors" element={<Vendors />} />
         <Route path="/Customers" element={<Customers />} />
-
         <Route path="/products" element={<Products />} />
-
         <Route path="/Vendors/details" element={<VendorsDetails />} />
         <Route path="/Customers/details" element={<CustomerDetails />} />
         <Route path="/orders" element={<OrderList />} />
         <Route path="/order/:orderId" element={<Order_Details />} />
 
         <Route path="/products/product/:publicId/:slug" element={<ProductDetails />} />
+        <Route path="/reports" element={<Reports />} />
 
+        </Routes>
 
-
-
-
-
-      </Routes>
-
-      {/* ToastContainer should be outside of <Routes> */}
-      <ToastContainer position="bottom-right" autoClose={3000} />
-    </>
-  );
+{/* ToastContainer should be outside of <Routes> */}
+<ToastContainer position="bottom-right" autoClose={3000} />
+</>
+);
 }
 
 export default App;
+
+
+
+        
+        
+
+
+
+
+
+
+      
