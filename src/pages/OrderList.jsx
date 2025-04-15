@@ -1,9 +1,11 @@
+// OrderList.js
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/sidebar";
 import Header from "../components/header";
 import OrderTable from "../components/orderlist_table";
-import RecentClaims from "../components/RecentClaims"; // import the RecentClaims component
+import RecentClaims from "../components/RecentClaims";
+import ClaimsModal from "../modals/returnClaims";
 // 1) Install recharts: npm install recharts
 import {
   LineChart,
@@ -15,6 +17,47 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
+// Define dummyClaims for use in the modal
+const dummyClaims = [
+  {
+    name: "John Alinatwe",
+    message: "Claimed a refund for UGX 50,000",
+    time: "3 min ago",
+    type: "refund",
+  },
+  {
+    name: "Jane Ayebale",
+    message: "Submitted a claim for delayed delivery of UGX 20,000",
+    time: "15 min ago",
+    type: "claim",
+  },
+  {
+    name: "Alice Opio",
+    message: "Claimed compensation for a faulty product - UGX 30,000",
+    time: "45 min ago",
+    type: "claim",
+  },
+];
+
+
+const claimsData = [
+  {
+    id: "324561324",
+    pickupAddress: "Al Ain Ahlia Insurance Co, Abudhabi, Al Karamah",
+    deliveryAddress: "King Abdullah bin Abdul Aziz Al Sud Street, Abu Dhabi, AD",
+    expiry: "12.12.19",
+    price: 120,
+    buttonText: "Place Bid",
+    giftTitle: "Sweater Shirt",
+    quantity: "1",
+    weight: "2 kg",
+    description: "A small box with gifts ... careful handling.",
+    shipper: "Holden Caulfield",
+    giftPrice: 120
+  },
+
+]
+
 const OrderList = () => {
   const navigate = useNavigate();
 
@@ -22,6 +65,9 @@ const OrderList = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   // Time‐range for the return‐rate graph
   const [range, setRange] = useState("This Month");
+
+  // Modal state for viewing all claims
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Example metrics data
   const summaryData = [
@@ -51,8 +97,8 @@ const OrderList = () => {
 
   // Helper for filtering based on range + selectedDate
   const selectedDateStr = selectedDate.toISOString().split("T")[0];
-  const selectedMonth = selectedDate.getMonth(); // 0–11
-  const selectedYear = selectedDate.getFullYear(); // e.g. 2025
+  const selectedMonth = selectedDate.getMonth();
+  const selectedYear = selectedDate.getFullYear();
 
   const filteredReturnData = returnRateData.filter((d) => {
     const [y, m, day] = d.date.split("-").map(Number);
@@ -69,7 +115,7 @@ const OrderList = () => {
   });
 
   return (
-    <div className="h-screen font-poppins">
+    <div className="h-screen font-poppins relative">
       <Header />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
@@ -157,9 +203,10 @@ const OrderList = () => {
               </div>
 
               {/* Recent Claims Card */}
-              <RecentClaims />
+              <RecentClaims onViewAll={() => setIsModalOpen(true)} />
             </div>
             
+            {/* Right Column: Order List */}
             <div className="w-2/3">
               <div className="p-4 bg-white rounded-lg shadow h-full">
                 <h3 className="text-[11px] font-semibold text-gray-700">
@@ -171,6 +218,14 @@ const OrderList = () => {
           </div>
         </div>
       </div>
+
+      {/* Render the Claims Modal component */}
+      {isModalOpen && (
+        <ClaimsModal 
+          claims={dummyClaims}
+          onClose={() => setIsModalOpen(false)}
+        />
+      )}
     </div>
   );
 };

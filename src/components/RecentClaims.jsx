@@ -1,3 +1,4 @@
+// RecentClaims.js
 import React from "react";
 
 const dummyClaims = [
@@ -21,17 +22,15 @@ const dummyClaims = [
   },
 ];
 
-const RecentClaims = ({ claims = dummyClaims }) => {
+const RecentClaims = ({ claims = dummyClaims, onViewAll }) => {
   const getAvatarLetters = (claim) => {
     const nameParts = claim.name.split(" ");
-    // Check if there are at least two parts in the name
     if (nameParts.length >= 2) {
       return (
         nameParts[0].charAt(0).toUpperCase() +
         nameParts[1].charAt(0).toUpperCase()
       );
     }
-    // Fallback: return the first two characters of the name if only one word exists
     return claim.name.slice(0, 2).toUpperCase();
   };
 
@@ -58,19 +57,18 @@ const RecentClaims = ({ claims = dummyClaims }) => {
               <p className="text-[#280300] font-semibold text-[11px]">
                 {claim.name}
               </p>
-              <p className="text-black-500 text-[10px]">
-                {claim.message}
-              </p>
-              <p className="text-gray-400 text-[10px]">
-                {claim.time}
-              </p>
+              <p className="text-black-500 text-[10px]">{claim.message}</p>
+              <p className="text-gray-400 text-[10px]">{claim.time}</p>
             </div>
           </div>
         ))}
       </div>
 
       {/* Link */}
-      <p className="text-[#f9622c] mt-4 cursor-pointer hover:underline text-[10px]">
+      <p
+        className="text-[#f9622c] mt-4 cursor-pointer hover:underline text-[10px]"
+        onClick={onViewAll}
+      >
         View all Claims
       </p>
     </div>
