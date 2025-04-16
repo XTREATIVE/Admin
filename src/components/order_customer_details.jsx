@@ -1,40 +1,43 @@
 // OrderRightSection.js
 import React, { useContext } from "react";
-import mtn from "../assets/mtn.jpg";
+import mtnLogo from "../assets/mtn.jpg";
+import airtelLogo from "../assets/airrtel.jpg";
+import mastercardLogo from "../assets/mastercard.jpg";
+import visaLogo from "../assets/visa.jpg";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import { UserContext } from "../context/usercontext";
+import { PaymentContext } from "../context/paymentcontext";
 
-// OrderSummaryCard now takes an order prop and computes its values dynamically
+// OrderSummaryCard remains unchanged.
 function OrderSummaryCard({ order }) {
-  // Calculate subTotal from the order items
   const subTotal = order.items.reduce(
     (acc, item) => acc + Number(item.subtotal),
     0
   );
-  // Use order properties if present; otherwise, set defaults:
   const discountPercent = order.discount_percent || 0;
-  const deliveryCharge = order.delivery_charge || 3000; // in UGX
-  const taxPercent = order.tax_percent || 2.5; // tax percentage
+  const deliveryCharge = order.delivery_charge || 3000;
+  const taxPercent = order.tax_percent || 2.5;
 
   const discountAmount = subTotal * (discountPercent / 100);
   const taxAmount = subTotal * (taxPercent / 100);
   const totalAmount = subTotal - discountAmount + deliveryCharge + taxAmount;
 
-  // Format prices
   const formatPrice = (price) => `UGX ${price.toFixed(0)}`;
 
   return (
     <div className="bg-white shadow rounded-lg">
-      {/* Header */}
       <div className="p-6 border-b border-gray-200">
-        <h2 className="text-[12px] font-semibold text-gray-800">Order Summary</h2>
+        <h2 className="text-[12px] font-semibold text-gray-800">
+          Order Summary
+        </h2>
       </div>
-      {/* Order Summary Details */}
       <div className="p-6 border-t border-gray-200">
         <div className="text-[11px] text-gray-600 space-y-1">
           <p>
             Sub Total:
-            <span className="float-right font-medium">{formatPrice(subTotal)}</span>
+            <span className="float-right font-medium">
+              {formatPrice(subTotal)}
+            </span>
           </p>
           <p>
             Discount:
@@ -44,16 +47,22 @@ function OrderSummaryCard({ order }) {
           </p>
           <p>
             Delivery Charge:
-            <span className="float-right font-medium">{formatPrice(deliveryCharge)}</span>
+            <span className="float-right font-medium">
+              {formatPrice(deliveryCharge)}
+            </span>
           </p>
           <p>
             Estimated Tax ({taxPercent}%):
-            <span className="float-right font-medium">{formatPrice(taxAmount)}</span>
+            <span className="float-right font-medium">
+              {formatPrice(taxAmount)}
+            </span>
           </p>
           <hr />
           <p className="font-semibold">
             Total Amount:
-            <span className="float-right text-gray-800">{formatPrice(totalAmount)}</span>
+            <span className="float-right text-gray-800">
+              {formatPrice(totalAmount)}
+            </span>
           </p>
         </div>
       </div>
@@ -62,39 +71,76 @@ function OrderSummaryCard({ order }) {
 }
 
 function PaymentInformationCard({ order }) {
-  // In a real-world scenario, these values could come from the order details or payment history.
-  // For this example, we still use static data.
+  // Use PaymentContext to obtain paymentMethods array.
+  const { paymentMethods } = useContext(PaymentContext);
+  
+  // Lookup the payment method that matches the order’s customer ID.
+  const paymentMethodForOrder =
+    paymentMethods.find(
+      (pm) => Number(pm.customer) === Number(order.customer)
+    ) || {};
+  
+  // Use the payment method from API for network and momo number,
+  // defaulting to "mtn" if not available.
+  const network = (paymentMethodForOrder.network || "mtn").toLowerCase();
+  const momoNumber = paymentMethodForOrder.momo_number || "";
+  
+  // Determine which logo and label to show based on network.
+  let logoSrc, methodLabel;
+  switch (network) {
+    case "airtel":
+      logoSrc = airtelLogo;
+      methodLabel = "Airtel Money";
+      break;
+    case "mastercard":
+      logoSrc = mastercardLogo;
+      methodLabel = "Mastercard";
+      break;
+    case "visa":
+      logoSrc = visaLogo;
+      methodLabel = "Visa";
+      break;
+    case "mtn":
+    default:
+      logoSrc = mtnLogo;
+      methodLabel = "MTN Mobile Money";
+      break;
+  }
+  
+  // Use the momo number from API if available, otherwise fallback.
+  const accountNumber = momoNumber || order.payment_account_number || "+256 701 234567";
+  // Keep txn id and account holder constant.
+  const txnId = order.transaction_id || "#MTN768139059";
+  const accountHolder = order.account_holder_name || "Alinatwe Ian";
+
   return (
     <div className="bg-white shadow rounded-lg">
-      {/* Header */}
       <div className="p-6 border-b border-gray-200">
         <h2 className="text-[12px] font-semibold text-gray-800">
           Payment Information
         </h2>
       </div>
-      {/* Payment Information Details */}
       <div className="p-6">
         <div className="flex items-center gap-4">
-          <img src={mtn} alt="MTN logo" className="w-8 h-8" />
+          <img src={logoSrc} alt={`${methodLabel} logo`} className="w-8 h-8" />
           <div>
             <p className="text-[11px] font-semibold text-gray-500">
-              MTN Mobile Money
+              {methodLabel}
             </p>
-            <p className="text-[11px] text-gray-600">+256 701 234567</p>
+            <p className="text-[11px] text-gray-600">{accountNumber}</p>
           </div>
         </div>
-        {/* Divider */}
         <div className="mt-4 border-t border-dotted border-gray-200 pt-4">
           <div className="grid grid-cols-1 gap-2">
             <p className="text-[11px]">
               <span className="font-medium text-gray-600">Txn ID:</span>{" "}
-              <span className="text-gray-600">#MTN768139059</span>
+              <span className="text-gray-600">{txnId}</span>
             </p>
             <p className="text-[11px]">
               <span className="font-medium text-gray-600">
                 Account Holder Name:
               </span>{" "}
-              <span className="text-gray-600">Alinatwe Ian</span>
+              <span className="text-gray-600">{accountHolder}</span>
             </p>
           </div>
         </div>
@@ -104,36 +150,29 @@ function PaymentInformationCard({ order }) {
 }
 
 function CustomerDetailsPlaceholderCard({ order }) {
-  // Use UserContext to enrich customer details.
-  const { users, getUsernameById } = useContext(UserContext);
-  // Find the user based on the order's customer id.
+  const { users } = useContext(UserContext);
   const customer =
-    users.find((user) => Number(user.id) === Number(order.customer)) || {};
+    users.find((u) => Number(u.id) === Number(order.customer)) || {};
 
-  // Use details from the customer object, with a fallback.
   const customerName = customer.username || order.customer_name || "Unknown";
-  const customerEmail = customer.email || order.customer_email || "No email provided";
-
-  // Extract initials from the first two words and uppercase them.
+  const customerEmail =
+    customer.email || order.customer_email || "No email provided";
   const initials = customerName
     .split(" ")
-    .map((word) => word.charAt(0))
+    .map((w) => w.charAt(0))
     .slice(0, 2)
     .join("")
     .toUpperCase();
 
   return (
     <div className="bg-white shadow rounded-lg">
-      {/* Header */}
       <div className="p-6 border-b border-gray-200">
         <h2 className="text-[12px] font-semibold text-gray-800">
           Customer Details
         </h2>
       </div>
-      {/* Customer Details */}
       <div className="p-6">
         <div className="flex items-center space-x-4">
-          {/* Avatar with Initials */}
           <div className="w-12 h-12 rounded-full bg-[#f9622c] flex items-center justify-center text-lg font-medium text-[#280300]">
             {initials}
           </div>
@@ -144,9 +183,7 @@ function CustomerDetailsPlaceholderCard({ order }) {
             <p className="text-[10px] text-gray-600">{customerEmail}</p>
           </div>
         </div>
-        {/* Divider */}
         <div className="mt-4 border-t border-gray-200 pt-4">
-          {/* Contact Details */}
           <div className="mb-3">
             <p className="text-[10px] font-medium text-gray-600">
               Contact Number
@@ -155,7 +192,6 @@ function CustomerDetailsPlaceholderCard({ order }) {
               {order.contact_number || "0774788071"}
             </p>
           </div>
-          {/* Shipping Address */}
           <div>
             <p className="text-[10px] font-medium text-gray-800">
               Delivery Address
@@ -174,7 +210,6 @@ Kampala, Uganda`}
 }
 
 function MapDetailsCard({ order }) {
-  // Optionally, if your order has geo-coordinates, use them; otherwise, default to Kampala's coordinates.
   const position = order.delivery_coordinates || [0.3476, 32.5825];
   const deliveryAddress =
     order.delivery_address ||
@@ -182,13 +217,11 @@ function MapDetailsCard({ order }) {
 
   return (
     <div className="bg-white shadow rounded-lg">
-      {/* Header */}
       <div className="p-6 border-b border-gray-200">
         <h2 className="text-[12px] font-semibold text-gray-800">
           Delivery Address Details
         </h2>
       </div>
-      {/* Map */}
       <div className="p-6">
         <MapContainer
           center={position}
@@ -209,7 +242,6 @@ function MapDetailsCard({ order }) {
   );
 }
 
-// The main CustomerDetailsCard component now accepts an "order" prop.
 export default function CustomerDetailsCard({ order }) {
   return (
     <div className="space-y-4">

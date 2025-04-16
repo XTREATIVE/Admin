@@ -16,134 +16,86 @@ import {
   CartesianGrid,
   ResponsiveContainer,
 } from "recharts";
-import { OrdersContext } from "../context/orderscontext"; 
+import { OrdersContext } from "../context/orderscontext";
 
-// Define dummyClaims for use in the modal
+// dummy data for your claims modal
 const dummyClaims = [
-  {
-    name: "John Alinatwe",
-    message: "Claimed a refund for UGX 50,000",
-    time: "3 min ago",
-    type: "refund",
-  },
-  {
-    name: "Jane Ayebale",
-    message: "Submitted a claim for delayed delivery of UGX 20,000",
-    time: "15 min ago",
-    type: "claim",
-  },
-  {
-    name: "Alice Opio",
-    message: "Claimed compensation for a faulty product - UGX 30,000",
-    time: "45 min ago",
-    type: "claim",
-  },
+  { name: "John Alinatwe", message: "Claimed a refund for UGX 50,000", time: "3 min ago", type: "refund" },
+  { name: "Jane Ayebale", message: "Submitted a claim for delayed delivery of UGX 20,000", time: "15 min ago", type: "claim" },
+  { name: "Alice Opio", message: "Claimed compensation for a faulty product - UGX 30,000", time: "45 min ago", type: "claim" },
 ];
 
-const claimsData = [
-  {
-    id: "324561324",
-    pickupAddress: "Al Ain Ahlia Insurance Co, Abudhabi, Al Karamah",
-    deliveryAddress: "King Abdullah bin Abdul Aziz Al Sud Street, Abu Dhabi, AD",
-    expiry: "12.12.19",
-    price: 120,
-    buttonText: "Place Bid",
-    giftTitle: "Sweater Shirt",
-    quantity: "1",
-    weight: "2 kg",
-    description: "A small box with gifts ... careful handling.",
-    shipper: "Holden Caulfield",
-    giftPrice: 120,
-  },
-];
+// helper to get a “YYYY‑MM‑DD” string from a Date (local)
+const formatToYMD = (date) => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+};
 
 const OrderList = () => {
   const navigate = useNavigate();
-  const { orders } = useContext(OrdersContext); // Consume orders from OrdersContext
+  const { orders } = useContext(OrdersContext);
 
-  // Date picker state
+  // state
   const [selectedDate, setSelectedDate] = useState(new Date());
-  // Time‐range for the return‐rate graph
   const [range, setRange] = useState("This Month");
-
-  // Modal state for viewing all claims
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Get a date string in "YYYY-MM-DD" format from the selectedDate
-  const selectedDateStr = selectedDate.toISOString().split("T")[0];
+  // normalize selectedDate
+  const selectedDateStr = formatToYMD(selectedDate);
   const selectedMonth = selectedDate.getMonth();
   const selectedYear = selectedDate.getFullYear();
 
-  // Filter orders based on the selected date.
-  // Here we consider orders whose created_at date equals the selected date.
+  // filter orders by date
   const filteredOrders = orders.filter((order) => {
-    const orderDateStr = new Date(order.created_at).toISOString().split("T")[0];
-    return orderDateStr === selectedDateStr;
+    let dateObj;
+    if (typeof order.created_at === "string" && order.created_at.includes("/")) {
+      // “DD/MM/YYYY”
+      const [day, month, year] = order.created_at.split("/");
+      dateObj = new Date(Number(year), Number(month) - 1, Number(day));
+    } else {
+      // assume ISO or Date
+      dateObj = new Date(order.created_at);
+    }
+    return formatToYMD(dateObj) === selectedDateStr;
   });
 
-  // Compute metrics for the selected date
-  const pendingOrders = filteredOrders.filter(
-    (order) => order.status.toLowerCase() === "pending"
+  // compute stats
+  const pendingOrders = filteredOrders.filter(o => o.status.toLowerCase() === "pending").length;
+  const processingOrders = filteredOrders.filter(o => o.status.toLowerCase() === "processing").length;
+  const shippedOrders = filteredOrders.filter(o => o.status.toLowerCase() === "shipped").length;
+  const deliveredOrders = filteredOrders.filter(o => o.status.toLowerCase() === "delivered").length;
+  const cancelledOrders = filteredOrders.filter(o =>
+    ["cancelled", "canceled"].includes(o.status.toLowerCase())
   ).length;
-  const processingOrders = filteredOrders.filter(
-    (order) => order.status.toLowerCase() === "processing"
-  ).length;
-  const shippedOrders = filteredOrders.filter(
-    (order) => order.status.toLowerCase() === "shipped"
-  ).length;
-  const deliveredOrders = filteredOrders.filter(
-    (order) => order.status.toLowerCase() === "delivered"
-  ).length;
-  const cancelledOrders = filteredOrders.filter((order) =>
-    ["cancelled", "canceled"].includes(order.status.toLowerCase())
-  ).length;
-  const totalSales = filteredOrders.reduce(
-    (acc, order) => acc + Number(order.total_price),
-    0
-  );
+  const totalSales = filteredOrders.reduce((sum, o) => sum + Number(o.total_price), 0);
 
-  // Define summary metrics based on the filtered orders for the selected date.
   const summaryData = [
-    { title: "Total Orders", value: filteredOrders.length, icon: "📝" },
-    { title: "Pending Orders", value: pendingOrders, icon: "⏳" },
-    { title: "Processing", value: processingOrders, icon: "🔄" },
-    { title: "Shipped", value: shippedOrders, icon: "🚚" },
-    { title: "Delivered", value: deliveredOrders, icon: "✅" },
-    { title: "Cancelled", value: cancelledOrders, icon: "❌" },
-    {
-      title: "Total Sales",
-      value: `UGX ${totalSales.toLocaleString()}`,
-      icon: "💰",
-    },
-    { title: "Return Rate", value: "5%", icon: "↩️" },
+    { title: "Total Orders",    value: filteredOrders.length,       icon: "📝" },
+    { title: "Pending Orders",  value: pendingOrders,               icon: "⏳" },
+    { title: "Processing",      value: processingOrders,            icon: "🔄" },
+    { title: "Shipped",         value: shippedOrders,               icon: "🚚" },
+    { title: "Delivered",       value: deliveredOrders,             icon: "✅" },
+    { title: "Cancelled",       value: cancelledOrders,             icon: "❌" },
+    { title: "Total Sales",     value: `UGX ${totalSales.toLocaleString()}`, icon: "💰" },
+    { title: "Return Rate",     value: "5%",                        icon: "↩️" },
   ];
 
-  // Sample return‐rate data over various dates
+  // sample return‐rate data
   const returnRateData = [
-    { date: "2025-01-15", rate: 3.8 },
-    { date: "2025-02-10", rate: 4.1 },
-    { date: "2025-03-05", rate: 4.7 },
-    { date: "2025-04-08", rate: 4.2 },
-    { date: "2025-04-09", rate: 4.5 },
-    { date: "2025-04-10", rate: 5.0 },
-    { date: "2025-04-11", rate: 4.8 },
-    { date: "2025-04-12", rate: 5.2 },
-    { date: "2025-04-13", rate: 5.0 },
-    { date: "2025-04-14", rate: 4.9 },
+    { date: "2025-01-15", rate: 3.8 }, { date: "2025-02-10", rate: 4.1 },
+    { date: "2025-03-05", rate: 4.7 }, { date: "2025-04-08", rate: 4.2 },
+    { date: "2025-04-09", rate: 4.5 }, { date: "2025-04-10", rate: 5.0 },
+    { date: "2025-04-11", rate: 4.8 }, { date: "2025-04-12", rate: 5.2 },
+    { date: "2025-04-13", rate: 5.0 }, { date: "2025-04-14", rate: 4.9 },
   ];
 
-  // Helper for filtering based on range + selectedDate for the return rate graph
-  const filteredReturnData = returnRateData.filter((d) => {
+  const filteredReturnData = returnRateData.filter(d => {
     const [y, m] = d.date.split("-").map(Number);
-    if (range === "Today") {
-      return d.date === selectedDateStr;
-    }
-    if (range === "This Month") {
-      return y === selectedYear && m - 1 === selectedMonth;
-    }
-    if (range === "This Year") {
-      return y === selectedYear;
-    }
+    if (range === "Today")     return d.date === selectedDateStr;
+    if (range === "This Month") return y === selectedYear && m - 1 === selectedMonth;
+    if (range === "This Year")  return y === selectedYear;
     return true;
   });
 
@@ -157,18 +109,17 @@ const OrderList = () => {
           <div className="mb-5">
             <input
               type="date"
-              id="datePicker"
               className="border border-gray-300 rounded px-2 py-1 text-[10px] text-gray-500"
               value={selectedDateStr}
-              onChange={(e) => setSelectedDate(new Date(e.target.value))}
+              onChange={e => setSelectedDate(new Date(e.target.value))}
             />
           </div>
 
           {/* Summary Cards */}
           <div className="grid grid-cols-4 gap-4 mb-5">
-            {summaryData.map((item, index) => (
+            {summaryData.map((item, idx) => (
               <div
-                key={index}
+                key={idx}
                 className="flex items-center justify-between p-4 bg-white rounded-lg shadow hover:shadow-lg transition"
               >
                 <div className="flex flex-col">
@@ -182,11 +133,10 @@ const OrderList = () => {
             ))}
           </div>
 
-          {/* Graphs & Order List Section */}
+          {/* Graphs & Order List */}
           <div className="flex gap-2 min-h-[300px]">
-            {/* Left Column: Return Rate Graph and Recent Claims */}
+            {/* Left: Return Rate + Claims */}
             <div className="flex flex-col gap-2 w-1/3">
-              {/* Return Rate Card */}
               <div className="p-5 bg-white rounded-lg shadow">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-[11px] font-semibold text-gray-700">
@@ -194,7 +144,7 @@ const OrderList = () => {
                   </h3>
                   <select
                     value={range}
-                    onChange={(e) => setRange(e.target.value)}
+                    onChange={e => setRange(e.target.value)}
                     className="text-[10px] border border-gray-300 rounded px-1 py-0.5"
                   >
                     <option>Today</option>
@@ -208,38 +158,22 @@ const OrderList = () => {
                     margin={{ top: 0, right: 10, left: 0, bottom: 0 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis
-                      dataKey="date"
-                      tick={{ fontSize: 8 }}
-                      interval="preserveStartEnd"
-                    />
-                    <YAxis
-                      domain={[0, "dataMax"]}
-                      tickFormatter={(v) => `${v}%`}
-                      tick={{ fontSize: 8 }}
-                    />
+                    <XAxis dataKey="date" tick={{ fontSize: 8 }} interval="preserveStartEnd" />
+                    <YAxis domain={[0, "dataMax"]} tickFormatter={v => `${v}%`} tick={{ fontSize: 8 }} />
                     <Tooltip
-                      formatter={(value) => `${value}%`}
-                      labelFormatter={(label) => `Date: ${label}`}
+                      formatter={val => `${val}%`}
+                      labelFormatter={lbl => `Date: ${lbl}`}
                       contentStyle={{ fontSize: "10px" }}
                       itemStyle={{ fontSize: "10px" }}
                     />
-                    <Line
-                      type="monotone"
-                      dataKey="rate"
-                      stroke="#8884d8"
-                      strokeWidth={2}
-                      dot={false}
-                    />
+                    <Line type="monotone" dataKey="rate" stroke="#8884d8" strokeWidth={2} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
-
-              {/* Recent Claims Card */}
               <RecentClaims onViewAll={() => setIsModalOpen(true)} />
             </div>
 
-            {/* Right Column: Order List */}
+            {/* Right: Order List */}
             <div className="w-2/3">
               <div className="p-4 bg-white rounded-lg shadow h-full">
                 <h3 className="text-[11px] font-semibold text-gray-700">
@@ -252,7 +186,7 @@ const OrderList = () => {
         </div>
       </div>
 
-      {/* Render the Claims Modal component */}
+      {/* Claims Modal */}
       {isModalOpen && (
         <ClaimsModal
           claims={dummyClaims}
