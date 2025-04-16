@@ -21,7 +21,7 @@ import "./styles/index.css";
 // Import the custom navigation limiting hook
 import { useSingleStepNavigationLimit } from "./hooks/custom.jsx";
 // Import the PublicRoute component
-import PublicRoute from "./components/PublicRoute.jsx";
+import PublicRoute from "./components/publicroute.jsx";
 
 function App() {
   // Call the hook once at the top level so it affects the entire app.
