@@ -1,20 +1,26 @@
-import React from "react";
+// OrderRightSection.js
+import React, { useContext } from "react";
 import mtn from "../assets/mtn.jpg";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { UserContext } from "../context/usercontext";
 
-function OrderSummaryCard() {
-  // Order details (could come from props or state)
-  const subTotal = 50000; // in UGX
-  const discountPercent = 0; // discount percent
-  const deliveryCharge = 3000; // in UGX
-  const taxPercent = 2.5; // tax percentage
+// OrderSummaryCard now takes an order prop and computes its values dynamically
+function OrderSummaryCard({ order }) {
+  // Calculate subTotal from the order items
+  const subTotal = order.items.reduce(
+    (acc, item) => acc + Number(item.subtotal),
+    0
+  );
+  // Use order properties if present; otherwise, set defaults:
+  const discountPercent = order.discount_percent || 0;
+  const deliveryCharge = order.delivery_charge || 3000; // in UGX
+  const taxPercent = order.tax_percent || 2.5; // tax percentage
 
-  // Calculate discount and tax amounts automatically
   const discountAmount = subTotal * (discountPercent / 100);
   const taxAmount = subTotal * (taxPercent / 100);
   const totalAmount = subTotal - discountAmount + deliveryCharge + taxAmount;
 
-  // Optional: Format values to a locale string (if needed)
+  // Format prices
   const formatPrice = (price) => `UGX ${price.toFixed(0)}`;
 
   return (
@@ -32,7 +38,9 @@ function OrderSummaryCard() {
           </p>
           <p>
             Discount:
-            <span className="float-right font-medium text-green-600">{discountPercent}%</span>
+            <span className="float-right font-medium text-green-600">
+              {discountPercent}%
+            </span>
           </p>
           <p>
             Delivery Charge:
@@ -53,20 +61,25 @@ function OrderSummaryCard() {
   );
 }
 
-function PaymentInformationCard() {
+function PaymentInformationCard({ order }) {
+  // In a real-world scenario, these values could come from the order details or payment history.
+  // For this example, we still use static data.
   return (
     <div className="bg-white shadow rounded-lg">
       {/* Header */}
       <div className="p-6 border-b border-gray-200">
-        <h2 className="text-[12px] font-semibold text-gray-800">Payment Information</h2>
+        <h2 className="text-[12px] font-semibold text-gray-800">
+          Payment Information
+        </h2>
       </div>
       {/* Payment Information Details */}
       <div className="p-6">
-        {/* Payment Method Section */}
         <div className="flex items-center gap-4">
           <img src={mtn} alt="MTN logo" className="w-8 h-8" />
           <div>
-            <p className="text-[11px] font-semibold text-gray-500">MTN Mobile Money</p>
+            <p className="text-[11px] font-semibold text-gray-500">
+              MTN Mobile Money
+            </p>
             <p className="text-[11px] text-gray-600">+256 701 234567</p>
           </div>
         </div>
@@ -78,7 +91,9 @@ function PaymentInformationCard() {
               <span className="text-gray-600">#MTN768139059</span>
             </p>
             <p className="text-[11px]">
-              <span className="font-medium text-gray-600">Account Holder Name:</span>{" "}
+              <span className="font-medium text-gray-600">
+                Account Holder Name:
+              </span>{" "}
               <span className="text-gray-600">Alinatwe Ian</span>
             </p>
           </div>
@@ -88,9 +103,18 @@ function PaymentInformationCard() {
   );
 }
 
-function CustomerDetailsPlaceholderCard() {
-  const customerName = "Alinatwe James";
-  // Extract the initials from the first two words and uppercase them
+function CustomerDetailsPlaceholderCard({ order }) {
+  // Use UserContext to enrich customer details.
+  const { users, getUsernameById } = useContext(UserContext);
+  // Find the user based on the order's customer id.
+  const customer =
+    users.find((user) => Number(user.id) === Number(order.customer)) || {};
+
+  // Use details from the customer object, with a fallback.
+  const customerName = customer.username || order.customer_name || "Unknown";
+  const customerEmail = customer.email || order.customer_email || "No email provided";
+
+  // Extract initials from the first two words and uppercase them.
   const initials = customerName
     .split(" ")
     .map((word) => word.charAt(0))
@@ -102,37 +126,45 @@ function CustomerDetailsPlaceholderCard() {
     <div className="bg-white shadow rounded-lg">
       {/* Header */}
       <div className="p-6 border-b border-gray-200">
-        <h2 className="text-[12px] font-semibold text-gray-800">Customer Details</h2>
+        <h2 className="text-[12px] font-semibold text-gray-800">
+          Customer Details
+        </h2>
       </div>
       {/* Customer Details */}
       <div className="p-6">
-        {/* Top Section: Avatar, Name, and Email */}
         <div className="flex items-center space-x-4">
           {/* Avatar with Initials */}
           <div className="w-12 h-12 rounded-full bg-[#f9622c] flex items-center justify-center text-lg font-medium text-[#280300]">
             {initials}
           </div>
           <div>
-            <p className="text-[11px] font-semibold text-gray-800">{customerName}</p>
-            <p className="text-[10px] text-gray-600">alitwejames@gmail.com</p>
+            <p className="text-[11px] font-semibold text-gray-800">
+              {customerName}
+            </p>
+            <p className="text-[10px] text-gray-600">{customerEmail}</p>
           </div>
         </div>
         {/* Divider */}
         <div className="mt-4 border-t border-gray-200 pt-4">
           {/* Contact Details */}
           <div className="mb-3">
-            <p className="text-[10px] font-medium text-gray-600">Contact Number</p>
-            <p className="text-[10px] text-gray-600">0774788071</p>
+            <p className="text-[10px] font-medium text-gray-600">
+              Contact Number
+            </p>
+            <p className="text-[10px] text-gray-600">
+              {order.contact_number || "0774788071"}
+            </p>
           </div>
           {/* Shipping Address */}
           <div>
-            <p className="text-[10px] font-medium text-gray-800">Delivery Address</p>
+            <p className="text-[10px] font-medium text-gray-800">
+              Delivery Address
+            </p>
             <p className="text-[10px] text-gray-600">
-              1 Burton Street, P.O. Box 651
-              <br />
-              Pioneer Mall
-              <br />
-              Kampala, Uganda
+              {order.delivery_address ||
+                `1 Burton Street, P.O. Box 651
+Pioneer Mall
+Kampala, Uganda`}
             </p>
           </div>
         </div>
@@ -141,18 +173,20 @@ function CustomerDetailsPlaceholderCard() {
   );
 }
 
-
-function MapDetailsCard() {
-  // Delivery address coordinates for Kampala (approximate)
-  const position = [0.3476, 32.5825];
+function MapDetailsCard({ order }) {
+  // Optionally, if your order has geo-coordinates, use them; otherwise, default to Kampala's coordinates.
+  const position = order.delivery_coordinates || [0.3476, 32.5825];
   const deliveryAddress =
+    order.delivery_address ||
     "1 Burton Street, P.O. Box 651, Pioneer Mall, Kampala, Uganda";
 
   return (
     <div className="bg-white shadow rounded-lg">
       {/* Header */}
       <div className="p-6 border-b border-gray-200">
-        <h2 className="text-[12px] font-semibold text-gray-800">Delivery Address Details</h2>
+        <h2 className="text-[12px] font-semibold text-gray-800">
+          Delivery Address Details
+        </h2>
       </div>
       {/* Map */}
       <div className="p-6">
@@ -163,7 +197,6 @@ function MapDetailsCard() {
           className="w-full h-64 rounded-lg"
         >
           <TileLayer
-            // Stadia Maps Outdoors: Google Maps-like street detail
             url="https://tiles.stadiamaps.com/tiles/outdoors/{z}/{x}/{y}{r}.png"
             attribution='&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>, &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a>, &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors'
           />
@@ -176,15 +209,14 @@ function MapDetailsCard() {
   );
 }
 
-
-
-export default function CustomerDetailsCard() {
+// The main CustomerDetailsCard component now accepts an "order" prop.
+export default function CustomerDetailsCard({ order }) {
   return (
     <div className="space-y-4">
-      <OrderSummaryCard />
-      <PaymentInformationCard />
-      <CustomerDetailsPlaceholderCard />
-      <MapDetailsCard />
+      <OrderSummaryCard order={order} />
+      <PaymentInformationCard order={order} />
+      <CustomerDetailsPlaceholderCard order={order} />
+      <MapDetailsCard order={order} />
     </div>
   );
 }

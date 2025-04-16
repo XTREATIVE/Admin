@@ -1,5 +1,5 @@
 // OrderList.js
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/sidebar";
 import Header from "../components/header";
@@ -16,6 +16,7 @@ import {
   CartesianGrid,
   ResponsiveContainer,
 } from "recharts";
+import { OrdersContext } from "../context/orderscontext"; 
 
 // Define dummyClaims for use in the modal
 const dummyClaims = [
@@ -39,7 +40,6 @@ const dummyClaims = [
   },
 ];
 
-
 const claimsData = [
   {
     id: "324561324",
@@ -53,13 +53,13 @@ const claimsData = [
     weight: "2 kg",
     description: "A small box with gifts ... careful handling.",
     shipper: "Holden Caulfield",
-    giftPrice: 120
+    giftPrice: 120,
   },
-
-]
+];
 
 const OrderList = () => {
   const navigate = useNavigate();
+  const { orders } = useContext(OrdersContext); // Consume orders from OrdersContext
 
   // Date picker state
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -69,15 +69,52 @@ const OrderList = () => {
   // Modal state for viewing all claims
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Example metrics data
+  // Get a date string in "YYYY-MM-DD" format from the selectedDate
+  const selectedDateStr = selectedDate.toISOString().split("T")[0];
+  const selectedMonth = selectedDate.getMonth();
+  const selectedYear = selectedDate.getFullYear();
+
+  // Filter orders based on the selected date.
+  // Here we consider orders whose created_at date equals the selected date.
+  const filteredOrders = orders.filter((order) => {
+    const orderDateStr = new Date(order.created_at).toISOString().split("T")[0];
+    return orderDateStr === selectedDateStr;
+  });
+
+  // Compute metrics for the selected date
+  const pendingOrders = filteredOrders.filter(
+    (order) => order.status.toLowerCase() === "pending"
+  ).length;
+  const processingOrders = filteredOrders.filter(
+    (order) => order.status.toLowerCase() === "processing"
+  ).length;
+  const shippedOrders = filteredOrders.filter(
+    (order) => order.status.toLowerCase() === "shipped"
+  ).length;
+  const deliveredOrders = filteredOrders.filter(
+    (order) => order.status.toLowerCase() === "delivered"
+  ).length;
+  const cancelledOrders = filteredOrders.filter((order) =>
+    ["cancelled", "canceled"].includes(order.status.toLowerCase())
+  ).length;
+  const totalSales = filteredOrders.reduce(
+    (acc, order) => acc + Number(order.total_price),
+    0
+  );
+
+  // Define summary metrics based on the filtered orders for the selected date.
   const summaryData = [
-    { title: "Total Orders", value: 980, icon: "📝" },
-    { title: "Pending Orders", value: 150, icon: "⏳" },
-    { title: "Processing", value: 210, icon: "🔄" },
-    { title: "Shipped", value: 300, icon: "🚚" },
-    { title: "Delivered", value: 250, icon: "✅" },
-    { title: "Cancelled", value: 70, icon: "❌" },
-    { title: "Total sales", value: "UGX 85000", icon: "💰" },
+    { title: "Total Orders", value: filteredOrders.length, icon: "📝" },
+    { title: "Pending Orders", value: pendingOrders, icon: "⏳" },
+    { title: "Processing", value: processingOrders, icon: "🔄" },
+    { title: "Shipped", value: shippedOrders, icon: "🚚" },
+    { title: "Delivered", value: deliveredOrders, icon: "✅" },
+    { title: "Cancelled", value: cancelledOrders, icon: "❌" },
+    {
+      title: "Total Sales",
+      value: `UGX ${totalSales.toLocaleString()}`,
+      icon: "💰",
+    },
     { title: "Return Rate", value: "5%", icon: "↩️" },
   ];
 
@@ -95,13 +132,9 @@ const OrderList = () => {
     { date: "2025-04-14", rate: 4.9 },
   ];
 
-  // Helper for filtering based on range + selectedDate
-  const selectedDateStr = selectedDate.toISOString().split("T")[0];
-  const selectedMonth = selectedDate.getMonth();
-  const selectedYear = selectedDate.getFullYear();
-
+  // Helper for filtering based on range + selectedDate for the return rate graph
   const filteredReturnData = returnRateData.filter((d) => {
-    const [y, m, day] = d.date.split("-").map(Number);
+    const [y, m] = d.date.split("-").map(Number);
     if (range === "Today") {
       return d.date === selectedDateStr;
     }
@@ -205,7 +238,7 @@ const OrderList = () => {
               {/* Recent Claims Card */}
               <RecentClaims onViewAll={() => setIsModalOpen(true)} />
             </div>
-            
+
             {/* Right Column: Order List */}
             <div className="w-2/3">
               <div className="p-4 bg-white rounded-lg shadow h-full">
@@ -221,7 +254,7 @@ const OrderList = () => {
 
       {/* Render the Claims Modal component */}
       {isModalOpen && (
-        <ClaimsModal 
+        <ClaimsModal
           claims={dummyClaims}
           onClose={() => setIsModalOpen(false)}
         />

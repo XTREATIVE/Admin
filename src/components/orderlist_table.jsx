@@ -1,113 +1,148 @@
-import React from "react";
+// OrderTable.js
+import React, { useState, useMemo, useContext } from "react";
 import { Link } from "react-router-dom";
 import { FaEye } from "react-icons/fa";
+import { UserContext } from "../context/usercontext";
+import { OrdersContext } from "../context/orderscontext";
 
-const dummyOrders = [
-  {
-    id: "#456754",
-    createdAt: "3-06-2024",
-    customer: "Jung S. Ayala",
-    duration: "3 days",
-    total: "UGX 98700",
-    items: 2,
-    orderStatus: "Packaging",
-  },
-  {
-    id: "#578246",
-    createdAt: "23-07-2024",
-    customer: "David A. Arnold",
-    duration: "1 day",
-    total: "UGX 147800",
-    items: 5,
-    orderStatus: "Completed",
-  },
-  {
-    id: "#348930",
-    createdAt: "23-08-2024",
-    customer: "Cecilie D. Gordon",
-    duration: "4 days",
-    total: "UGX 72000",
-    items: 4,
-    orderStatus: "Cancelled",
-  },
-  {
-    id: "#391367",
-    createdAt: "23-09-2024",
-    customer: "William Moreno",
-    duration: "5 days",
-    total: "UGX 190900",
-    items: 6,
-    orderStatus: "Completed",
-  },
-];
+const getOrderStatusColor = (status) => {
+  switch (status.toLowerCase()) {
+    case "completed":
+      return "border border-[#28a745] bg-transparent text-[#28a745]";
+    case "processing":
+      return "border border-yellow-500 bg-transparent text-yellow-500";
+    case "packaging":
+      return "border border-orange-500 bg-transparent text-orange-500";
+    case "pending":
+      return "border border-yellow-500 bg-transparent text-yellow-500";
+    case "canceled":
+    case "cancelled":
+      return "border border-red-600 bg-transparent text-red-600";
+    case "delivered":
+      return "border border-green-300 bg-transparent text-green-500";
+    default:
+      return "bg-[#e2e3e5] text-[#383d41]";
+  }
+};
+
+const getDuration = (isoDateString) => {
+  const then = new Date(isoDateString).getTime();
+  const now = Date.now();
+  const diffMs = now - then;
+
+  const msPerDay = 1000 * 60 * 60 * 24;
+  const msPerHour = 1000 * 60 * 60;
+
+  const days = Math.floor(diffMs / msPerDay);
+  if (days > 0) {
+    return `${days} day${days > 1 ? "s" : ""}`;
+  }
+
+  const hours = Math.floor(diffMs / msPerHour);
+  if (hours > 0) {
+    return `${hours} hour${hours > 1 ? "s" : ""}`;
+  }
+
+  return "Just now";
+};
 
 const OrderTable = () => {
-  const currentPage = 1;
-  const totalPages = 3;
+  // Consume orders from OrdersContext
+  const { orders, loading, error } = useContext(OrdersContext);
+  // Consume customer details from UserContext
+  const { getUsernameById, loading: loadingUsers, error: userError } =
+    useContext(UserContext);
 
-  const handlePrevious = () => {
-    console.log("Previous Page");
-  };
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+  const totalPages = Math.ceil(orders.length / pageSize);
 
-  const handleNext = () => {
-    console.log("Next Page");
-  };
+  const paginatedOrders = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return orders.slice(start, start + pageSize);
+  }, [orders, currentPage]);
 
-  const getOrderStatusColor = (status) => {
-    switch (status.toLowerCase()) {
-      case "completed":
-        return "border border-[#28a745] bg-transparent text-[#28a745]";
-      case "processing":
-        return "border border-yellow-500 bg-transparent text-yellow-500";
-      case "packaging":
-        return "border border-orange-500 bg-transparent text-orange-500";
-      case "canceled":
-      case "cancelled":
-        return "border border-red-600 bg-transparent text-red-600";
-      default:
-        return "bg-[#e2e3e5] text-[#383d41]";
-    }
-  };
+  const handlePrevious = () => setCurrentPage((p) => Math.max(p - 1, 1));
+  const handleNext = () => setCurrentPage((p) => Math.min(p + 1, totalPages));
+
+  if (loading || loadingUsers) {
+    return (
+      <div className="text-center text-[11px] p-4 text-gray-600">
+        Loading orders…
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="text-center text-[11px] p-4 text-red-600">
+        Error fetching orders: {error}
+      </div>
+    );
+  }
+  if (userError) {
+    return (
+      <div className="text-center text-[11px] p-4 text-red-600">
+        Error fetching users: {userError}
+      </div>
+    );
+  }
+
+  const OFFSET = 1000;
 
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse">
         <thead>
           <tr>
-            <th className="text-[11px] p-2.5 text-left font-semibold bg-[#f1f1f1]">Order ID</th>
-            <th className="text-[11px] p-2.5 text-left font-semibold bg-[#f1f1f1]">Date Created</th>
-            <th className="text-[11px] p-2.5 text-left font-semibold bg-[#f1f1f1]">Customer</th>
-            <th className="text-[11px] p-2.5 text-left font-semibold bg-[#f1f1f1]">Duration</th>
-            <th className="text-[11px] p-2.5 text-left font-semibold bg-[#f1f1f1]">Total</th>
-            <th className="text-[11px] p-2.5 text-left font-semibold bg-[#f1f1f1]">Items</th>
-            <th className="text-[11px] p-2.5 text-left font-semibold bg-[#f1f1f1]">Order Status</th>
-            <th className="text-[11px] p-2.5 text-left font-semibold bg-[#f1f1f1]">Action</th>
+            {[
+              "Order ID",
+              "Date Created",
+              "Customer",
+              "Duration",
+              "Total",
+              "Items",
+              "Order Status",
+              "Action",
+            ].map((label) => (
+              <th
+                key={label}
+                className="text-[11px] p-2.5 text-left font-semibold bg-[#f1f1f1]"
+              >
+                {label}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody className="text-[10px] divide-y divide-gray-100">
-          {dummyOrders.map((order, idx) => {
-            // strip out the leading '#' so the URL is /order/583488
-            const cleanId = order.id.replace(/^#/, "");
+          {paginatedOrders.map((order) => {
+            const cleanId = `ORD${order.id + OFFSET}`;
+            const maskedIdForURL = order.id + OFFSET;
+            const formattedDate = new Date(order.created_at).toLocaleDateString("en-GB");
+            const duration = getDuration(order.created_at);
+            const total = `UGX ${Number(order.total_price).toLocaleString()}`;
+            const itemsCount = order.items.length;
+            const username = getUsernameById(order.customer);
+
             return (
-              <tr key={idx} className="hover:bg-gray-50">
-                <td className="p-2.5">{order.id}</td>
-                <td className="p-2.5">{order.createdAt}</td>
-                <td className="p-2.5">{order.customer}</td>
-                <td className="p-2.5">{order.duration}</td>
-                <td className="p-2.5">{order.total}</td>
-                <td className="p-2.5">{order.items}</td>
+              <tr key={order.id} className="hover:bg-gray-50">
+                <td className="p-2.5">{cleanId}</td>
+                <td className="p-2.5">{formattedDate}</td>
+                <td className="p-2.5">{username}</td>
+                <td className="p-2.5">{duration}</td>
+                <td className="p-2.5">{total}</td>
+                <td className="p-2.5">{itemsCount}</td>
                 <td className="p-2.5">
                   <span
                     className={`py-1 px-2 rounded-md text-[9px] inline-block ${getOrderStatusColor(
-                      order.orderStatus
+                      order.status
                     )}`}
                   >
-                    {order.orderStatus}
+                    {order.status}
                   </span>
                 </td>
                 <td className="p-2.5 flex items-center space-x-1">
                   <Link
-                    to={`/order/${cleanId}`}
+                    to={`/order/${maskedIdForURL}`}
                     className="p-[5px] hover:bg-gray-100 rounded text-gray-600"
                     title="View Order Details"
                   >
@@ -138,7 +173,7 @@ const OrderTable = () => {
               className={`px-3 py-1 border rounded-lg hover:bg-gray-50 ${
                 currentPage === i + 1 ? "bg-[#f9622c] text-white" : "border-gray-300"
               }`}
-              onClick={() => console.log(`Go to page ${i + 1}`)}
+              onClick={() => setCurrentPage(i + 1)}
             >
               {i + 1}
             </button>
