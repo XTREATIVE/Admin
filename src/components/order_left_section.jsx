@@ -1,19 +1,17 @@
 import React, { useState, useEffect, useContext } from "react";
 import { useParams } from "react-router-dom";
-import { FaCheckCircle, FaExclamationCircle } from "react-icons/fa";
-import OrderTimeline from "./order_details_timeline"; // Timeline component
-import CustomerDetailsCard from "./order_customer_details"; // Customer details component
+import { CheckCircle } from "lucide-react";
+import OrderTimeline from "./order_details_timeline";
+import CustomerDetailsCard from "./order_customer_details";
 import { OrdersContext } from "../context/orderscontext";
-import { ProductsContext } from "../context/allproductscontext";  // Import the products context
+import { ProductsContext } from "../context/allproductscontext";
 
 const OFFSET = 1000;
 
-// Helper function to extract numerical price from a formatted price string
 function extractPrice(priceStr) {
   return Number(priceStr.replace(/[^\d.]/g, ""));
 }
 
-// Helper function to get the ordinal suffix for a day number
 function getOrdinalSuffix(day) {
   if (day > 3 && day < 21) return "th";
   switch (day % 10) {
@@ -28,7 +26,6 @@ function getOrdinalSuffix(day) {
   }
 }
 
-// Helper function to format a Date object into "15th April 2025"
 function formatDate(dateObj) {
   const day = dateObj.getDate();
   const ordinal = getOrdinalSuffix(day);
@@ -37,103 +34,66 @@ function formatDate(dateObj) {
   return `${day}${ordinal} ${month} ${year}`;
 }
 
-// Shimmer Loader Component using Tailwind CSS
-function Shimmer({ width = "100px", height = "10px" }) {
-  return (
-    <div
-      className="bg-gray-300 rounded animate-pulse"
-      style={{ width, height }}
-    ></div>
-  );
-}
-
-// Spinner Loader Component using Tailwind CSS
-function Spinner({ size = "14px", borderWidth = "2px" }) {
-  return (
-    <div
-      className="rounded-full border-t-[#f9622c] border-gray-200 animate-spin"
-      style={{
-        width: size,
-        height: size,
-        borderWidth: borderWidth,
-        borderStyle: "solid",
-      }}
-    ></div>
-  );
-}
-
 export default function OrderLeftSection() {
   const { orderId } = useParams();
   const { orders, loading, error } = useContext(OrdersContext);
   const { getProductById, loadingProducts, errorProducts } = useContext(ProductsContext);
 
-  // Simulate additional loading for top-section data if needed
   const [isDateLoading, setIsDateLoading] = useState(true);
+  const [steps, setSteps] = useState([
+    { label: "Payment Confirmed", width: "w-full", color: "bg-green-500" },
+    { label: "Order Confirmed", width: "w-full", color: "bg-green-500" },
+    { label: "Order Processing", width: "w-3/5", color: "bg-yellow-500", spinner: true },
+    { label: "Order Delivering", width: "w-0", color: "bg-blue-500" },
+    { label: "Order Delivered", width: "w-0", color: "bg-blue-500" },
+  ]);
+  const [isMarked, setIsMarked] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsDateLoading(false);
-    }, 2000);
+    const timer = setTimeout(() => setIsDateLoading(false), 2000);
     return () => clearTimeout(timer);
   }, []);
 
-  // If any of the asynchronous data is still loading, show a loading message.
+  const handleReadyToDeliver = () => {
+    setIsMarked(true);
+    setSteps(prev => prev.map((s, i) =>
+      i === 2 ? { ...s, width: "w-full", color: "bg-green-500", spinner: false } : s
+    ));
+    setTimeout(() => {
+      setSteps(prev => prev.map((s, i) =>
+        i === 3 ? { ...s, width: "w-full", color: "bg-yellow-500", spinner: true } : s
+      ));
+      // TODO: trigger API call to update status on server
+    }, 700);
+  };
+
   if (loading || loadingProducts || isDateLoading) {
     return <div className="text-center text-[11px] p-4">Loading order details…</div>;
   }
-
   if (error) {
-    return (
-      <div className="text-center text-[11px] p-4 text-red-600">
-        Error fetching order: {error}
-      </div>
-    );
+    return <div className="text-center text-[11px] p-4 text-red-600">Error fetching order: {error}</div>;
   }
-
   if (errorProducts) {
-    return (
-      <div className="text-center text-[11px] p-4 text-red-600">
-        Error fetching products: {errorProducts}
-      </div>
-    );
+    return <div className="text-center text-[11px] p-4 text-red-600">Error fetching products: {errorProducts}</div>;
   }
 
-  // Convert the masked orderId to the original order ID.
   const originalOrderId = parseInt(orderId, 10) - OFFSET;
-  const order = orders.find((o) => o.id === originalOrderId);
-
+  const order = orders.find(o => o.id === originalOrderId);
   if (!order) {
-    return (
-      <div className="text-center text-[11px] p-4">Order not found.</div>
-    );
+    return <div className="text-center text-[11px] p-4">Order not found.</div>;
   }
 
-  // Top Section variables
   const orderNumber = `#${order.id + OFFSET}`;
-  const formattedDate = formatDate(new Date(order.created_at)); // now uses human readable date
-
-  // Define progress steps as used in the top section (adjust as needed)
-  const steps = [
-    { label: "Order Confirming", width: "w-full", color: "bg-green-500" },
-    { label: "Payment Pending", width: "w-full", color: "bg-green-500" },
-    { label: "Processing", width: "w-3/5", color: "bg-yellow-500", spinner: true },
-    { label: "Shipping", width: "w-0", color: "bg-blue-500" },
-    { label: "Delivered", width: "w-0", color: "bg-blue-500" },
-  ];
+  const formattedDate = formatDate(new Date(order.created_at));
 
   return (
-    <div
-      className="flex flex-col md:flex-row font-poppins text-[11px]"
-      style={{ fontFamily: "Poppins" }}
-    >
-      {/* Left Section: Top Order Details, Products Table, Timeline Card */}
+    <div className="flex flex-col md:flex-row font-poppins text-[11px]" style={{ fontFamily: "Poppins" }}>
       <div className="w-full md:w-2/3 p-4">
-        {/* Top Order Details and Progress */}
         <div className="bg-white shadow rounded-lg mb-4">
           <div className="p-6">
             <div className="flex flex-wrap justify-between items-center mb-4">
               <div>
-                <h4 style={{ fontSize: "11px", color: "#280300" }} className="flex items-center font-medium space-x-2">
+                <h4 className="flex items-center font-medium space-x-2 text-[11px] text-[#280300]">
                   <span>{orderNumber}</span>
                   <span className="px-2 py-1 text-[10px] font-medium bg-green-100 text-green-800 rounded">
                     {order.payment_status || "Paid"}
@@ -142,22 +102,18 @@ export default function OrderLeftSection() {
                     {order.status || "In Progress"}
                   </span>
                 </h4>
-                <p style={{ fontSize: "11px", color: "gray" }} className="text-[11px] mt-1">
-                  {formattedDate}
-                </p>
+                <p className="text-[11px] text-gray-500 mt-1">{formattedDate}</p>
               </div>
             </div>
-            <h4 style={{ fontSize: "10px", color: "#f9622c" }} className="mb-4">
-              Progress
-            </h4>
+            <h4 className="mb-4 text-[10px] text-[#f9622c]">Progress</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
               {steps.map((s, i) => (
                 <div key={i}>
                   <div className="bg-gray-200 rounded-full h-1.5 overflow-hidden">
-                    <div className={`${s.color} ${s.width} h-full`} />
+                    <div className={`${s.color} ${s.width} h-full transition-all duration-8000 ease-in-out`} />
                   </div>
                   <div className="flex items-center gap-2 mt-2">
-                    <p style={{ fontSize: "10px", color: "#000" }} className="mb-0">{s.label}</p>
+                    <p className="mb-0 text-[10px] text-black">{s.label}</p>
                     {s.spinner && (
                       <div className="animate-spin rounded-full h-4 w-4 border-2 border-yellow-500 border-t-transparent" />
                     )}
@@ -167,20 +123,30 @@ export default function OrderLeftSection() {
             </div>
           </div>
           <div className="px-6 py-4 bg-gray-50 flex justify-between items-center">
-            <p style={{ fontSize: "10px", color: "#000" }} className="flex items-center bg-white px-3 py-1 rounded border">
-              Estimated shipping date:
-              <span className="ml-1 font-medium" style={{ color: "#280300" }}>
+            <p className="flex items-center text-[10px] bg-white px-3 py-1 rounded border text-black">
+              Order Shipping date:
+              <span className="ml-1 font-medium text-[#280300]">
                 {order.estimated_shipping_date
                   ? formatDate(new Date(order.estimated_shipping_date))
                   : "N/A"}
               </span>
             </p>
-            <button
-              style={{ fontSize: "11px", backgroundColor: "#f9622c", color: "#fff" }}
-              className="px-4 py-2 rounded hover:bg-opacity-90"
-            >
-              Make As Ready To Ship
-            </button>
+            {!isMarked ? (
+              <button
+                onClick={handleReadyToDeliver}
+                className="px-4 py-2 text-[11px] rounded bg-[#f9622c] text-white hover:bg-opacity-90"
+              >
+                Mark As Ready For Delivery
+              </button>
+            ) : (
+              <button
+                disabled
+                className="px-4 py-2 text-[11px] rounded text-green-500 flex items-center gap-2"
+              >
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                Out For Delivery
+              </button>
+            )}
           </div>
         </div>
 
@@ -200,9 +166,7 @@ export default function OrderLeftSection() {
                 order.items.map((item) => {
                   const unitPrice = extractPrice(item.price);
                   const amount = item.quantity * unitPrice;
-                  // Retrieve product details from the ProductsContext using the product id from the order item
                   const productDetail = getProductById(item.product);
-                  // Use the product's initial details when available; fallback to the item's properties otherwise
                   const size = productDetail?.size || item.size;
                   const color =
                     productDetail?.custom_color && productDetail.custom_color !== "custom"

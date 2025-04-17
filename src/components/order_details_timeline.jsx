@@ -10,7 +10,7 @@ const OrderTimeline = () => {
       icon: <FaCheckCircle className="text-green-500 text-sm" />,
     },
     {
-      title: "Order Received",
+      title: "Order Confirmed",
       desc: "Order has been received and confirmed.",
       time: "April 23, 2024, 09:10 am",
       icon: <FaCheckCircle className="text-green-500 text-sm" />,
@@ -22,7 +22,7 @@ const OrderTimeline = () => {
     },
     {
       title: "Order Processing",
-      desc: "Items are being packaged and processed for shipment.",
+      desc: "Items are being shipped , quality checked & packaged for Delivery.",
       time: "April 23, 2024, 09:40 am",
       // A spinner to indicate the order is currently processing
       icon: (
@@ -30,8 +30,8 @@ const OrderTimeline = () => {
       ),
     },
     {
-      title: "Order Shipped",
-      desc: "Order has been shipped and is on its way.",
+      title: "Order Delivering",
+      desc: "Order is on its way to the customer.",
       time: "April 23, 2024, 10:30 am",
       icon: <FaCheckCircle className="text-green-500 text-sm" />,
     },
@@ -48,7 +48,7 @@ const OrderTimeline = () => {
     "Payment Confirmed": 1,
     "Order Received": 2,
     "Order Processing": 3,
-    "Order Shipped": 4,
+    "Order Delivering": 4,
     "Order Delivered": 5,
   };
 

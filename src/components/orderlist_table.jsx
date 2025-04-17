@@ -113,7 +113,7 @@ const OrderTable = () => {
             ))}
           </tr>
         </thead>
-        <tbody className="text-[10px] divide-y divide-gray-100">
+        <tbody className="text-[10px] divide-y divide-gray-200">
           {paginatedOrders.map((order) => {
             const cleanId = `ORD${order.id + OFFSET}`;
             const maskedIdForURL = order.id + OFFSET;
@@ -125,13 +125,13 @@ const OrderTable = () => {
 
             return (
               <tr key={order.id} className="hover:bg-gray-50">
-                <td className="p-2.5">{cleanId}</td>
-                <td className="p-2.5">{formattedDate}</td>
-                <td className="p-2.5">{username}</td>
-                <td className="p-2.5">{duration}</td>
-                <td className="p-2.5">{total}</td>
-                <td className="p-2.5">{itemsCount}</td>
-                <td className="p-2.5">
+                <td className="p-2.5 text-gray-800 text-[10px]">{cleanId}</td>
+                <td className="p-2.5 text-gray-800 text-[10px]">{formattedDate}</td>
+                <td className="p-2.5 text-gray-800 text-[10px]">{username}</td>
+                <td className="p-2.5 text-gray-800 text-[10px]">{duration}</td>
+                <td className="p-2.5 text-gray-800 text-[10px]">{total}</td>
+                <td className="p-2.5 text-gray-800 text-[10px]">{itemsCount}</td>
+                <td className="p-2.5 text-gray-800 text-[10px]">
                   <span
                     className={`py-1 px-2 rounded-md text-[9px] inline-block ${getOrderStatusColor(
                       order.status
