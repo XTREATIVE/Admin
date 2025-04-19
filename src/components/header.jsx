@@ -7,7 +7,7 @@ import logo from "../assets/logo.png"; // Import your logo image
 
 const Header = () => {
   return (
-    <header className="relative z-20 flex justify-between items-center bg-[#ccc] p-1 text-white font-poppins">
+    <header className="relative z-20 flex justify-between items-center bg-[#ccc] p-1 text-[#280300] font-poppins">
     {/* Left: Logo and Search */}
     <div className="flex items-center space-x-6">
     <img src={logo} alt="Logo" className="w-30 h-10 object-cover ml-20" />

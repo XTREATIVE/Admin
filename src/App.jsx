@@ -18,6 +18,7 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import "./styles/index.css";
 import Finance from "./pages/finance.jsx"
+import Loans from "./pages/loans.jsx"
 // Import the custom navigation limiting hook
 import { useSingleStepNavigationLimit } from "./hooks/custom.jsx";
 // Import the PublicRoute component
@@ -52,6 +53,10 @@ function App() {
         <Route path="/products/product/:publicId/:slug" element={<ProductDetails />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/finance" element={<Finance />} />
+        <Route path="/loans" element={<Loans />} />
+
+
+
       </Routes>
       {/* ToastContainer should be rendered outside of <Routes> */}
       <ToastContainer position="bottom-right" autoClose={3000} />

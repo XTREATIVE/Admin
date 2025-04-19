@@ -66,7 +66,7 @@ const FinanceOverview = () => {
                 <Lock size={32} className="text-white" />
               </div>
             </div>
-            <h3 className="text-xl font-semibold mb-2">Verify PIN</h3>
+            <h3 className="text-xl font-semibold mb-2">Enter PIN</h3>
             <p className="text-gray-600 mb-6 text-[11px]">
               Enter your 4-digit PIN to continue
             </p>
