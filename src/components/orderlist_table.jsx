@@ -47,11 +47,8 @@ const getDuration = (isoDateString) => {
 };
 
 const OrderTable = () => {
-  // Consume orders from OrdersContext
   const { orders, loading, error } = useContext(OrdersContext);
-  // Consume customer details from UserContext
-  const { getUsernameById, loading: loadingUsers, error: userError } =
-    useContext(UserContext);
+  const { getUsernameById, loading: loadingUsers, error: userError } = useContext(UserContext);
 
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
@@ -72,17 +69,11 @@ const OrderTable = () => {
       </div>
     );
   }
-  if (error) {
+
+  if (error || userError) {
     return (
       <div className="text-center text-[11px] p-4 text-red-600">
-        Error fetching orders: {error}
-      </div>
-    );
-  }
-  if (userError) {
-    return (
-      <div className="text-center text-[11px] p-4 text-red-600">
-        Error fetching users: {userError}
+        {error ? `Error fetching orders: ${error}` : `Error fetching users: ${userError}`}
       </div>
     );
   }
@@ -90,9 +81,10 @@ const OrderTable = () => {
   const OFFSET = 1000;
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse">
-        <thead>
+    <div className="overflow-x-auto bg-white rounded shadow border border-gray-200">
+      <div className="px-4 py-2 border-b text-sm font-semibold">All Orders</div>
+      <table className="min-w-full table-auto">
+        <thead className="bg-gray-50 text-[11px] text-gray-700">
           <tr>
             {[
               "Order ID",
@@ -103,17 +95,19 @@ const OrderTable = () => {
               "Items",
               "Order Status",
               "Action",
-            ].map((label) => (
+            ].map((label, idx, arr) => (
               <th
                 key={label}
-                className="text-[11px] p-2.5 text-left font-semibold bg-[#f1f1f1]"
+                className={`px-4 py-2 text-left font-medium ${
+                  idx !== arr.length - 1 ? "border-r border-gray-200" : ""
+                }`}
               >
                 {label}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody className="text-[10px] divide-y divide-gray-200">
+        <tbody className="text-[10px]">
           {paginatedOrders.map((order) => {
             const cleanId = `ORD${order.id + OFFSET}`;
             const maskedIdForURL = order.id + OFFSET;
@@ -124,14 +118,14 @@ const OrderTable = () => {
             const username = getUsernameById(order.customer);
 
             return (
-              <tr key={order.id} className="hover:bg-gray-50">
-                <td className="p-2.5 text-gray-800 text-[10px]">{cleanId}</td>
-                <td className="p-2.5 text-gray-800 text-[10px]">{formattedDate}</td>
-                <td className="p-2.5 text-gray-800 text-[10px]">{username}</td>
-                <td className="p-2.5 text-gray-800 text-[10px]">{duration}</td>
-                <td className="p-2.5 text-gray-800 text-[10px]">{total}</td>
-                <td className="p-2.5 text-gray-800 text-[10px]">{itemsCount}</td>
-                <td className="p-2.5 text-gray-800 text-[10px]">
+              <tr key={order.id} className="border-t hover:bg-gray-100">
+                <td className="px-4 py-2 border-r border-gray-200">{cleanId}</td>
+                <td className="px-4 py-2 border-r border-gray-200">{formattedDate}</td>
+                <td className="px-4 py-2 border-r border-gray-200">{username}</td>
+                <td className="px-4 py-2 border-r border-gray-200">{duration}</td>
+                <td className="px-4 py-2 border-r border-gray-200">{total}</td>
+                <td className="px-4 py-2 border-r border-gray-200">{itemsCount}</td>
+                <td className="px-4 py-2 border-r border-gray-200">
                   <span
                     className={`py-1 px-2 rounded-md text-[9px] inline-block ${getOrderStatusColor(
                       order.status
@@ -140,7 +134,7 @@ const OrderTable = () => {
                     {order.status}
                   </span>
                 </td>
-                <td className="p-2.5 flex items-center space-x-1">
+                <td className="px-4 py-2">
                   <Link
                     to={`/order/${maskedIdForURL}`}
                     className="p-[5px] hover:bg-gray-100 rounded text-gray-600"
@@ -156,35 +150,31 @@ const OrderTable = () => {
       </table>
 
       {/* Pagination */}
-      <div className="flex justify-end items-center mt-4 space-x-2 text-[11px] text-gray-600">
+      <div className="border-t bg-white px-4 py-2 flex items-center justify-end space-x-2 text-[11px] text-gray-600">
         <button
           onClick={handlePrevious}
           disabled={currentPage === 1}
-          className={`px-3 py-1 border rounded ${
-            currentPage === 1 ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-50"
-          }`}
+          className="px-2 py-1 border rounded disabled:opacity-50 hover:bg-gray-50"
         >
           Previous
         </button>
-        <div className="flex items-center space-x-1">
-          {Array.from({ length: totalPages }).map((_, i) => (
-            <button
-              key={i}
-              className={`px-3 py-1 border rounded-lg hover:bg-gray-50 ${
-                currentPage === i + 1 ? "bg-[#f9622c] text-white" : "border-gray-300"
-              }`}
-              onClick={() => setCurrentPage(i + 1)}
-            >
-              {i + 1}
-            </button>
-          ))}
-        </div>
+        {Array.from({ length: totalPages }, (_, i) => (
+          <button
+            key={i}
+            onClick={() => setCurrentPage(i + 1)}
+            className={`px-3 py-1 rounded border ${
+              currentPage === i + 1
+                ? "bg-[#f9622c] text-white border-[#f9622c]"
+                : "border-gray-300 hover:bg-gray-50"
+            }`}
+          >
+            {i + 1}
+          </button>
+        ))}
         <button
           onClick={handleNext}
           disabled={currentPage === totalPages}
-          className={`px-3 py-1 border rounded ${
-            currentPage === totalPages ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-50"
-          }`}
+          className="px-2 py-1 border rounded disabled:opacity-50 hover:bg-gray-50"
         >
           Next
         </button>
