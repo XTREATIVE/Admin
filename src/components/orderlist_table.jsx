@@ -34,150 +34,80 @@ const getDuration = (isoDateString) => {
   const msPerHour = 1000 * 60 * 60;
 
   const days = Math.floor(diffMs / msPerDay);
-  if (days > 0) {
-    return `${days} day${days > 1 ? "s" : ""}`;
-  }
-
+  if (days > 0) return `${days} day${days > 1 ? "s" : ""}`;
   const hours = Math.floor(diffMs / msPerHour);
-  if (hours > 0) {
-    return `${hours} hour${hours > 1 ? "s" : ""}`;
-  }
-
+  if (hours > 0) return `${hours} hour${hours > 1 ? "s" : ""}`;
   return "Just now";
 };
 
 const OrderTable = () => {
   const { orders, loading, error } = useContext(OrdersContext);
-  const { getUsernameById, loading: loadingUsers, error: userError } = useContext(UserContext);
+  const { getUsernameById, loading: loadingUsers, error: userError } =
+    useContext(UserContext);
 
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
   const totalPages = Math.ceil(orders.length / pageSize);
+  const OFFSET = 1000;
 
-  const paginatedOrders = useMemo(() => {
+  const paginated = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
     return orders.slice(start, start + pageSize);
   }, [orders, currentPage]);
 
-  const handlePrevious = () => setCurrentPage((p) => Math.max(p - 1, 1));
-  const handleNext = () => setCurrentPage((p) => Math.min(p + 1, totalPages));
+  if (loading || loadingUsers) return <div className="text-center p-4 text-gray-600 text-[11px]">Loading orders…</div>;
+  if (error) return <div className="text-center p-4 text-red-600 text-[11px]">Error: {error}</div>;
+  if (userError) return <div className="text-center p-4 text-red-600 text-[11px]">Error: {userError}</div>;
 
-  if (loading || loadingUsers) {
-    return (
-      <div className="text-center text-[11px] p-4 text-gray-600">
-        Loading orders…
-      </div>
-    );
-  }
+  const headers = [
+    "Order ID", "Date Created", "Customer", "Duration", "Total", "Items", "Order Status", "Action"
+  ];
 
-  if (error || userError) {
-    return (
-      <div className="text-center text-[11px] p-4 text-red-600">
-        {error ? `Error fetching orders: ${error}` : `Error fetching users: ${userError}`}
-      </div>
-    );
-  }
+  const renderRows = () =>
+    paginated.map((order) => {
+      const cleanId = `ORD${order.id + OFFSET}`;
+      const date = new Date(order.created_at).toLocaleDateString("en-GB");
+      const duration = getDuration(order.created_at);
+      const total = `UGX ${Number(order.total_price).toLocaleString()}`;
+      const username = getUsernameById(order.customer);
 
-  const OFFSET = 1000;
+      return (
+        <tr key={order.id} className="border-t hover:bg-gray-50 text-[10px] text-gray-600 font-medium" >
+          {[
+            cleanId,
+            date,
+            username,
+            duration,
+            total,
+            order.items.length,
+            <span key="status" className={`inline-block px-2 py-1 rounded-full text-[9px] ${getOrderStatusColor(order.status)}`}>{order.status}</span>,
+            <Link key="view" to={`/order/${order.id + OFFSET}`} className="px-2 py-1 hover:underline text-gray-600"><FaEye className="inline-block" /></Link>
+          ].map((val, idx) => (
+            <td key={idx} className={`px-4 py-2 ${idx < headers.length - 1 ? 'border-r border-gray-200' : ''}`}>{val}</td>
+          ))}
+        </tr>
+      );
+    });
 
   return (
-    <div className="overflow-x-auto bg-white rounded shadow border border-gray-200">
-      <div className="px-4 py-2 border-b text-sm font-semibold">All Orders</div>
-      <table className="min-w-full table-auto">
-        <thead className="bg-gray-50 text-[11px] text-gray-700">
-          <tr>
-            {[
-              "Order ID",
-              "Date Created",
-              "Customer",
-              "Duration",
-              "Total",
-              "Items",
-              "Order Status",
-              "Action",
-            ].map((label, idx, arr) => (
-              <th
-                key={label}
-                className={`px-4 py-2 text-left font-medium ${
-                  idx !== arr.length - 1 ? "border-r border-gray-200" : ""
-                }`}
-              >
-                {label}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="text-[10px]">
-          {paginatedOrders.map((order) => {
-            const cleanId = `ORD${order.id + OFFSET}`;
-            const maskedIdForURL = order.id + OFFSET;
-            const formattedDate = new Date(order.created_at).toLocaleDateString("en-GB");
-            const duration = getDuration(order.created_at);
-            const total = `UGX ${Number(order.total_price).toLocaleString()}`;
-            const itemsCount = order.items.length;
-            const username = getUsernameById(order.customer);
+    <div className="flex flex-col">
+      <div className="overflow-x-auto bg-white rounded">
+        <table className="min-w-full table-auto border-collapse">
+          <thead className="bg-gray-50 text-gray-700 text-[11px]">
+            <tr>
+              {headers.map((h, i) => (
+                <th key={h} className={`px-4 py-2 text-left font-medium ${i < headers.length - 1 ? 'border-r border-gray-200' : ''}`}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>{renderRows()}</tbody>
+        </table>
+      </div>
 
-            return (
-              <tr key={order.id} className="border-t hover:bg-gray-100">
-                <td className="px-4 py-1 border-r border-gray-200">{cleanId}</td>
-                <td className="px-4 py-1 border-r border-gray-200">{formattedDate}</td>
-                <td className="px-4 py-1 border-r border-gray-200">{username}</td>
-                <td className="px-4 py-1 border-r border-gray-200">{duration}</td>
-                <td className="px-4 py-1 border-r border-gray-200">{total}</td>
-                <td className="px-4 py-1 border-r border-gray-200">{itemsCount}</td>
-                <td className="px-4 py-1 border-r border-gray-200">
-                  <span
-                    className={` px-2 py-1 rounded-md text-[9px] inline-block ${getOrderStatusColor(
-                      order.status
-                    )}`}
-                  >
-                    {order.status}
-                  </span>
-                </td>
-                <td className="px-4 py-2">
-                  <Link
-                    to={`/order/${maskedIdForURL}`}
-                    className="p-[5px] hover:bg-gray-100 rounded text-gray-600"
-                    title="View Order Details"
-                  >
-                    <FaEye className="h-4 w-4" />
-                  </Link>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-
-      {/* Pagination */}
-      <div className="border-t bg-white px-4 py-2 flex items-center justify-end space-x-2 text-[11px] text-gray-600">
-        <button
-          onClick={handlePrevious}
-          disabled={currentPage === 1}
-          className="px-2 py-1 border rounded disabled:opacity-50 hover:bg-gray-50"
-        >
-          Previous
-        </button>
-        {Array.from({ length: totalPages }, (_, i) => (
-          <button
-            key={i}
-            onClick={() => setCurrentPage(i + 1)}
-            className={`px-3 py-1 rounded border ${
-              currentPage === i + 1
-                ? "bg-[#f9622c] text-white border-[#f9622c]"
-                : "border-gray-300 hover:bg-gray-50"
-            }`}
-          >
-            {i + 1}
-          </button>
-        ))}
-        <button
-          onClick={handleNext}
-          disabled={currentPage === totalPages}
-          className="px-2 py-1 border rounded disabled:opacity-50 hover:bg-gray-50"
-        >
-          Next
-        </button>
+      <div className="bg-white border-t border-gray-200 px-4 py-2 flex items-center justify-center space-x-4 text-[11px]">
+        <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="p-1 disabled:opacity-50">Previous</button>
+        <span>{currentPage} of {totalPages}</span>
+        <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="p-1 disabled:opacity-50">Next</button>
       </div>
     </div>
   );
