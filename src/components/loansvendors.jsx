@@ -7,6 +7,7 @@ import {
   repaymentHistory,
   loanApplications,
 } from '../data/loandata';
+import LoansModal from '../modals/loan_details';
 
 const ITEMS_PER_PAGE = 20;
 const { paymentMethods } = loanSettings;
@@ -20,7 +21,20 @@ const loanTabs = [
 const LoanRepayments = () => {
   const [activeTab, setActiveTab] = useState(loanTabs[0]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [dropdownOpenFor, setDropdownOpenFor] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedLoan, setSelectedLoan] = useState(null);
+
+  // Open modal with selected loan
+  const openModal = (loan) => {
+    setSelectedLoan(loan);
+    setIsModalOpen(true);
+  };
+
+  // Close modal and reset selection
+  const closeModal = () => {
+    setSelectedLoan(null);
+    setIsModalOpen(false);
+  };
 
   const getDataForTab = () => {
     switch (activeTab) {
@@ -48,17 +62,9 @@ const LoanRepayments = () => {
   const handleTabChange = tab => {
     setActiveTab(tab);
     setCurrentPage(1);
-    setDropdownOpenFor(null);
   };
 
   const pageData = data.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
-
-  const handleActionClick = id => setDropdownOpenFor(prev => (prev === id ? null : id));
-  const handleAction = (row, action) => {
-    console.log(`${action} on ${row.applicationId || row.id}`);
-    setDropdownOpenFor(null);
-    // TODO: API integration for approve/reject or other admin actions
-  };
 
   const renderHeaders = () => {
     if (activeTab === 'Loan Applications') {
@@ -79,7 +85,7 @@ const LoanRepayments = () => {
     const totalCols = headers.length;
 
     return pageData.map(row => (
-      <tr key={row.applicationId || row.id} className="relative border-t hover:bg-gray-100 text-[10px]">
+      <tr key={row.applicationId || row.id} className="relative border-t hover:bg-gray-100 text-[10px] text-gray-800">
         {headers.map((h, i) => {
           let val;
           switch (h) {
@@ -117,34 +123,21 @@ const LoanRepayments = () => {
               break;
             case 'Action':
               val = (
-                <div className="relative">
-                  <button
-                    onClick={() => handleActionClick(row.applicationId || row.id)}
-                    className="text-[11px] px-2 py-1 border rounded hover:bg-gray-50"
-                  >Review</button>
-                  {dropdownOpenFor === (row.applicationId || row.id) && (
-                    <div className="absolute mt-1 right-0 bg-white border border-gray-200 rounded shadow-lg z-10 text-[11px]">
-                      {[
-                        { label: 'Approve', action: 'Approve' },
-                        { label: 'Reject', action: 'Reject' }
-                      ].map(opt => (
-                        <button
-                          key={opt.action}
-                          onClick={() => handleAction(row, opt.action)}
-                          className="block w-full text-left px-4 py-2 hover:bg-gray-100"
-                        >{opt.label}</button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <button
+                  onClick={() => openModal(row)}
+                  className="px-2 py-1 text-gray-600 hover:underline"
+                  aria-label="View Details"
+                >
+                  View
+                </button>
               );
               break;
             case 'Admin Action':
               val = (
                 <button
-                  onClick={() => handleAction(row, row.adminAction)}
+                  onClick={() => openModal(row)}
                   className="text-[11px] px-2 py-1 border rounded hover:bg-gray-50"
-                >{row.adminAction}</button>
+                >{row.adminAction || 'Action'}</button>
               );
               break;
             default: val = '-';
@@ -194,6 +187,15 @@ const LoanRepayments = () => {
           <ChevronRight size={16} />
         </button>
       </div>
+
+      {/* Modal for viewing loan details */}
+      {isModalOpen && (
+        <LoansModal
+          isOpen={isModalOpen}
+          onClose={closeModal}
+          loan={selectedLoan}
+        />
+      )}
     </div>
   );
 };

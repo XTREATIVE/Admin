@@ -119,15 +119,15 @@ const OrderTable = () => {
 
             return (
               <tr key={order.id} className="border-t hover:bg-gray-100">
-                <td className="px-4 py-2 border-r border-gray-200">{cleanId}</td>
-                <td className="px-4 py-2 border-r border-gray-200">{formattedDate}</td>
-                <td className="px-4 py-2 border-r border-gray-200">{username}</td>
-                <td className="px-4 py-2 border-r border-gray-200">{duration}</td>
-                <td className="px-4 py-2 border-r border-gray-200">{total}</td>
-                <td className="px-4 py-2 border-r border-gray-200">{itemsCount}</td>
-                <td className="px-4 py-2 border-r border-gray-200">
+                <td className="px-4 py-1 border-r border-gray-200">{cleanId}</td>
+                <td className="px-4 py-1 border-r border-gray-200">{formattedDate}</td>
+                <td className="px-4 py-1 border-r border-gray-200">{username}</td>
+                <td className="px-4 py-1 border-r border-gray-200">{duration}</td>
+                <td className="px-4 py-1 border-r border-gray-200">{total}</td>
+                <td className="px-4 py-1 border-r border-gray-200">{itemsCount}</td>
+                <td className="px-4 py-1 border-r border-gray-200">
                   <span
-                    className={`py-1 px-2 rounded-md text-[9px] inline-block ${getOrderStatusColor(
+                    className={` px-2 py-1 rounded-md text-[9px] inline-block ${getOrderStatusColor(
                       order.status
                     )}`}
                   >

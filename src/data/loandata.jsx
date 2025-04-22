@@ -98,7 +98,7 @@ export const loanSettings = {
     // ...additional entries for pagination
   ];
   
-  // Historical repayment records
+  // Historical repayment records ("Wallet" is now the primary payment method)
   export const repaymentHistory = [
     {
       id: 'H001',
@@ -106,7 +106,7 @@ export const loanSettings = {
       loanId: 'LN1003',
       paidDate: '2025-03-14',
       amountPaid: 'UGX 307,500',
-      paymentMethod: 'Visa',
+      paymentMethod: 'Wallet',       // changed to primary method
       status: 'Paid',
     },
     {
@@ -115,8 +115,8 @@ export const loanSettings = {
       loanId: 'LN1002',
       paidDate: '2025-04-15',
       amountPaid: 'UGX 100,000',
-      paymentMethod: 'MTN Mobile Money',
-      status: 'Paid',            // partially paid
+      paymentMethod: 'Wallet',       // changed to primary method
+      status: 'Paid',                // partially paid
     },
     {
       id: 'H003',
@@ -124,7 +124,7 @@ export const loanSettings = {
       loanId: 'LN1005',
       paidDate: '2025-01-20',
       amountPaid: 'UGX 400,000',
-      paymentMethod: 'Airtel Money',
+      paymentMethod: 'Wallet',       // changed to primary method
       status: 'Paid',
     },
   ];
