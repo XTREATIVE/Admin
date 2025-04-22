@@ -1,7 +1,7 @@
 import React from "react";
 import { FaUserCircle } from "react-icons/fa";
 import logo from "../assets/logo.png";
-import NotificationBell from "./NotificationBell"; // <-- make sure this is imported
+import NotificationBell from "./notificationbell"; // <-- make sure this is imported
 
 const Header = ({ notifications }) => {
   return (
