@@ -44,7 +44,6 @@ const LoanOverview = ({ stats = defaultStats }) => {
   const cards = [
     { label: 'Total Active Loans', icon: Users, value: stats.activeLoans, isMonetary: false },
     { label: 'Total Repayable', icon: DollarSign, value: stats.principalDisbursed, isMonetary: true },
-    
     { label: 'Outstanding Balance', icon: TrendingUp, value: stats.totalRepayable, isMonetary: true },
     { label: 'Total Repaid', icon: RefreshCw, value: stats.totalRepaid, isMonetary: true },
     { label: 'Pending Approvals', icon: Clock, value: stats.pendingApprovals, isMonetary: false },
@@ -53,7 +52,7 @@ const LoanOverview = ({ stats = defaultStats }) => {
 
   return (
     <div className="w-full p-4 flex flex-col">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-4 mb-6">
         {/* Main Summary Card */}
         <div className="col-span-1 lg:col-span-2 border rounded bg-white p-4 flex flex-col justify-between">
           <div className="flex justify-between items-center">
