@@ -9,7 +9,7 @@ import Declined from "../modals/declined";
 import DeclineError from "../modals/declinedError";
 import DeleteVendor from "../modals/deleteVendor"; // Assumed to be adapted for onDeleteConfirm
 import { FaTrash } from "react-icons/fa";
-import { toast } from "react-toastify";
+// import { toast } from "react-toastify";
 
 // CustomCheckbox component using Tailwind peer classes
 const CustomCheckbox = ({ checked, onChange }) => (
