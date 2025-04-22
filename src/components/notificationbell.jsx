@@ -1,7 +1,7 @@
-// NotificationBell.jsx
 import { useState } from "react";
+import PropTypes from "prop-types";
 
-const NotificationBell = ({ notifications }) => {
+const NotificationBell = ({ notifications = [] }) => {
   const [open, setOpen] = useState(false);
 
   return (
@@ -33,6 +33,15 @@ const NotificationBell = ({ notifications }) => {
       )}
     </div>
   );
+};
+
+NotificationBell.propTypes = {
+  notifications: PropTypes.arrayOf(
+    PropTypes.shape({
+      title: PropTypes.string.isRequired,
+      time: PropTypes.string,
+    })
+  ),
 };
 
 export default NotificationBell;
