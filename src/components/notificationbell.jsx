@@ -41,8 +41,9 @@ const NotificationBell = ({ notifications= [] }) => {
           <ul className="divide-y">
             {notifications.map((notification, index) => (
               <li key={index} className="p-3 hover:bg-gray-100 text-sm">
-                <p className="font-semibold">{notification.message}</p>
-                <p className="text-xs text-gray-500">{notification.time}</p>
+                <p className="text-sm text-gray-700">{notification.title}</p>
+                <p className="text-xs text-gray-400">{notification.time}</p>
+
               </li>
             ))}
           </ul>
