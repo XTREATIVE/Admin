@@ -41,7 +41,7 @@ const ReportContent = () => {
           <select
             value={activeTab}
             onChange={e => setActiveTab(e.target.value)}
-            className="appearance-none border border-gray-300 rounded px-2 py-1 pr-8 text-[11px] focus:outline-none focus:ring-1 focus:ring-[#F9622c]"
+            className="appearance-none border border-gray-300 rounded px-2 py-1 pr-8 text-[11px] focus:outline-none focus:ring-1 focus:ring-gray-500"
           >
             <option value="sales">Sales Reports</option>
             <option value="purchase">Purchasing Reports</option>
@@ -61,7 +61,7 @@ const ReportContent = () => {
             <input
               type="date"
               defaultValue="2016-12-10"
-              className="border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#F9622c]"
+              className="border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-gray-500"
             />
           </div>
           <div className="flex items-center space-x-2">
@@ -69,10 +69,10 @@ const ReportContent = () => {
             <input
               type="date"
               defaultValue="2016-12-31"
-              className="border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#F9622c]"
+              className="border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-gray-500"
             />
           </div>
-          <button className="bg-[#F9622c] text-white rounded px-4 py-1 hover:bg-blue-600">
+          <button className="bg-[#f9622c] text-white rounded px-4 py-1 hover:bg-blue-600">
             Generate
           </button>
         </div>
@@ -86,7 +86,7 @@ const ReportContent = () => {
             onClick={() => setActiveTab(tab.key)}
             className={`flex items-center py-2 px-4 -mb-px cursor-pointer space-x-2 ${
               activeTab === tab.key
-                ? "bg-[#F9622c] text-white"
+                ? "bg-gray-500 text-white"
                 : "text-gray-600 hover:text-gray-800 bg-white"
             }`}
           >
@@ -104,10 +104,7 @@ const ReportContent = () => {
         ))}
       </div>
 
-      {/* Subheader with extra vertical spacing */}
-      <div className="px-6 py-3 my-2 bg-white border-b border-gray-200 lowercase font-bold">
-        {currentLabel}
-      </div>
+      
 
       {/* Table */}
       <div className="relative flex-1 overflow-auto bg-white">
@@ -115,7 +112,7 @@ const ReportContent = () => {
           <thead>
             <tr>
               {payoutHeaders.map(h => (
-                <th key={h} className="px-4 py-2 whitespace-nowrap border-y border-x first:border-l-0 last:border-r-0 border-gray-200">{h}</th>
+                <th key={h} className="px-4 py-2 whitespace-nowrap border-y border-x first:border-l-0 last:border-r-0 border-gray-800 bg-gray-200">{h}</th>
               ))}
             </tr>
           </thead>
@@ -123,7 +120,7 @@ const ReportContent = () => {
             {pageData.map(b => (
               <tr key={b.id} className="hover:bg-gray-50">
                 {[b.date, b.time, b.vendor, b.orderid, b.sales, b.commissionAmount, b.netPayout].map((c, i) => (
-                  <td key={i} className="px-4 py-2 whitespace-nowrap border-y border-x first:border-l-0 last:border-r-0 border-gray-200">{c}</td>
+                  <td key={i} className="px-4 py-2 whitespace-nowrap border-y border-x first:border-l-0 last:border-r-0 border-gray-800">{c}</td>
                 ))}
               </tr>
             ))}
