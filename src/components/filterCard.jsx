@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import Slider from "@mui/material/Slider"; 
+import Slider from "@mui/material/Slider";
 import "../styles/index.css";
 import { IoIosArrowUp, IoIosArrowDown } from "react-icons/io";
 import { FaStar } from "react-icons/fa";
@@ -56,19 +56,18 @@ const FilterAndCard = () => {
         const res = await fetch(API_URL);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        // Sort products newest first (assume higher id is newer)
+        // Sort products newest first
         data.sort((a, b) => b.id - a.id);
         setAllProducts(data);
-        // Calculate the available price range from the fetched products.
+
+        // Compute price bounds
         const prices = data.map((p) => Number(p.price));
         const computedMin = Math.min(...prices);
         const computedMax = Math.max(...prices);
         setMinPrice(computedMin);
         setMaxPrice(computedMax);
-        // Initialize the selected price range to the entire boundary.
         setSelectedPriceRange([computedMin, computedMax]);
         setSelectedPriceOption("all");
-        // Update the applied filters with the dynamic price range.
         setAppliedFilters((prev) => ({
           ...prev,
           minPrice: computedMin,
@@ -84,126 +83,89 @@ const FilterAndCard = () => {
     fetchProducts();
   }, []);
 
-  // Build dynamic category list from fetched product data.
-  const dynamicCategoryList = useMemo(() => {
-    return [
-      "All Categories",
-      ...Array.from(
-        new Set(allProducts.map((product) => product.category).filter(Boolean))
-      ),
-    ];
-  }, [allProducts]);
+  // Dynamic lists
+  const dynamicCategoryList = useMemo(() => [
+    "All Categories",
+    ...Array.from(
+      new Set(allProducts.map((p) => p.category).filter(Boolean))
+    ),
+  ], [allProducts]);
 
-  // Compute dynamic price range options.
   const dynamicPriceOptions = useMemo(() => {
     const numRanges = 4;
     if (maxPrice === minPrice) {
-      return [
-        {
-          label: `UGX ${minPrice} - UGX ${maxPrice}`,
-          value: `${minPrice}-${maxPrice}`,
-          count: allProducts.length,
-        },
-      ];
+      return [{ label: `UGX ${minPrice} - UGX ${maxPrice}`, value: `${minPrice}-${maxPrice}`, count: allProducts.length }];
     }
     const step = (maxPrice - minPrice) / numRanges;
     const options = Array.from({ length: numRanges }, (_, i) => {
       const lower = Math.round(minPrice + i * step);
-      const upper =
-        i === numRanges - 1 ? maxPrice : Math.round(minPrice + (i + 1) * step);
-      const count = allProducts.filter(
-        (p) =>
-          Number(p.price) >= lower &&
-          Number(p.price) < (i === numRanges - 1 ? upper + 1 : upper)
+      const upper = i === numRanges - 1 ? maxPrice : Math.round(minPrice + (i + 1) * step);
+      const count = allProducts.filter(p =>
+        Number(p.price) >= lower &&
+        Number(p.price) < (i === numRanges - 1 ? upper + 1 : upper)
       ).length;
-      return {
-        label: `UGX ${lower} - UGX ${upper}`,
-        value: `${lower}-${upper}`,
-        count,
-      };
+      return { label: `UGX ${lower} - UGX ${upper}`, value: `${lower}-${upper}`, count };
     });
-    return [
-      { label: "All Price", value: "all", count: allProducts.length },
-      ...options,
-    ];
+    return [{ label: "All Price", value: "all", count: allProducts.length }, ...options];
   }, [minPrice, maxPrice, allProducts]);
 
-  // Build dynamic size options from the fetched products.
   const dynamicSizeOptions = useMemo(() => {
-    const sizeCount = allProducts.reduce((acc, product) => {
-      if (product.size) {
-        acc[product.size] = (acc[product.size] || 0) + 1;
-      }
+    const sizeCount = allProducts.reduce((acc, p) => {
+      if (p.size) acc[p.size] = (acc[p.size] || 0) + 1;
       return acc;
     }, {});
     const order = ["S", "M", "L", "XL", "XXL", "Others"];
-    const orderedOptions = order
-      .filter((size) => sizeCount[size] !== undefined)
-      .map((size) => `${size} (${sizeCount[size].toLocaleString()})`);
-    const extraOptions = Object.keys(sizeCount)
-      .filter((size) => !order.includes(size))
-      .map((size) => `${size} (${sizeCount[size].toLocaleString()})`);
-    return ["All Sizes", ...orderedOptions, ...extraOptions];
+    const ordered = order.filter(s => sizeCount[s]).map(s => `${s} (${sizeCount[s].toLocaleString()})`);
+    const extra = Object.keys(sizeCount).filter(s => !order.includes(s)).map(s => `${s} (${sizeCount[s].toLocaleString()})`);
+    return ["All Sizes", ...ordered, ...extra];
   }, [allProducts]);
 
-  // Handler for toggling category selection
-  const handleCategoryChange = (category, checked) => {
-    if (category === "All Categories") {
+  // Handlers
+  const handleCategoryChange = (cat, checked) => {
+    if (cat === "All Categories") {
       setSelectedCategories(checked ? ["All Categories"] : []);
     } else {
-      let newSelection = selectedCategories.filter(
-        (cat) => cat !== "All Categories"
-      );
-      if (checked) {
-        newSelection.push(category);
-      } else {
-        newSelection = newSelection.filter((cat) => cat !== category);
-      }
-      if (newSelection.length === 0) newSelection = ["All Categories"];
-      setSelectedCategories(newSelection);
+      let sel = selectedCategories.filter(c => c !== "All Categories");
+      if (checked) sel.push(cat);
+      else sel = sel.filter(c => c !== cat);
+      if (sel.length === 0) sel = ["All Categories"];
+      setSelectedCategories(sel);
     }
   };
 
-  // Handler for toggling size selection
-  const handleSizeChange = (sizeOption, checked) => {
-    const size = sizeOption.split(" ")[0];
-    if (size === "All") {
+  const handleSizeChange = (szOpt, checked) => {
+    const sz = szOpt.split(" ")[0];
+    if (sz === "All") {
       setSelectedSizes(checked ? ["All Sizes"] : []);
     } else {
-      let newSelection = selectedSizes.filter((s) => s !== "All Sizes");
-      if (checked) {
-        newSelection.push(size);
-      } else {
-        newSelection = newSelection.filter((s) => s !== size);
-      }
-      if (newSelection.length === 0) newSelection = ["All Sizes"];
-      setSelectedSizes(newSelection);
+      let sel = selectedSizes.filter(s => s !== "All Sizes");
+      if (checked) sel.push(sz);
+      else sel = sel.filter(s => s !== sz);
+      if (sel.length === 0) sel = ["All Sizes"];
+      setSelectedSizes(sel);
     }
   };
 
-  // Handler for toggling price options
-  const handlePriceOptionChange = (optionValue) => {
-    if (selectedPriceOption === optionValue) {
+  const handlePriceOptionChange = (val) => {
+    if (selectedPriceOption === val) {
       setSelectedPriceOption("all");
       setSelectedPriceRange([minPrice, maxPrice]);
     } else {
-      setSelectedPriceOption(optionValue);
-      if (optionValue !== "all") {
-        const [newMin, newMax] = optionValue.split("-").map(Number);
-        setSelectedPriceRange([newMin, newMax]);
+      setSelectedPriceOption(val);
+      if (val !== "all") {
+        const [lo, hi] = val.split("-").map(Number);
+        setSelectedPriceRange([lo, hi]);
       } else {
         setSelectedPriceRange([minPrice, maxPrice]);
       }
     }
   };
 
-  // Update slider changes
-  const handleSliderChange = (event, newRange) => {
-    setSelectedPriceRange(newRange);
+  const handleSliderChange = (_, range) => {
+    setSelectedPriceRange(range);
     setSelectedPriceOption("custom");
   };
 
-  // Button click to apply filters
   const handleApplyFilters = () => {
     setAppliedFilters({
       searchTerm,
@@ -215,36 +177,17 @@ const FilterAndCard = () => {
     });
   };
 
-  // [NEW] Debounced search update: when the search term changes, update applied filters after 500ms.
+  // Debounced search
   useEffect(() => {
-    const delayDebounceFn = setTimeout(() => {
-      setAppliedFilters((prev) => ({
-        ...prev,
-        searchTerm: searchTerm,
-      }));
+    const timer = setTimeout(() => {
+      setAppliedFilters(prev => ({ ...prev, searchTerm }));
     }, 500);
-
-    return () => clearTimeout(delayDebounceFn);
+    return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // [Optional] Enter-key handler for the search input.
-  const handleSearchKeyDown = (e) => {
-    if (e.key === "Enter") {
-      handleApplyFilters();
-    }
+  const handleSearchKeyDown = e => {
+    if (e.key === "Enter") handleApplyFilters();
   };
-
-  // Display the loader until the products are fetched.
-  if (loadingProducts) {
-    return <Loader />;
-  }
-  if (fetchError) {
-    return (
-      <div className="p-4 text-center text-red-600">
-        {fetchError}
-      </div>
-    );
-  }
 
   return (
     <div className="flex w-full gap-1">
@@ -256,7 +199,7 @@ const FilterAndCard = () => {
             <input
               type="text"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={e => setSearchTerm(e.target.value)}
               onKeyDown={handleSearchKeyDown}
               className="block w-full p-1 pl-8 pr-4 text-[11px] border border-gray-300 rounded focus:outline-none focus:border-black"
               placeholder="Search..."
@@ -280,24 +223,17 @@ const FilterAndCard = () => {
               onClick={() => setOpenCategory(!openCategory)}
               className="w-full flex items-center justify-between bg-blue-50 p-2 rounded text-[11px] text-gray-700"
             >
-              Categories
-              {openCategory ? (
-                <IoIosArrowUp className="text-sm text-gray-500" />
-              ) : (
-                <IoIosArrowDown className="text-sm text-gray-500" />
-              )}
+              Categories {openCategory ? <IoIosArrowUp /> : <IoIosArrowDown />}
             </button>
             {openCategory && (
               <div className="mt-2 space-y-2 text-[11px] text-gray-700">
-                {dynamicCategoryList.map((cat) => (
+                {dynamicCategoryList.map(cat => (
                   <label key={cat} className="flex items-center space-x-2">
                     <input
                       type="checkbox"
                       className="form-checkbox accent-[#f9622c] w-2.5 h-2.5"
                       checked={selectedCategories.includes(cat)}
-                      onChange={(e) =>
-                        handleCategoryChange(cat, e.target.checked)
-                      }
+                      onChange={e => handleCategoryChange(cat, e.target.checked)}
                     />
                     <span>{cat}</span>
                   </label>
@@ -312,12 +248,7 @@ const FilterAndCard = () => {
               onClick={() => setOpenPrice(!openPrice)}
               className="w-full flex items-center justify-between bg-blue-50 p-2 rounded text-[11px] text-gray-600"
             >
-              Product Price
-              {openPrice ? (
-                <IoIosArrowUp className="text-sm text-gray-500" />
-              ) : (
-                <IoIosArrowDown className="text-sm text-gray-500" />
-              )}
+              Product Price {openPrice ? <IoIosArrowUp /> : <IoIosArrowDown />}
             </button>
             {openPrice && (
               <div className="mt-2 space-y-2 text-[10px] text-gray-700">
@@ -331,83 +262,60 @@ const FilterAndCard = () => {
                         onChange={() => handlePriceOptionChange(value)}
                       />
                       <span>
-                        {label} {count !== null && `(${count.toLocaleString()})`}
+                        {label} ({count.toLocaleString()})
                       </span>
                     </label>
                   ))}
                 </div>
-                <div className="mt-3">
-                  <p className="text-[11px] font-medium text-gray-700 mb-1">
-                    Custom Price Range:
-                  </p>
-                  {/* Material UI Slider replacing rc-slider */}
-                  <Slider
-                    value={selectedPriceRange}
-                    onChange={handleSliderChange}
-                    min={minPrice}
-                    max={maxPrice}
-                    step={50}
-                    valueLabelDisplay="auto"
-                    sx={{
-                      color: "#f9622c",
-                      height: 4,
-                      "& .MuiSlider-thumb": {
-                        width: 14,
-                        height: 14,
-                      },
-                      "& .MuiSlider-track": {
-                        height: 4,
-                      },
-                      "& .MuiSlider-rail": {
-                        height: 4,
-                        color: "#ccc",
-                      },
-                    }}
-                  />
-                  <div className="flex items-center text-[11px] text-gray-600 space-x-2 mt-2">
-                    <div className="flex items-center flex-1 border rounded p-2">
-                      <span className="mr-1">UGX</span>
-                      <input
-                        type="number"
-                        value={selectedPriceRange[0]}
-                        onChange={(e) => {
-                          const newVal = Number(e.target.value);
-                          if (
-                            newVal <= selectedPriceRange[1] &&
-                            newVal >= minPrice
-                          ) {
-                            setSelectedPriceRange([
-                              newVal,
-                              selectedPriceRange[1],
-                            ]);
-                            setSelectedPriceOption("custom");
-                          }
-                        }}
-                        className="w-full outline-none text-[11px]"
-                      />
-                    </div>
-                    <span>to</span>
-                    <div className="flex items-center flex-1 border rounded p-2">
-                      <span className="mr-1">UGX</span>
-                      <input
-                        type="number"
-                        value={selectedPriceRange[1]}
-                        onChange={(e) => {
-                          const newVal = Number(e.target.value);
-                          if (
-                            newVal >= selectedPriceRange[0] &&
-                            newVal <= maxPrice
-                          ) {
-                            setSelectedPriceRange([
-                              selectedPriceRange[0],
-                              newVal,
-                            ]);
-                            setSelectedPriceOption("custom");
-                          }
-                        }}
-                        className="w-full outline-none text-[11px]"
-                      />
-                    </div>
+                <p className="text-[11px] font-medium text-gray-700 mb-1">
+                  Custom Price Range:
+                </p>
+                <Slider
+                  value={selectedPriceRange}
+                  onChange={handleSliderChange}
+                  min={minPrice}
+                  max={maxPrice}
+                  step={50}
+                  valueLabelDisplay="auto"
+                  sx={{
+                    color: "#f9622c",
+                    height: 4,
+                    "& .MuiSlider-thumb": { width: 14, height: 14 },
+                    "& .MuiSlider-track": { height: 4 },
+                    "& .MuiSlider-rail": { height: 4, color: "#ccc" },
+                  }}
+                />
+                <div className="flex items-center space-x-2 mt-2 text-[11px] text-gray-600">
+                  <div className="flex-1 flex items-center border rounded p-2">
+                    <span className="mr-1">UGX</span>
+                    <input
+                      type="number"
+                      value={selectedPriceRange[0]}
+                      onChange={e => {
+                        const v = Number(e.target.value);
+                        if (v >= minPrice && v <= selectedPriceRange[1]) {
+                          setSelectedPriceRange([v, selectedPriceRange[1]]);
+                          setSelectedPriceOption("custom");
+                        }
+                      }}
+                      className="w-full outline-none text-[11px]"
+                    />
+                  </div>
+                  <span>to</span>
+                  <div className="flex-1 flex items-center border rounded p-2">
+                    <span className="mr-1">UGX</span>
+                    <input
+                      type="number"
+                      value={selectedPriceRange[1]}
+                      onChange={e => {
+                        const v = Number(e.target.value);
+                        if (v <= maxPrice && v >= selectedPriceRange[0]) {
+                          setSelectedPriceRange([selectedPriceRange[0], v]);
+                          setSelectedPriceOption("custom");
+                        }
+                      }}
+                      className="w-full outline-none text-[11px]"
+                    />
                   </div>
                 </div>
               </div>
@@ -420,16 +328,11 @@ const FilterAndCard = () => {
               onClick={() => setOpenSize(!openSize)}
               className="w-full flex items-center justify-between bg-blue-50 p-2 rounded text-[11px] text-gray-600"
             >
-              Size &amp; Fit
-              {openSize ? (
-                <IoIosArrowUp className="text-sm text-gray-500" />
-              ) : (
-                <IoIosArrowDown className="text-sm text-gray-500" />
-              )}
+              Size & Fit {openSize ? <IoIosArrowUp /> : <IoIosArrowDown />}
             </button>
             {openSize && (
               <div className="mt-2 ml-2 space-y-1 text-[10px] text-gray-600">
-                {dynamicSizeOptions.map((sz) => (
+                {dynamicSizeOptions.map(sz => (
                   <label key={sz} className="flex items-center space-x-2">
                     <input
                       type="checkbox"
@@ -439,7 +342,7 @@ const FilterAndCard = () => {
                           ? selectedSizes.includes("All Sizes")
                           : selectedSizes.includes(sz.split(" ")[0])
                       }
-                      onChange={(e) => handleSizeChange(sz, e.target.checked)}
+                      onChange={e => handleSizeChange(sz, e.target.checked)}
                     />
                     <span>{sz}</span>
                   </label>
@@ -454,12 +357,7 @@ const FilterAndCard = () => {
               onClick={() => setOpenRating(!openRating)}
               className="w-full flex items-center justify-between bg-blue-50 p-2 rounded text-[11px] text-gray-600"
             >
-              Rating
-              {openRating ? (
-                <IoIosArrowUp className="text-sm text-gray-500" />
-              ) : (
-                <IoIosArrowDown className="text-sm text-gray-500" />
-              )}
+              Rating {openRating ? <IoIosArrowUp /> : <IoIosArrowDown />}
             </button>
             {openRating && (
               <div className="mt-2 ml-2 space-y-2 text-[11px] text-gray-600">
@@ -474,11 +372,9 @@ const FilterAndCard = () => {
                     />
                     <span className="flex items-center">
                       {Array.from({ length: stars }).map((_, i) => (
-                        <FaStar key={i} color="#FFC107" size={11} />
+                        <FaStar key={i} size={11} color="#FFC107" />
                       ))}
-                      <span className="ml-1">
-                        &nbsp;&amp; Above ({count})
-                      </span>
+                      <span className="ml-1">& Above ({count})</span>
                     </span>
                   </label>
                 ))}
@@ -486,7 +382,7 @@ const FilterAndCard = () => {
             )}
           </div>
 
-          {/* Apply Filters Button */}
+          {/* Apply Filters */}
           <button
             onClick={handleApplyFilters}
             className="w-full bg-[#f9622c] hover:bg-orange-600 text-white py-2 rounded text-[11px] font-semibold"
@@ -499,7 +395,16 @@ const FilterAndCard = () => {
       {/* Right Side (Products display area) */}
       <div className="w-3/4 p-4">
         <div className="bg-white shadow-md rounded-lg p-6">
-          <ProductSection products={allProducts} filters={appliedFilters} />
+          {loadingProducts ? (
+            <Loader />
+          ) : fetchError ? (
+            <div className="p-4 text-center text-red-600">{fetchError}</div>
+          ) : (
+            <ProductSection
+              products={allProducts}
+              filters={appliedFilters}
+            />
+          )}
         </div>
       </div>
     </div>

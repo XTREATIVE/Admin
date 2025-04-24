@@ -72,7 +72,7 @@ const OrderTable = () => {
       const username = getUsernameById(order.customer);
 
       return (
-        <tr key={order.id} className="border-t hover:bg-gray-50 text-[10px] text-gray-600 font-medium" >
+        <tr key={order.id} className="border-t hover:bg-gray-50 text-[10px] text-gray-700" >
           {[
             cleanId,
             date,

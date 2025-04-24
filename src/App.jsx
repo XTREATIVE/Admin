@@ -17,12 +17,11 @@ import Logout from "./pages/logout.jsx";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import "./styles/index.css";
-import Finance from "./pages/finance.jsx"
-import Loans from "./pages/loans.jsx"
+import Finance from "./pages/finance.jsx";
+import Loans from "./pages/loans.jsx";
 // Import the custom navigation limiting hook
 import { useSingleStepNavigationLimit } from "./hooks/custom.jsx";
-// Import the PublicRoute component
-import PublicRoute from "./components/publicroute.jsx";
+
 
 function App() {
   // Call the hook once at the top level so it affects the entire app.
@@ -32,14 +31,7 @@ function App() {
     <>
       <Routes>
         {/* Wrap the login route with PublicRoute */}
-        <Route
-          path="/"
-          element={
-            <PublicRoute>
-              <LoginScreen />
-            </PublicRoute>
-          }
-        />
+        <Route path="/" element={<LoginScreen />} />
         <Route path="/admin-dashboard" element={<AdminDashboard />} />
         <Route path="/Settings" element={<Settings />} />
         <Route path="/Vendors" element={<Vendors />} />
@@ -50,13 +42,13 @@ function App() {
         <Route path="/Customers/details" element={<CustomerDetails />} />
         <Route path="/orders" element={<OrderList />} />
         <Route path="/order/:orderId" element={<Order_Details />} />
-        <Route path="/products/product/:publicId/:slug" element={<ProductDetails />} />
+        <Route
+          path="/products/product/:publicId/:slug"
+          element={<ProductDetails />}
+        />
         <Route path="/reports" element={<Reports />} />
         <Route path="/finance" element={<Finance />} />
         <Route path="/loans" element={<Loans />} />
-
-
-
       </Routes>
       {/* ToastContainer should be rendered outside of <Routes> */}
       <ToastContainer position="bottom-right" autoClose={3000} />
