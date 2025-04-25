@@ -44,7 +44,7 @@ const ReportContent = () => {
             className="appearance-none border border-gray-300 rounded px-2 py-1 pr-8 text-[11px] focus:outline-none focus:ring-1 focus:ring-gray-500"
           >
             <option value="sales">Sales Reports</option>
-            <option value="purchase">Purchasing Reports</option>
+        
             <option value="inventory">Inventory Reports</option>
             <option value="vendor">Vendor Reports</option>
             <option value="customer">Customer Reports</option>
@@ -72,7 +72,7 @@ const ReportContent = () => {
               className="border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-gray-500"
             />
           </div>
-          <button className="bg-[#f9622c] text-white rounded px-4 py-1 hover:bg-blue-600">
+          <button className="bg-[#f9622c] text-white rounded px-4 py-1 hover:bg-orange-600">
             Generate
           </button>
         </div>
@@ -112,7 +112,7 @@ const ReportContent = () => {
           <thead>
             <tr>
               {payoutHeaders.map(h => (
-                <th key={h} className="px-4 py-2 whitespace-nowrap border-y border-x first:border-l-0 last:border-r-0 border-gray-800 bg-gray-200">{h}</th>
+                <th key={h} className="px-4 py-2 whitespace-nowrap border-y border-x first:border-l-0 last:border-r-0 border-gray-300 bg-gray-200">{h}</th>
               ))}
             </tr>
           </thead>
@@ -120,7 +120,7 @@ const ReportContent = () => {
             {pageData.map(b => (
               <tr key={b.id} className="hover:bg-gray-50">
                 {[b.date, b.time, b.vendor, b.orderid, b.sales, b.commissionAmount, b.netPayout].map((c, i) => (
-                  <td key={i} className="px-4 py-2 whitespace-nowrap border-y border-x first:border-l-0 last:border-r-0 border-gray-800">{c}</td>
+                  <td key={i} className="px-4 py-2 whitespace-nowrap border-y border-x first:border-l-0 last:border-r-0 border-gray-100">{c}</td>
                 ))}
               </tr>
             ))}

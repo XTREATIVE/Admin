@@ -145,7 +145,7 @@ const ProductSection = ({ products, filters }) => {
                 <div className="h-40 w-full rounded">
                   <img
                     src={imgSrc}
-                    alt={product.name}
+                    
                     className="object-contain w-full h-full"
                   />
                 </div>
