@@ -105,7 +105,7 @@ export default function DeleteProductModal({
         <div className="flex space-x-4">
           <button
             onClick={handleDelete}
-            className="px-4 py-2 bg-[#f9622c] text-white text-sm rounded hover:bg-red-600"
+            className="px-4 py-2 bg-red-500 text-white text-sm rounded hover:bg-red-600"
           >
             Yes
           </button>

@@ -30,7 +30,7 @@ export default function StatsCardsGrid() {
   // Orders context
   const { orders, loading: loadingOrders, error: errorOrders } = useContext(OrdersContext);
   // Users context
-  const { users, loadingUsers, error: errorUsers } = useContext(UserContext);
+  const { users, loading: loadingUsers, error: errorUsers } = useContext(UserContext);
 
   // label for cards
   const rangeLabel = useMemo(() => {
@@ -56,7 +56,8 @@ export default function StatsCardsGrid() {
       case "today":
         return isSameDay(date, today);
       case "thisWeek":
-        return isSameWeek(date, today);
+        // week starting Monday
+        return isSameWeek(date, today, { weekStartsOn: 1 });
       case "thisMonth":
         return isSameMonth(date, today);
       case "thisYear":
@@ -70,23 +71,29 @@ export default function StatsCardsGrid() {
 
   // Orders in range
   const ordersInRange = useMemo(
-    () => orders.filter(o => inRange(parseISO(o.created_at))),
+    () =>
+      orders.filter((o) => {
+        const parsed = parseISO(o.created_at);
+        const dateObj = isNaN(parsed) ? new Date(o.created_at) : parsed;
+        return inRange(dateObj);
+      }),
     [orders, range, today, customDate]
   );
 
   // Delivered orders in range
   const deliveredOrders = useMemo(
-    () => ordersInRange.filter(o => o.status?.toLowerCase() === "delivered"),
+    () => ordersInRange.filter((o) => o.status?.toLowerCase() === "delivered"),
     [ordersInRange]
   );
 
   // New customers = only users with role "Customer" who joined in range
   const newCustomers = useMemo(
     () =>
-      users.filter(u =>
-        u.role === "Customer" &&
-        inRange(parseISO(u.date_joined))
-      ).length,
+      users.filter((u) => {
+        if (u.role !== "Customer" || !u.date_joined) return false;
+        const dt = parseISO(u.date_joined);
+        return inRange(isNaN(dt) ? new Date(u.date_joined) : dt);
+      }).length,
     [users, range, today, customDate]
   );
 
@@ -129,7 +136,7 @@ export default function StatsCardsGrid() {
           <select
             className="py-1 px-2 rounded border border-gray-300 focus:outline-none"
             value={range}
-            onChange={e => setRange(e.target.value)}
+            onChange={(e) => setRange(e.target.value)}
           >
             <option value="today">Today</option>
             <option value="thisWeek">This Week</option>
@@ -142,7 +149,7 @@ export default function StatsCardsGrid() {
               type="date"
               className="py-1 px-2 focus:outline-none"
               value={customDate.toISOString().slice(0, 10)}
-              onChange={e => setCustomDate(new Date(e.target.value))}
+              onChange={(e) => setCustomDate(new Date(e.target.value))}
             />
           )}
         </div>
@@ -178,7 +185,6 @@ export default function StatsCardsGrid() {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
         >
-          {/* Pass range and customDate down so newVendors can calculate properly */}
           <AnalyticsCharts
             formattedDate={rangeLabel}
             vendorStats={{}}

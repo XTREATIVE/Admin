@@ -43,6 +43,8 @@ export default function OrderHistory({ orderHistory }) {
     return "bg-gray-800";
   };
 
+  const hasOrders = orderHistory.length > 0;
+
   return (
     <div className="overflow-x-auto bg-white rounded shadow border border-gray-200">
       <div className="px-4 py-2 border-b text-sm font-semibold">Order History</div>
@@ -56,52 +58,68 @@ export default function OrderHistory({ orderHistory }) {
           </tr>
         </thead>
         <tbody className="text-[10px]">
-          {currentPageData.map(({ id, date, quantity, status }) => (
-            <tr key={id} className="border-t hover:bg-gray-100">
-              <td className="px-4 py-2 border-r border-gray-200">{id}</td>
-              <td className="px-4 py-2 border-r border-gray-200">{date}</td>
-              <td className="px-4 py-2 border-r border-gray-200">{quantity}</td>
-              <td className="px-4 py-2">
-                <div className="flex items-center">
-                  <span className={`w-2 h-2 rounded-full ${getStatusCircleColor(status)}`} />
-                  <span className={`ml-2 ${getStatusTextColor(status)}`}>{status}</span>
-                </div>
-              </td>
-            </tr>
-          ))}
+          {hasOrders
+            ? currentPageData.map(({ id, date, quantity, status }) => (
+                <tr key={id} className="border-t hover:bg-gray-100">
+                  <td className="px-4 py-2 border-r border-gray-200">{id}</td>
+                  <td className="px-4 py-2 border-r border-gray-200">{date}</td>
+                  <td className="px-4 py-2 border-r border-gray-200">{quantity}</td>
+                  <td className="px-4 py-2">
+                    <div className="flex items-center">
+                      <span
+                        className={`w-2 h-2 rounded-full ${getStatusCircleColor(
+                          status
+                        )}`}
+                      />
+                      <span className={`ml-2 ${getStatusTextColor(status)}`}>
+                        {status}
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            : (
+                <tr>
+                  <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
+                    No orders for this product yet
+                  </td>
+                </tr>
+              )}
         </tbody>
       </table>
 
       {/* Pagination */}
-      <div className="border-t bg-white px-4 py-2 flex items-center justify-end space-x-2 text-[11px] text-gray-600">
-        <button
-          onClick={handlePreviousPage}
-          disabled={currentPage === 1}
-          className="px-2 py-1 rounded border disabled:opacity-50 hover:bg-gray-50"
-        >
-          Previous
-        </button>
-        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+      {hasOrders && totalPages > 1 && (
+        <div className="border-t bg-white px-4 py-2 flex items-center justify-end space-x-2 text-[11px] text-gray-600">
           <button
-            key={page}
-            onClick={() => handlePageClick(page)}
-            className={`px-3 py-1 rounded border ${
-              currentPage === page
-                ? "bg-[#f9622c] text-white border-[#f9622c]"
-                : "border-gray-300 hover:bg-gray-50"
-            }`}
+            onClick={handlePreviousPage}
+            disabled={currentPage === 1}
+            className="px-2 py-1 rounded border disabled:opacity-50 hover:bg-gray-50"
           >
-            {page}
+            Previous
           </button>
-        ))}
-        <button
-          onClick={handleNextPage}
-          disabled={currentPage === totalPages}
-          className="px-2 py-1 rounded border disabled:opacity-50 hover:bg-gray-50"
-        >
-          Next
-        </button>
-      </div>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+            <button
+              key={page}
+              onClick={() => handlePageClick(page)}
+              className={`px-3 py-1 rounded border ${
+                currentPage === page
+                  ? "bg-[#f9622c] text-white border-[#f9622c]"
+                  : "border-gray-300 hover:bg-gray-50"
+              }`}
+            >
+              {page}
+            </button>
+          ))}
+          <button
+            onClick={handleNextPage}
+            disabled={currentPage === totalPages}
+            className="px-2 py-1 rounded border disabled:opacity-50 hover:bg-gray-50"
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   );
 }

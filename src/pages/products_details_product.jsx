@@ -9,15 +9,17 @@ import StatsCard from "../components/Cards";
 import ReviewsRatings from "../components/product_review_ratings";
 import Loader from "../pages/Loader";
 import { ProductContext } from "../context/productcontext";
-import DeleteProductModal from "../modals/deleteProduct";  // ← Import the modal
-
-// icons
+import { OrdersContext } from "../context/orderscontext";
+import { ProductsContext } from "../context/allproductscontext";   // ← import ProductsContext
+import DeleteProductModal from "../modals/deleteProduct";
 import { FaSearchPlus, FaTimes } from "react-icons/fa";
 
 export default function ProductDetails() {
   const location = useLocation();
   const navigate = useNavigate();
   const { selectedProduct, selectedVendorId } = useContext(ProductContext);
+  const { orders, loading: ordersLoading, error: ordersError } = useContext(OrdersContext);
+  const { getProductById, loadingProducts, errorProducts } = useContext(ProductsContext);
   const { product: locationProduct } = location.state || {};
   const product = selectedProduct || locationProduct || null;
 
@@ -28,42 +30,41 @@ export default function ProductDetails() {
   const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  // Fetch vendor details
+  // fetch vendor...
   useEffect(() => {
     let isMounted = true;
-    const fetchVendor = async () => {
-      if (!selectedVendorId) {
-        isMounted && setVendor(null);
-        return;
-      }
+    if (!selectedVendorId) {
+      isMounted && setVendor(null);
+      return;
+    }
+    (async () => {
       try {
         const res = await fetch(
           `https://api-xtreative.onrender.com/vendors/${selectedVendorId}/details/`
         );
-        if (!res.ok) throw new Error("Network response was not ok");
+        if (!res.ok) throw new Error("Failed to load vendor");
         const data = await res.json();
         isMounted && setVendor(data);
       } catch (err) {
-        console.error("Error fetching vendor:", err);
         isMounted && setVendorError("Unable to load vendor details");
       }
-    };
-    fetchVendor();
-    const timeout = setTimeout(() => {}, 1000);
+    })();
     return () => {
       isMounted = false;
-      clearTimeout(timeout);
     };
   }, [selectedVendorId]);
 
-  // Hide loader
+  // hide loader when both product & vendor ready
   useEffect(() => {
-    if (product && (!selectedVendorId || vendor || vendorError !== null)) {
+    if (
+      product &&
+      (!selectedVendorId || vendor !== null || vendorError !== null)
+    ) {
       setLoading(false);
     }
   }, [product, vendor, vendorError, selectedVendorId]);
 
-  if (loading || !product) {
+  if (loading || !product || loadingProducts) {
     return (
       <div className="h-screen flex flex-col items-center justify-center">
         <Header />
@@ -72,40 +73,68 @@ export default function ProductDetails() {
     );
   }
 
-  const {
-    id,
-    product_image_url,
-    name,
-    price,
-    description,
-    size,
-    color,
-    material,
-    country_of_origin,
-    created_at,
-    orderHistory,
-    custom_color,
-    custom_size,
-  } = product;
+  // get up-to-date inventory from ProductsContext
+  const ctxProduct = getProductById(product.id);
+  const inventoryCount = ctxProduct?.quantity ?? "–";
 
-  const addDate = created_at
-    ? new Date(created_at).toLocaleDateString()
+  // format creation date
+  const addDate = product.created_at
+    ? new Date(product.created_at).toLocaleDateString()
     : "";
 
+  // filter orders to only those containing this product
+  const productOrders = orders
+    .filter((order) =>
+      order.items.some((item) => item.product === product.id)
+    )
+    .map((order) => {
+      const item = order.items.find((i) => i.product === product.id);
+      return {
+        id: order.id,
+        date: new Date(order.created_at).toLocaleDateString(),
+        quantity: item?.quantity || 0,
+        customer: order.customer,
+        status: order.status,
+      };
+    });
+
+  // fallback: empty array when no real orders
   const orderHistoryData =
-    orderHistory || [
-      { id: "ORD1001", date: "03-05-2025", quantity: 2, customer: "Aisha Nambatya", status: "delivered" },
-      // … dummy entries
-    ];
+    !ordersLoading && !ordersError && productOrders.length
+      ? productOrders
+      : [];
+
+  // dynamically compute stats
+  const deliveredCount = productOrders.filter(
+    (o) => o.status.toLowerCase() === "delivered"
+  ).length;
+  const pendingCount = productOrders.filter((o) => {
+    const s = o.status.toLowerCase();
+    return s === "pending" || s === "processing";
+  }).length;
+  const returnedCount = productOrders.filter(
+    (o) => o.status.toLowerCase() === "returned"
+  ).length;
 
   const statsData = [
-    { title: "Inventory", value: "50" },
-    { title: "Delivered", value: "06" },
-    { title: "Pending", value: "03" },
-    { title: "Returned", value: "01" },
+    {
+      title: "Inventory",
+      value: `${inventoryCount}`.padStart(2, "0"),
+    },
+    {
+      title: "Delivered",
+      value: String(deliveredCount).padStart(2, "0"),
+    },
+    {
+      title: "Pending",
+      value: String(pendingCount).padStart(2, "0"),
+    },
+    {
+      title: "Returned",
+      value: String(returnedCount).padStart(2, "0"),
+    },
   ];
 
-  // After modal confirms deletion
   const onDeleteConfirm = () => {
     navigate("/products");
   };
@@ -121,11 +150,11 @@ export default function ProductDetails() {
             {/* LEFT COLUMN */}
             <div className="lg:col-span-1 ml-[80px]">
               <div className="bg-white p-4 rounded flex flex-col items-center h-full">
-                {product_image_url && (
+                {product.product_image_url && (
                   <div className="relative group w-full flex justify-center mb-4">
                     <img
-                      src={product_image_url}
-                      alt={name}
+                      src={product.product_image_url}
+                      alt={product.name}
                       className="object-cover h-30 w-full rounded p-5"
                     />
                     <div
@@ -137,14 +166,13 @@ export default function ProductDetails() {
                   </div>
                 )}
 
-                {/* Details */}
                 <div className="w-full text-gray-700">
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="text-[13px] font-semibold text-[#280300] ml-4">
-                      {name}
+                      {product.name}
                     </h3>
                     <span className="text-[13px] font-semibold text-[#280300] mr-5">
-                      {price && `UGX ${price}`}
+                      {product.price && `UGX ${product.price}`}
                     </span>
                   </div>
 
@@ -153,7 +181,7 @@ export default function ProductDetails() {
                       Description
                     </h4>
                     <p className="text-[11px] text-gray-700 mt-1">
-                      {description}
+                      {product.description}
                     </p>
                   </div>
 
@@ -162,22 +190,32 @@ export default function ProductDetails() {
                       <tr>
                         <td className="font-medium py-1 text-[11px]">Size:</td>
                         <td className="py-1 text-[11px]">
-                          {size === "custom" ? custom_size : size}
+                          {product.size === "custom"
+                            ? product.custom_size
+                            : product.size}
                         </td>
                       </tr>
                       <tr>
                         <td className="font-medium py-1 text-[11px]">Color:</td>
                         <td className="py-1 text-[11px]">
-                          {color === "custom" ? custom_color : color}
+                          {product.color === "custom"
+                            ? product.custom_color
+                            : product.color}
                         </td>
                       </tr>
                       <tr>
                         <td className="font-medium py-1 text-[11px]">Material:</td>
-                        <td className="py-1 text-[11px]">{material}</td>
+                        <td className="py-1 text-[11px]">
+                          {product.material}
+                        </td>
                       </tr>
                       <tr>
-                        <td className="font-medium py-1 text-[11px]">Country of Origin:</td>
-                        <td className="py-1 text-[11px]">{country_of_origin}</td>
+                        <td className="font-medium py-1 text-[11px]">
+                          Country of Origin:
+                        </td>
+                        <td className="py-1 text-[11px]">
+                          {product.country_of_origin}
+                        </td>
                       </tr>
                       <tr>
                         <td className="font-medium py-1 text-[11px]">Add Date:</td>
@@ -193,29 +231,51 @@ export default function ProductDetails() {
                       Vendor Information
                     </h4>
                     {vendorError ? (
-                      <div className="text-[10px] text-red-500 mb-2">{vendorError}</div>
+                      <div className="text-[10px] text-red-500 mb-2">
+                        {vendorError}
+                      </div>
                     ) : vendor && vendor.id ? (
                       <table className="table-auto w-full">
                         <tbody>
                           <tr>
-                            <td className="font-medium py-1 text-[11px]">Shop:</td>
-                            <td className="py-1 text-[11px]">{vendor.shop_name}</td>
+                            <td className="font-medium py-1 text-[11px]">
+                              Shop:
+                            </td>
+                            <td className="py-1 text-[11px]">
+                              {vendor.shop_name}
+                            </td>
                           </tr>
                           <tr>
-                            <td className="font-medium py-1 text-[11px]">Vendor:</td>
-                            <td className="py-1 text-[11px]">{vendor.username}</td>
+                            <td className="font-medium py-1 text-[11px]">
+                              Vendor:
+                            </td>
+                            <td className="py-1 text-[11px]">
+                              {vendor.username}
+                            </td>
                           </tr>
                           <tr>
-                            <td className="font-medium py-1 text-[11px]">Location:</td>
-                            <td className="py-1 text-[11px]">{vendor.shop_address}</td>
+                            <td className="font-medium py-1 text-[11px]">
+                              Location:
+                            </td>
+                            <td className="py-1 text-[11px]">
+                              {vendor.shop_address}
+                            </td>
                           </tr>
                           <tr>
-                            <td className="font-medium py-1 text-[11px]">Email:</td>
-                            <td className="py-1 text-[11px]">{vendor.user_email}</td>
+                            <td className="font-medium py-1 text-[11px]">
+                              Email:
+                            </td>
+                            <td className="py-1 text-[11px]">
+                              {vendor.user_email}
+                            </td>
                           </tr>
                           <tr>
-                            <td className="font-medium py-1 text-[11px]">Phone:</td>
-                            <td className="py-1 text-[11px]">{vendor.phone_number}</td>
+                            <td className="font-medium py-1 text-[11px]">
+                              Phone:
+                            </td>
+                            <td className="py-1 text-[11px]">
+                              {vendor.phone_number}
+                            </td>
                           </tr>
                         </tbody>
                       </table>
@@ -246,10 +306,11 @@ export default function ProductDetails() {
                   <StatsCard key={stat.title} title={stat.title} value={stat.value} />
                 ))}
               </div>
+
               <OrderHistory orderHistory={orderHistoryData} />
+
               <ReviewsRatings />
             </div>
-
           </div>
         </main>
       </div>
@@ -262,8 +323,8 @@ export default function ProductDetails() {
         >
           <div className="relative" onClick={(e) => e.stopPropagation()}>
             <img
-              src={product_image_url}
-              alt={name}
+              src={product.product_image_url}
+              alt={product.name}
               className="max-w-full max-h-screen rounded shadow-lg"
             />
             <button

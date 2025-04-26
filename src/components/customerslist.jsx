@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Loader from "../pages/Loader";
-// Assuming a delete modal for Customers is available
 import DeleteCustomer from "../modals/deleteCustomer";
 import { FaTrash, FaToggleOn, FaToggleOff } from "react-icons/fa";
 
@@ -62,14 +61,14 @@ export default function CustomersList() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [activeDeleteCustomer, setActiveDeleteCustomer] = useState(null);
 
-  // Pagination / entries‑per‑page
+  // Pagination / entries-per-page
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
   // Base API URL for activation/deactivation endpoints
   const API_BASE_URL = "https://api-xtreative.onrender.com";
 
-  // Fetch logic extracted so we can re‑use on Refresh
+  // Fetch logic extracted so we can re-use on Refresh
   const fetchCustomers = () => {
     setLoading(true);
     fetch(`${API_BASE_URL}/customers/list/`)
@@ -138,8 +137,7 @@ export default function CustomersList() {
     } else {
       setSelectedContacts((prev) =>
         prev.filter(
-          (email) =>
-            !paginatedCustomers.some((c) => c.user_email === email)
+          (email) => !paginatedCustomers.some((c) => c.user_email === email)
         )
       );
     }
@@ -153,18 +151,15 @@ export default function CustomersList() {
 
   // Toggle activation status for a customer by calling the API endpoints
   const handleToggleActivation = async (id) => {
-    // Find the customer for the given id
     const customer = Customers.find((cust) => cust.id === id);
     if (!customer) return;
 
-    // Retrieve the access token from localStorage
     const token = localStorage.getItem("authToken");
     if (!token) {
       alert("Authentication token missing. Please log in again.");
       return;
     }
 
-    // Determine the endpoint based on current customer status
     const statusLower = customer.status.toLowerCase();
     const endpoint =
       statusLower === "active"
@@ -176,12 +171,11 @@ export default function CustomersList() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
       if (response.ok) {
-        // Refresh the customer list on successful toggle
         fetchCustomers();
       } else {
         const errorData = await response.json();
@@ -198,7 +192,7 @@ export default function CustomersList() {
     return <div className="min-h-screen bg-gray-100 p-4">Error: {error}</div>;
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4 text-sm font-poppins">
+    <div className="min-h-screen bg-gray-100 p-4 text-[11px] font-poppins">
       {/* Header */}
       <header className="mb-4 flex justify-between items-center border-b border-gray-300 pb-2">
         <h1 className="font-semibold text-base text-gray-800">
@@ -226,13 +220,12 @@ export default function CustomersList() {
 
       {/* Controls */}
       <div className="flex flex-wrap justify-between items-center mb-3 space-y-2">
-        {/* Address Filter */}
         <div className="flex items-center space-x-2">
-          <label className="text-xs text-gray-600">Address:</label>
+          <label className="text-[11px] text-gray-600">Address:</label>
           <select
             value={selectedAddress}
             onChange={(e) => setSelectedAddress(e.target.value)}
-            className="text-[12px] border border-gray-300 py-1 px-2 rounded-full focus:outline-none"
+            className="text-[11px] border border-gray-300 py-1 px-2 rounded-full focus:outline-none"
           >
             {addresses.map((addr) => (
               <option key={addr} value={addr}>
@@ -242,13 +235,12 @@ export default function CustomersList() {
           </select>
         </div>
 
-        {/* Status Filter */}
         <div className="flex items-center space-x-2">
-          <label className="text-xs text-gray-600">Status:</label>
+          <label className="text-[11px] text-gray-600">Status:</label>
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className="text-[12px] border border-gray-300 py-1 px-2 rounded-full focus:outline-none"
+            className="text-[11px] border border-gray-300 py-1 px-2 rounded-full focus:outline-none"
           >
             {statuses.map((s) => (
               <option key={s} value={s}>
@@ -258,9 +250,8 @@ export default function CustomersList() {
           </select>
         </div>
 
-        {/* Entries Per Page */}
         <div className="flex items-center space-x-2">
-          <span className="text-xs text-gray-600">Entries per page:</span>
+          <span className="text-[11px] text-gray-600">Entries per page:</span>
           <select
             value={entriesPerPage}
             onChange={(e) => setEntriesPerPage(Number(e.target.value))}
@@ -274,7 +265,6 @@ export default function CustomersList() {
           </select>
         </div>
 
-        {/* Refresh */}
         <button
           onClick={fetchCustomers}
           className="flex items-center text-gray-600 hover:text-gray-800 text-xs"
@@ -307,9 +297,9 @@ export default function CustomersList() {
               </th>
               <th className="p-2 text-xs font-semibold text-gray-600">Name</th>
               <th className="p-2 text-xs font-semibold text-gray-600">Address</th>
-              <th className="p-2 text-xs font-semibold text-gray-600">Email</th>
+              <th className="p-2 pl-4 text-xs font-semibold text-gray-600">Email</th>
               <th className="p-2 text-xs font-semibold text-gray-600">Phone</th>
-              <th className="p-2 text-xs font-semibold text-gray-600">Status</th>
+              <th className="p-2 pl-4 text-xs font-semibold text-gray-600">Status</th>
               <th className="p-2 text-xs font-semibold text-gray-600">Action</th>
               <th className="p-2 w-8"></th>
             </tr>
@@ -319,7 +309,6 @@ export default function CustomersList() {
               const initials = getInitials(customer.username);
               const statusLower = customer.status.toLowerCase();
               const isActive = statusLower === "active";
-              // For phone, join country code with phone number
               const phoneDisplay = `${customer.country_code}${customer.phone_number}`;
 
               return (
@@ -346,32 +335,30 @@ export default function CustomersList() {
                   <td className="p-2 text-gray-700 text-[11px]">
                     {customer.address}
                   </td>
-                  <td className="p-2 text-gray-700 text-[11px]">
+                  <td className="p-2 pl-4 text-gray-700 text-[11px]">
                     {customer.user_email}
                   </td>
                   <td className="p-2 text-gray-700 text-[11px]">
                     {phoneDisplay}
                   </td>
-                  <td className="p-2 text-gray-700 text-[11px]">
+                  <td className="p-2 pl-4 text-gray-700 text-[11px]">
                     <div className="flex items-center space-x-1">
                       <span
                         className={`w-2 h-2 rounded-full ${
                           isActive ? "bg-green-500" : "bg-red-500"
                         }`}
                       />
-                      <span className="text-gray-700">
-                        {customer.status}
-                      </span>
+                      <span className="text-gray-700">{customer.status}</span>
                     </div>
                   </td>
                   <td className="p-2 text-gray-700 text-xs flex items-center space-x-2">
-                    {/* View Details Icon */}
                     <button
                       onClick={() =>
                         navigate("/Customers/details", { state: { customer } })
                       }
                       className="hover:text-[#f9622c]"
                     >
+                      {/* view icon */}
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         className="h-4 w-4"
@@ -393,12 +380,10 @@ export default function CustomersList() {
                         />
                       </svg>
                     </button>
-                    {/* Toggle Activation Icon */}
                     <button
                       onClick={() => handleToggleActivation(customer.id)}
                       className="hover:text-[#f9622c]"
                     >
-                      {/* If the customer is active, show the 'toggle on' icon in #f9622c color */}
                       {isActive ? (
                         <FaToggleOn className="h-4 w-4" style={{ color: "#f9622c" }} />
                       ) : (
