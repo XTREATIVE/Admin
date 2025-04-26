@@ -1,10 +1,11 @@
+// FilterAndCard.jsx
 import React, { useState, useEffect, useMemo } from "react";
 import Slider from "@mui/material/Slider";
 import "../styles/index.css";
 import { IoIosArrowUp, IoIosArrowDown } from "react-icons/io";
 import { FaStar } from "react-icons/fa";
 import ProductSection from "./product_section";
-import Loader from "../pages/Loader"; // Import the Loader component
+import Loader from "../pages/Loader";
 
 const API_URL = "https://api-xtreative.onrender.com/products/listing/";
 
@@ -19,16 +20,15 @@ const FilterAndCard = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategories, setSelectedCategories] = useState(["All Categories"]);
   const [selectedSizes, setSelectedSizes] = useState(["All Sizes"]);
+  const [selectedRating, setSelectedRating] = useState(null);
 
-  // Price range boundaries from fetched data
+  // Price range boundaries
   const [minPrice, setMinPrice] = useState(0);
   const [maxPrice, setMaxPrice] = useState(1500);
   const [selectedPriceRange, setSelectedPriceRange] = useState([0, 1500]);
   const [selectedPriceOption, setSelectedPriceOption] = useState("all");
 
-  const [selectedRating, setSelectedRating] = useState(null);
-
-  // Static rating options
+  // Static rating options for the UI
   const ratingOptions = [
     { stars: 1, count: 437 },
     { stars: 2, count: 657 },
@@ -36,10 +36,12 @@ const FilterAndCard = () => {
     { stars: 4, count: 3571 },
   ];
 
-  // Fetched products and state for error/loading.
+  // Fetched products + loading/error
   const [allProducts, setAllProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [fetchError, setFetchError] = useState(null);
+
+  // Snapshot of applied filters
   const [appliedFilters, setAppliedFilters] = useState({
     searchTerm: "",
     minPrice: 0,
@@ -49,30 +51,34 @@ const FilterAndCard = () => {
     selectedSizes: ["All Sizes"],
   });
 
+  // Fetch products on mount
   useEffect(() => {
     const fetchProducts = async () => {
+      setLoadingProducts(true);
       try {
-        setLoadingProducts(true);
         const res = await fetch(API_URL);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        // Sort products newest first
+
+        // Sort newest first
         data.sort((a, b) => b.id - a.id);
         setAllProducts(data);
 
-        // Compute price bounds
+        // compute price bounds
         const prices = data.map((p) => Number(p.price));
-        const computedMin = Math.min(...prices);
-        const computedMax = Math.max(...prices);
-        setMinPrice(computedMin);
-        setMaxPrice(computedMax);
-        setSelectedPriceRange([computedMin, computedMax]);
+        const min = Math.min(...prices);
+        const max = Math.max(...prices);
+        setMinPrice(min);
+        setMaxPrice(max);
+        setSelectedPriceRange([min, max]);
         setSelectedPriceOption("all");
         setAppliedFilters((prev) => ({
           ...prev,
-          minPrice: computedMin,
-          maxPrice: computedMax,
+          minPrice: min,
+          maxPrice: max,
         }));
+
+        setFetchError(null);
       } catch (err) {
         console.error(err);
         setFetchError("Failed to load products.");
@@ -83,40 +89,51 @@ const FilterAndCard = () => {
     fetchProducts();
   }, []);
 
-  // Dynamic lists
-  const dynamicCategoryList = useMemo(() => [
-    "All Categories",
-    ...Array.from(
-      new Set(allProducts.map((p) => p.category).filter(Boolean))
-    ),
-  ], [allProducts]);
+  // Dynamic filter lists
+  const dynamicCategoryList = useMemo(
+    () => [
+      "All Categories",
+      ...Array.from(new Set(allProducts.map((p) => p.category).filter(Boolean))),
+    ],
+    [allProducts]
+  );
 
   const dynamicPriceOptions = useMemo(() => {
-    const numRanges = 4;
-    if (maxPrice === minPrice) {
-      return [{ label: `UGX ${minPrice} - UGX ${maxPrice}`, value: `${minPrice}-${maxPrice}`, count: allProducts.length }];
+    if (minPrice === maxPrice) {
+      return [
+        {
+          label: `UGX ${minPrice} - UGX ${maxPrice}`,
+          value: `${minPrice}-${maxPrice}`,
+          count: allProducts.length,
+        },
+      ];
     }
-    const step = (maxPrice - minPrice) / numRanges;
-    const options = Array.from({ length: numRanges }, (_, i) => {
-      const lower = Math.round(minPrice + i * step);
-      const upper = i === numRanges - 1 ? maxPrice : Math.round(minPrice + (i + 1) * step);
-      const count = allProducts.filter(p =>
-        Number(p.price) >= lower &&
-        Number(p.price) < (i === numRanges - 1 ? upper + 1 : upper)
+    const ranges = 4;
+    const step = (maxPrice - minPrice) / ranges;
+    const opts = Array.from({ length: ranges }, (_, i) => {
+      const low = Math.round(minPrice + i * step);
+      const high =
+        i === ranges - 1 ? maxPrice : Math.round(minPrice + (i + 1) * step);
+      const cnt = allProducts.filter(
+        (p) =>
+          Number(p.price) >= low &&
+          Number(p.price) < (i === ranges - 1 ? high + 1 : high)
       ).length;
-      return { label: `UGX ${lower} - UGX ${upper}`, value: `${lower}-${upper}`, count };
+      return { label: `UGX ${low} - UGX ${high}`, value: `${low}-${high}`, count: cnt };
     });
-    return [{ label: "All Price", value: "all", count: allProducts.length }, ...options];
+    return [{ label: "All Price", value: "all", count: allProducts.length }, ...opts];
   }, [minPrice, maxPrice, allProducts]);
 
   const dynamicSizeOptions = useMemo(() => {
-    const sizeCount = allProducts.reduce((acc, p) => {
+    const counts = allProducts.reduce((acc, p) => {
       if (p.size) acc[p.size] = (acc[p.size] || 0) + 1;
       return acc;
     }, {});
     const order = ["S", "M", "L", "XL", "XXL", "Others"];
-    const ordered = order.filter(s => sizeCount[s]).map(s => `${s} (${sizeCount[s].toLocaleString()})`);
-    const extra = Object.keys(sizeCount).filter(s => !order.includes(s)).map(s => `${s} (${sizeCount[s].toLocaleString()})`);
+    const ordered = order.filter((s) => counts[s]).map((s) => `${s} (${counts[s]})`);
+    const extra = Object.keys(counts)
+      .filter((s) => !order.includes(s))
+      .map((s) => `${s} (${counts[s]})`);
     return ["All Sizes", ...ordered, ...extra];
   }, [allProducts]);
 
@@ -125,10 +142,10 @@ const FilterAndCard = () => {
     if (cat === "All Categories") {
       setSelectedCategories(checked ? ["All Categories"] : []);
     } else {
-      let sel = selectedCategories.filter(c => c !== "All Categories");
+      let sel = selectedCategories.filter((c) => c !== "All Categories");
       if (checked) sel.push(cat);
-      else sel = sel.filter(c => c !== cat);
-      if (sel.length === 0) sel = ["All Categories"];
+      else sel = sel.filter((c) => c !== cat);
+      if (!sel.length) sel = ["All Categories"];
       setSelectedCategories(sel);
     }
   };
@@ -138,10 +155,10 @@ const FilterAndCard = () => {
     if (sz === "All") {
       setSelectedSizes(checked ? ["All Sizes"] : []);
     } else {
-      let sel = selectedSizes.filter(s => s !== "All Sizes");
+      let sel = selectedSizes.filter((s) => s !== "All Sizes");
       if (checked) sel.push(sz);
-      else sel = sel.filter(s => s !== sz);
-      if (sel.length === 0) sel = ["All Sizes"];
+      else sel = sel.filter((s) => s !== sz);
+      if (!sel.length) sel = ["All Sizes"];
       setSelectedSizes(sel);
     }
   };
@@ -179,18 +196,18 @@ const FilterAndCard = () => {
 
   // Debounced search
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setAppliedFilters(prev => ({ ...prev, searchTerm }));
+    const t = setTimeout(() => {
+      setAppliedFilters((prev) => ({ ...prev, searchTerm }));
     }, 500);
-    return () => clearTimeout(timer);
+    return () => clearTimeout(t);
   }, [searchTerm]);
 
-  const handleSearchKeyDown = e => {
+  const handleSearchKeyDown = (e) => {
     if (e.key === "Enter") handleApplyFilters();
   };
 
   return (
-    <div className="flex w-full gap-1">
+    <div className="flex w-full gap-4">
       {/* Left Filter Panel */}
       <div className="w-1/4 p-4">
         <div className="bg-white shadow-md rounded-lg p-6 space-y-4">
@@ -199,7 +216,7 @@ const FilterAndCard = () => {
             <input
               type="text"
               value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
+              onChange={(e) => setSearchTerm(e.target.value)}
               onKeyDown={handleSearchKeyDown}
               className="block w-full p-1 pl-8 pr-4 text-[11px] border border-gray-300 rounded focus:outline-none focus:border-black"
               placeholder="Search..."
@@ -227,13 +244,13 @@ const FilterAndCard = () => {
             </button>
             {openCategory && (
               <div className="mt-2 space-y-2 text-[11px] text-gray-700">
-                {dynamicCategoryList.map(cat => (
+                {dynamicCategoryList.map((cat) => (
                   <label key={cat} className="flex items-center space-x-2">
                     <input
                       type="checkbox"
                       className="form-checkbox accent-[#f9622c] w-2.5 h-2.5"
                       checked={selectedCategories.includes(cat)}
-                      onChange={e => handleCategoryChange(cat, e.target.checked)}
+                      onChange={(e) => handleCategoryChange(cat, e.target.checked)}
                     />
                     <span>{cat}</span>
                   </label>
@@ -242,7 +259,7 @@ const FilterAndCard = () => {
             )}
           </div>
 
-          {/* Product Price */}
+          {/* Price Filter */}
           <div>
             <button
               onClick={() => setOpenPrice(!openPrice)}
@@ -252,21 +269,17 @@ const FilterAndCard = () => {
             </button>
             {openPrice && (
               <div className="mt-2 space-y-2 text-[10px] text-gray-700">
-                <div className="space-y-1">
-                  {dynamicPriceOptions.map(({ label, value, count }) => (
-                    <label key={value} className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        className="form-checkbox accent-[#f9622c] w-2.5 h-2.5"
-                        checked={selectedPriceOption === value}
-                        onChange={() => handlePriceOptionChange(value)}
-                      />
-                      <span>
-                        {label} ({count.toLocaleString()})
-                      </span>
-                    </label>
-                  ))}
-                </div>
+                {dynamicPriceOptions.map(({ label, value, count }) => (
+                  <label key={value} className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      className="form-checkbox accent-[#f9622c] w-2.5 h-2.5"
+                      checked={selectedPriceOption === value}
+                      onChange={() => handlePriceOptionChange(value)}
+                    />
+                    <span>{label} ({count})</span>
+                  </label>
+                ))}
                 <p className="text-[11px] font-medium text-gray-700 mb-1">
                   Custom Price Range:
                 </p>
@@ -291,7 +304,7 @@ const FilterAndCard = () => {
                     <input
                       type="number"
                       value={selectedPriceRange[0]}
-                      onChange={e => {
+                      onChange={(e) => {
                         const v = Number(e.target.value);
                         if (v >= minPrice && v <= selectedPriceRange[1]) {
                           setSelectedPriceRange([v, selectedPriceRange[1]]);
@@ -307,7 +320,7 @@ const FilterAndCard = () => {
                     <input
                       type="number"
                       value={selectedPriceRange[1]}
-                      onChange={e => {
+                      onChange={(e) => {
                         const v = Number(e.target.value);
                         if (v <= maxPrice && v >= selectedPriceRange[0]) {
                           setSelectedPriceRange([selectedPriceRange[0], v]);
@@ -332,7 +345,7 @@ const FilterAndCard = () => {
             </button>
             {openSize && (
               <div className="mt-2 ml-2 space-y-1 text-[10px] text-gray-600">
-                {dynamicSizeOptions.map(sz => (
+                {dynamicSizeOptions.map((sz) => (
                   <label key={sz} className="flex items-center space-x-2">
                     <input
                       type="checkbox"
@@ -342,7 +355,7 @@ const FilterAndCard = () => {
                           ? selectedSizes.includes("All Sizes")
                           : selectedSizes.includes(sz.split(" ")[0])
                       }
-                      onChange={e => handleSizeChange(sz, e.target.checked)}
+                      onChange={(e) => handleSizeChange(sz, e.target.checked)}
                     />
                     <span>{sz}</span>
                   </label>
@@ -373,8 +386,8 @@ const FilterAndCard = () => {
                     <span className="flex items-center">
                       {Array.from({ length: stars }).map((_, i) => (
                         <FaStar key={i} size={11} color="#FFC107" />
-                      ))}
-                      <span className="ml-1">& Above ({count})</span>
+                      ))}{" "}
+                      & Above ({count})
                     </span>
                   </label>
                 ))}
@@ -395,14 +408,15 @@ const FilterAndCard = () => {
       {/* Right Side (Products display area) */}
       <div className="w-3/4 p-4">
         <div className="bg-white shadow-md rounded-lg p-6">
-          {loadingProducts ? (
-            <Loader />
-          ) : fetchError ? (
+          {fetchError ? (
             <div className="p-4 text-center text-red-600">{fetchError}</div>
+          ) : loadingProducts ? (
+            <Loader />
           ) : (
             <ProductSection
               products={allProducts}
               filters={appliedFilters}
+              loading={false}
             />
           )}
         </div>

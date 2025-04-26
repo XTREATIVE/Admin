@@ -1,7 +1,7 @@
 // pages/ProductDetails.jsx
 
 import React, { useState, useContext, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import Sidebar from "../components/sidebar";
 import Header from "../components/header";
 import OrderHistory from "../components/product_Order_History";
@@ -9,12 +9,14 @@ import StatsCard from "../components/Cards";
 import ReviewsRatings from "../components/product_review_ratings";
 import Loader from "../pages/Loader";
 import { ProductContext } from "../context/productcontext";
+import DeleteProductModal from "../modals/deleteProduct";  // ← Import the modal
 
 // icons
 import { FaSearchPlus, FaTimes } from "react-icons/fa";
 
 export default function ProductDetails() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { selectedProduct, selectedVendorId } = useContext(ProductContext);
   const { product: locationProduct } = location.state || {};
   const product = selectedProduct || locationProduct || null;
@@ -23,46 +25,38 @@ export default function ProductDetails() {
   const [vendor, setVendor] = useState(null);
   const [vendorError, setVendorError] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  // Fetch vendor details if a vendor ID is selected.
+  // Fetch vendor details
   useEffect(() => {
     let isMounted = true;
-    
     const fetchVendor = async () => {
       if (!selectedVendorId) {
-        if (isMounted) setVendor(null);
+        isMounted && setVendor(null);
         return;
       }
-
       try {
-        const res = await fetch(`https://api-xtreative.onrender.com/vendors/${selectedVendorId}/details/`);
+        const res = await fetch(
+          `https://api-xtreative.onrender.com/vendors/${selectedVendorId}/details/`
+        );
         if (!res.ok) throw new Error("Network response was not ok");
         const data = await res.json();
-        if (isMounted) setVendor(data);
+        isMounted && setVendor(data);
       } catch (err) {
-        console.error("Error fetching vendor: ", err);
-        if (isMounted) setVendorError("Unable to load vendor details");
+        console.error("Error fetching vendor:", err);
+        isMounted && setVendorError("Unable to load vendor details");
       }
     };
-
     fetchVendor();
-
-    // Optional minimum loading delay of 1000ms.
-    const delayTimeout = setTimeout(() => {
-      if (isMounted) {
-        // We do not clear the loading state here—this effect will be combined with the next.
-        // This delay ensures the Loader shows for a minimum period.
-      }
-    }, 1000);
-
+    const timeout = setTimeout(() => {}, 1000);
     return () => {
       isMounted = false;
-      clearTimeout(delayTimeout);
+      clearTimeout(timeout);
     };
   }, [selectedVendorId]);
 
-  // Combined loading check: loader remains until a product is available and,
-  // if a vendor is required, either vendor details or an error is set.
+  // Hide loader
   useEffect(() => {
     if (product && (!selectedVendorId || vendor || vendorError !== null)) {
       setLoading(false);
@@ -79,6 +73,7 @@ export default function ProductDetails() {
   }
 
   const {
+    id,
     product_image_url,
     name,
     price,
@@ -86,26 +81,22 @@ export default function ProductDetails() {
     size,
     color,
     material,
-    country_of_origin, // Note: updated key per your code sample
+    country_of_origin,
     created_at,
     orderHistory,
-    // Assuming these custom fields are provided by the endpoint:
     custom_color,
-    custom_size
+    custom_size,
   } = product;
 
-  const addDate = created_at ? new Date(created_at).toLocaleDateString() : "";
+  const addDate = created_at
+    ? new Date(created_at).toLocaleDateString()
+    : "";
 
-  const orderHistoryData = orderHistory || [
-    { id: "ORD1001", date: "03-05-2025", quantity: 2, customer: "Aisha Nambatya", status: "delivered" },
-    { id: "ORD1002", date: "02-20-2025", quantity: 1, customer: "Janet Amara", status: "cancelled" },
-    { id: "ORD1003", date: "01-15-2025", quantity: 4, customer: "Willian Jenny", status: "pending" },
-    { id: "ORD1004", date: "01-15-2025", quantity: 4, customer: "Willian Jenny", status: "delivered" },
-    { id: "ORD1005", date: "01-15-2025", quantity: 4, customer: "Willian Jenny", status: "pending" },
-    { id: "ORD1006", date: "01-15-2025", quantity: 4, customer: "Willian Jenny", status: "delivered" },
-    { id: "ORD1007", date: "01-15-2025", quantity: 4, customer: "Willian Jenny", status: "pending" },
-    { id: "ORD1008", date: "01-15-2025", quantity: 4, customer: "Willian Jenny", status: "returned" },
-  ];
+  const orderHistoryData =
+    orderHistory || [
+      { id: "ORD1001", date: "03-05-2025", quantity: 2, customer: "Aisha Nambatya", status: "delivered" },
+      // … dummy entries
+    ];
 
   const statsData = [
     { title: "Inventory", value: "50" },
@@ -114,6 +105,11 @@ export default function ProductDetails() {
     { title: "Returned", value: "01" },
   ];
 
+  // After modal confirms deletion
+  const onDeleteConfirm = () => {
+    navigate("/products");
+  };
+
   return (
     <div className="h-screen flex flex-col font-poppins">
       <Header />
@@ -121,6 +117,7 @@ export default function ProductDetails() {
         <Sidebar />
         <main className="flex-1 p-4 bg-gray-100 overflow-y-auto">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6 items-stretch">
+
             {/* LEFT COLUMN */}
             <div className="lg:col-span-1 ml-[80px]">
               <div className="bg-white p-4 rounded flex flex-col items-center h-full">
@@ -139,18 +136,27 @@ export default function ProductDetails() {
                     </div>
                   </div>
                 )}
-                {/* Item Details */}
+
+                {/* Details */}
                 <div className="w-full text-gray-700">
                   <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-[13px] font-semibold text-[#280300] ml-4">{name}</h3>
+                    <h3 className="text-[13px] font-semibold text-[#280300] ml-4">
+                      {name}
+                    </h3>
                     <span className="text-[13px] font-semibold text-[#280300] mr-5">
                       {price && `UGX ${price}`}
                     </span>
                   </div>
+
                   <div className="mb-4 ml-4">
-                    <h4 className="text-[11px] font-semibold text-gray-600">Description</h4>
-                    <p className="text-[11px] text-gray-700 mt-1">{description}</p>
+                    <h4 className="text-[11px] font-semibold text-gray-600">
+                      Description
+                    </h4>
+                    <p className="text-[11px] text-gray-700 mt-1">
+                      {description}
+                    </p>
                   </div>
+
                   <table className="table-auto w-full ml-2">
                     <tbody>
                       <tr>
@@ -179,9 +185,13 @@ export default function ProductDetails() {
                       </tr>
                     </tbody>
                   </table>
+
                   <hr className="my-4 border-gray-300" />
+
                   <div className="ml-2">
-                    <h4 className="text-[11px] font-semibold text-gray-600 mb-2">Vendor Information</h4>
+                    <h4 className="text-[11px] font-semibold text-gray-600 mb-2">
+                      Vendor Information
+                    </h4>
                     {vendorError ? (
                       <div className="text-[10px] text-red-500 mb-2">{vendorError}</div>
                     ) : vendor && vendor.id ? (
@@ -215,9 +225,14 @@ export default function ProductDetails() {
                       </div>
                     )}
                   </div>
+
                   <div className="mt-10 -ml-2 w-full flex justify-center">
-                    <button className="flex items-center px-10 py-2 bg-red-500 text-[11px] text-white font-semibold rounded hover:bg-red-600">
-                      Delete this product
+                    <button
+                      onClick={() => setShowDeleteModal(true)}
+                      disabled={deleting}
+                      className="flex items-center px-10 py-2 bg-red-500 text-[11px] text-white font-semibold rounded hover:bg-red-600 disabled:opacity-50"
+                    >
+                      {deleting ? "Deleting…" : "Delete this product"}
                     </button>
                   </div>
                 </div>
@@ -234,6 +249,7 @@ export default function ProductDetails() {
               <OrderHistory orderHistory={orderHistoryData} />
               <ReviewsRatings />
             </div>
+
           </div>
         </main>
       </div>
@@ -245,13 +261,11 @@ export default function ProductDetails() {
           onClick={() => setShowZoom(false)}
         >
           <div className="relative" onClick={(e) => e.stopPropagation()}>
-            {product_image_url && (
-              <img
-                src={product_image_url}
-                alt={name}
-                className="max-w-full max-h-screen rounded shadow-lg"
-              />
-            )}
+            <img
+              src={product_image_url}
+              alt={name}
+              className="max-w-full max-h-screen rounded shadow-lg"
+            />
             <button
               className="absolute top-2 right-2 text-white bg-gray-700 rounded-full p-2 hover:bg-gray-600"
               onClick={() => setShowZoom(false)}
@@ -260,6 +274,16 @@ export default function ProductDetails() {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <DeleteProductModal
+          product={product}
+          onClose={() => setShowDeleteModal(false)}
+          onDeleteConfirm={onDeleteConfirm}
+          onDeleteError={(msg) => console.error("Delete error:", msg)}
+        />
       )}
     </div>
   );

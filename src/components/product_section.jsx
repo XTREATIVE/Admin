@@ -1,5 +1,3 @@
-// src/components/ProductSection.jsx
-
 import React, { useState, useMemo, useContext } from "react";
 import { FaStar, FaSyncAlt } from "react-icons/fa";
 import { Link } from "react-router-dom";
@@ -10,23 +8,33 @@ import { ProductContext } from "../context/productcontext";
 
 const OFFSET = 10000;
 
-const ProductSection = ({ products, filters }) => {
+const ProductSection = ({
+  products = [],
+  filters,
+  loading = false,
+}) => {
   const { setSelectedProduct } = useContext(ProductContext);
 
-  // Apply basic filters: price range, rating, categories, sizes
+  // Show loader while fetching
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-40">
+        <Loader />
+      </div>
+    );
+  }
+
+  // Basic filters
   const basicFilteredProducts = useMemo(() => {
-    return (products || []).filter((product) => {
+    return products.filter((product) => {
       let match = true;
-      // Price filter
       match =
         match &&
         Number(product.price) >= filters.minPrice &&
         Number(product.price) <= filters.maxPrice;
-      // Rating filter
       if (filters.selectedRating) {
         match = match && (product.rating ?? 0) >= filters.selectedRating;
       }
-      // Category filter
       if (
         filters.selectedCategories &&
         !filters.selectedCategories.includes("All Categories") &&
@@ -34,7 +42,6 @@ const ProductSection = ({ products, filters }) => {
       ) {
         match = match && filters.selectedCategories.includes(product.category);
       }
-      // Size filter
       if (
         filters.selectedSizes &&
         !filters.selectedSizes.includes("All Sizes") &&
@@ -44,31 +51,21 @@ const ProductSection = ({ products, filters }) => {
       }
       return match;
     });
-  }, [
-    products,
-    filters.minPrice,
-    filters.maxPrice,
-    filters.selectedRating,
-    filters.selectedCategories,
-    filters.selectedSizes,
-  ]);
+  }, [products, filters]);
 
-  // Fuse.js options for fuzzy search
-  const fuseOptions = {
-    keys: ["name"],
-    threshold: 0.3,
-  };
-
-  // Apply search term on already filtered list
+  // Fuzzy search
   const filteredProducts = useMemo(() => {
     if (filters.searchTerm) {
-      const fuse = new Fuse(basicFilteredProducts, fuseOptions);
-      return fuse.search(filters.searchTerm).map((result) => result.item);
+      const fuse = new Fuse(basicFilteredProducts, {
+        keys: ["name"],
+        threshold: 0.3,
+      });
+      return fuse.search(filters.searchTerm).map((res) => res.item);
     }
     return basicFilteredProducts;
   }, [basicFilteredProducts, filters.searchTerm]);
 
-  // Pagination state
+  // Pagination
   const [productsPerPage, setProductsPerPage] = useState(12);
   const [currentPage, setCurrentPage] = useState(1);
   const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
@@ -78,16 +75,12 @@ const ProductSection = ({ products, filters }) => {
 
   // Handlers
   const handlePrevClick = () => currentPage > 1 && setCurrentPage((p) => p - 1);
-  const handleNextClick = () => currentPage < totalPages && setCurrentPage((p) => p + 1);
+  const handleNextClick = () =>
+    currentPage < totalPages && setCurrentPage((p) => p + 1);
   const handleEntriesChange = (e) => {
     setProductsPerPage(Number(e.target.value));
     setCurrentPage(1);
   };
-
-  // Show loader if products not yet loaded
-  if (!products.length) return <Loader />;
-
-  const pageNumbers = Array.from({ length: totalPages }, (_, i) => i + 1);
 
   return (
     <div>
@@ -126,7 +119,7 @@ const ProductSection = ({ products, filters }) => {
 
       <hr className="my-4 border-gray-150" />
 
-      {/* Product grid */}
+      {/* Product grid or empty state */}
       {currentProducts.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {currentProducts.map((product) => {
@@ -143,11 +136,7 @@ const ProductSection = ({ products, filters }) => {
                 onClick={() => setSelectedProduct(product)}
               >
                 <div className="h-40 w-full rounded">
-                  <img
-                    src={imgSrc}
-                    
-                    className="object-contain w-full h-full"
-                  />
+                  <img src={imgSrc} className="object-contain w-full h-full" />
                 </div>
                 <div className="p-2 space-y-1 text-center">
                   <h3 className="text-[10px] font-small text-gray-600 line-clamp-2">
@@ -155,7 +144,9 @@ const ProductSection = ({ products, filters }) => {
                   </h3>
                   <div className="flex items-center justify-center text-gray-600 text-[10px]">
                     <FaStar className="text-yellow-400 mr-1" size={12} />
-                    <span>{rating} ({reviews})</span>
+                    <span>
+                      {rating} ({reviews})
+                    </span>
                   </div>
                   <div className="text-[11px] font-semibold text-gray-600">
                     UGX {Number(product.price).toLocaleString()}
@@ -166,7 +157,7 @@ const ProductSection = ({ products, filters }) => {
           })}
         </div>
       ) : (
-        <div className="p-4 text-center text-sm text-gray-600">
+        <div className="p-4 text-center text-[11px] text-gray-600">
           No products match your criteria.
         </div>
       )}
@@ -181,7 +172,7 @@ const ProductSection = ({ products, filters }) => {
           >
             Previous
           </button>
-          {pageNumbers.map((page) => (
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
             <button
               key={page}
               onClick={() => setCurrentPage(page)}

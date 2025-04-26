@@ -5,25 +5,35 @@ import { FaEye } from "react-icons/fa";
 import { UserContext } from "../context/usercontext";
 import { OrdersContext } from "../context/orderscontext";
 
-const getOrderStatusColor = (status) => {
+// Map statuses to bg/text colors using yellow ↔ orange ↔ green blends
+const getOrderStatusClasses = (status) => {
   switch (status.toLowerCase()) {
-    case "completed":
-      return "border border-[#28a745] bg-transparent text-[#28a745]";
-    case "processing":
-      return "border border-yellow-500 bg-transparent text-yellow-500";
-    case "packaging":
-      return "border border-orange-500 bg-transparent text-orange-500";
     case "pending":
-      return "border border-yellow-500 bg-transparent text-yellow-500";
+      return "bg-yellow-100 text-yellow-800";
+    case "processing":
+      return "bg-orange-100 text-orange-800";
+    case "packaging":
+      return "bg-amber-100 text-amber-800";
+    case "shipped":
+      return "bg-green-100 text-green-800";
+    case "completed":
+      return "bg-emerald-100 text-emerald-800";
+    case "delivered":
+      return "bg-teal-100 text-teal-800";
     case "canceled":
     case "cancelled":
-      return "border border-red-600 bg-transparent text-red-600";
-    case "delivered":
-      return "border border-green-300 bg-transparent text-green-500";
+      return "bg-red-100 text-red-800";
     default:
-      return "bg-[#e2e3e5] text-[#383d41]";
+      return "bg-gray-100 text-gray-800";
   }
 };
+
+// Capitalize the first letter of each word
+const capitalize = (str) =>
+  str
+    .split(" ")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
 
 const getDuration = (isoDateString) => {
   const then = new Date(isoDateString).getTime();
@@ -55,12 +65,34 @@ const OrderTable = () => {
     return orders.slice(start, start + pageSize);
   }, [orders, currentPage]);
 
-  if (loading || loadingUsers) return <div className="text-center p-4 text-gray-600 text-[11px]">Loading orders…</div>;
-  if (error) return <div className="text-center p-4 text-red-600 text-[11px]">Error: {error}</div>;
-  if (userError) return <div className="text-center p-4 text-red-600 text-[11px]">Error: {userError}</div>;
+  if (loading || loadingUsers)
+    return (
+      <div className="text-center p-4 text-gray-600 text-[11px]">
+        Loading orders…
+      </div>
+    );
+  if (error)
+    return (
+      <div className="text-center p-4 text-red-600 text-[11px]">
+        Error: {error}
+      </div>
+    );
+  if (userError)
+    return (
+      <div className="text-center p-4 text-red-600 text-[11px]">
+        Error: {userError}
+      </div>
+    );
 
   const headers = [
-    "Order ID", "Date Created", "Customer", "Duration", "Total", "Items", "Order Status", "Action"
+    "Order ID",
+    "Date Created",
+    "Customer",
+    "Duration",
+    "Total",
+    "Items",
+    "Order Status",
+    "Action",
   ];
 
   const renderRows = () =>
@@ -70,21 +102,37 @@ const OrderTable = () => {
       const duration = getDuration(order.created_at);
       const total = `UGX ${Number(order.total_price).toLocaleString()}`;
       const username = getUsernameById(order.customer);
+      const statusText = capitalize(order.status);
+      const statusClasses = getOrderStatusClasses(order.status);
 
       return (
-        <tr key={order.id} className="border-t hover:bg-gray-50 text-[10px] text-gray-700" >
-          {[
-            cleanId,
-            date,
-            username,
-            duration,
-            total,
-            order.items.length,
-            <span key="status" className={`inline-block px-2 py-1 rounded-full text-[9px] ${getOrderStatusColor(order.status)}`}>{order.status}</span>,
-            <Link key="view" to={`/order/${order.id + OFFSET}`} className="px-2 py-1 hover:underline text-gray-600"><FaEye className="inline-block" /></Link>
-          ].map((val, idx) => (
-            <td key={idx} className={`px-4 py-2 ${idx < headers.length - 1 ? 'border-r border-gray-200' : ''}`}>{val}</td>
-          ))}
+        <tr
+          key={order.id}
+          className="border-t hover:bg-gray-50 text-[10px] text-gray-700"
+        >
+          <td className="px-4 py-2 border-r border-gray-200">{cleanId}</td>
+          <td className="px-4 py-2 border-r border-gray-200">{date}</td>
+          <td className="px-4 py-2 border-r border-gray-200">{username}</td>
+          <td className="px-4 py-2 border-r border-gray-200">{duration}</td>
+          <td className="px-4 py-2 border-r border-gray-200">{total}</td>
+          <td className="px-4 py-2 border-r border-gray-200">
+            {order.items.length}
+          </td>
+          <td className="px-4 py-2 border-r border-gray-200">
+            <span
+              className={`inline-block px-2 py-1 rounded-full text-[9px] ${statusClasses}`}
+            >
+              {statusText}
+            </span>
+          </td>
+          <td className="px-4 py-2">
+            <Link
+              to={`/order/${order.id + OFFSET}`}
+              className="px-2 py-1 hover:underline text-gray-600"
+            >
+              <FaEye className="inline-block" />
+            </Link>
+          </td>
         </tr>
       );
     });
@@ -96,7 +144,14 @@ const OrderTable = () => {
           <thead className="bg-gray-50 text-gray-700 text-[11px]">
             <tr>
               {headers.map((h, i) => (
-                <th key={h} className={`px-4 py-2 text-left font-medium ${i < headers.length - 1 ? 'border-r border-gray-200' : ''}`}>{h}</th>
+                <th
+                  key={h}
+                  className={`px-4 py-2 text-left font-medium ${
+                    i < headers.length - 1 ? "border-r border-gray-200" : ""
+                  }`}
+                >
+                  {h}
+                </th>
               ))}
             </tr>
           </thead>
@@ -105,9 +160,25 @@ const OrderTable = () => {
       </div>
 
       <div className="bg-white border-t border-gray-200 px-4 py-2 flex items-center justify-center space-x-4 text-[11px]">
-        <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="p-1 disabled:opacity-50">Previous</button>
-        <span>{currentPage} of {totalPages}</span>
-        <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="p-1 disabled:opacity-50">Next</button>
+        <button
+          onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+          disabled={currentPage === 1}
+          className="p-1 disabled:opacity-50"
+        >
+          Previous
+        </button>
+        <span>
+          {currentPage} of {totalPages}
+        </span>
+        <button
+          onClick={() =>
+            setCurrentPage((p) => Math.min(totalPages, p + 1))
+          }
+          disabled={currentPage === totalPages}
+          className="p-1 disabled:opacity-50"
+        >
+          Next
+        </button>
       </div>
     </div>
   );

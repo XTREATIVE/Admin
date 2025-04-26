@@ -5,6 +5,7 @@ import React, { useState } from "react";
 export default function OrderHistory({ orderHistory }) {
   const itemsPerPage = 10;
   const [currentPage, setCurrentPage] = useState(1);
+
   const totalPages = Math.ceil(orderHistory.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
@@ -23,25 +24,24 @@ export default function OrderHistory({ orderHistory }) {
   };
 
   const getStatusTextColor = (status) => {
-    const normalizedStatus = status.toLowerCase();
-    if (normalizedStatus === "delivered") return "text-green-600";
-    if (normalizedStatus === "pending") return "text-yellow-600";
-    if (normalizedStatus === "cancelled") return "text-red-600";
-    if (normalizedStatus === "returned") return "text-gray-500";
+    const s = status.toLowerCase();
+    if (s === "delivered") return "text-green-600";
+    if (s === "pending") return "text-yellow-600";
+    if (s === "processing") return "text-yellow-600";
+    if (s === "cancelled") return "text-red-600";
+    if (s === "returned") return "text-gray-500";
     return "text-gray-800";
   };
 
   const getStatusCircleColor = (status) => {
-    const normalizedStatus = status.toLowerCase();
-    if (normalizedStatus === "delivered") return "bg-green-500";
-    if (normalizedStatus === "pending") return "bg-yellow-400";
-    if (normalizedStatus === "cancelled") return "bg-red-500";
-    if (normalizedStatus === "returned") return "bg-gray-500";
+    const s = status.toLowerCase();
+    if (s === "delivered") return "bg-green-500";
+    if (s === "pending") return "bg-yellow-400";
+    if (s === "processing") return "bg-yellow-400";
+    if (s === "cancelled") return "bg-red-500";
+    if (s === "returned") return "bg-gray-500";
     return "bg-gray-800";
   };
-
-  const headers = ["Order ID", "Date", "Customer", "Quantity", "Status"];
-  const totalColumns = headers.length;
 
   return (
     <div className="overflow-x-auto bg-white rounded shadow border border-gray-200">
@@ -49,24 +49,17 @@ export default function OrderHistory({ orderHistory }) {
       <table className="min-w-full table-auto">
         <thead className="bg-gray-50 text-gray-700 text-[11px]">
           <tr>
-            {headers.map((h, i) => (
-              <th
-                key={h}
-                className={`px-4 py-2 text-left font-medium ${
-                  i !== totalColumns - 1 ? "border-r border-gray-200" : ""
-                }`}
-              >
-                {h}
-              </th>
-            ))}
+            <th className="px-4 py-2 text-left border-r border-gray-200">Order ID</th>
+            <th className="px-4 py-2 text-left border-r border-gray-200">Date</th>
+            <th className="px-4 py-2 text-left border-r border-gray-200">Quantity</th>
+            <th className="px-4 py-2 text-left">Status</th>
           </tr>
         </thead>
         <tbody className="text-[10px]">
-          {currentPageData.map(({ id, date, customer, quantity, status }) => (
+          {currentPageData.map(({ id, date, quantity, status }) => (
             <tr key={id} className="border-t hover:bg-gray-100">
               <td className="px-4 py-2 border-r border-gray-200">{id}</td>
               <td className="px-4 py-2 border-r border-gray-200">{date}</td>
-              <td className="px-4 py-2 border-r border-gray-200">{customer}</td>
               <td className="px-4 py-2 border-r border-gray-200">{quantity}</td>
               <td className="px-4 py-2">
                 <div className="flex items-center">
