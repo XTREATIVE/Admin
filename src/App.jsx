@@ -19,6 +19,8 @@ import "react-toastify/dist/ReactToastify.css";
 import "./styles/index.css";
 import Finance from "./pages/finance.jsx";
 import Loans from "./pages/loans.jsx";
+import Profile from "./pages/profile.jsx"; 
+
 // Import the custom navigation limiting hook
 import { useSingleStepNavigationLimit } from "./hooks/custom.jsx";
 
@@ -34,6 +36,7 @@ function App() {
         <Route path="/" element={<LoginScreen />} />
         <Route path="/admin-dashboard" element={<AdminDashboard />} />
         <Route path="/Settings" element={<Settings />} />
+        <Route path="/profile" element={<Profile />} /> {/* <-- New route added */}
         <Route path="/Vendors" element={<Vendors />} />
         <Route path="/Customers" element={<Customers />} />
         <Route path="/products" element={<Products />} />

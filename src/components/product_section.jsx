@@ -136,7 +136,8 @@ const ProductSection = ({
                 onClick={() => setSelectedProduct(product)}
               >
                 <div className="h-40 w-full rounded">
-                  <img src={imgSrc} className="object-contain w-full h-full" />
+                <img src={imgSrc} alt={product.name} className="object-contain w-full h-full" />
+
                 </div>
                 <div className="p-2 space-y-1 text-center">
                   <h3 className="text-[10px] font-small text-gray-600 line-clamp-2">
