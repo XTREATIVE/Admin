@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from "react";
 import { FiBell } from "react-icons/fi";
-import PropTypes from "prop-types"; 
 
-const NotificationBell = ({ notifications= [] }) => {
+const NotificationBell = () => {
   const [open, setOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
   const dropdownRef = useRef(null);
 
   const toggleDropdown = () => setOpen(!open);
@@ -17,6 +17,40 @@ const NotificationBell = ({ notifications= [] }) => {
   useEffect(() => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      const token = localStorage.getItem("authToken");
+
+      if (!token) {
+        console.warn("No auth token found. User might not be logged in.");
+        return;
+      }
+
+      try {
+        const response = await fetch("https://api-xtreative.onrender.com/chatsapp/notifications/", {
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          console.error("Failed to fetch notifications:", await response.text());
+          return;
+        }
+
+        const data = await response.json();
+        setNotifications(data);
+      } catch (error) {
+        console.error("Error fetching notifications:", error);
+      }
+    };
+
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 30000); // Refresh every 30 seconds
+    return () => clearInterval(interval);
   }, []);
 
   return (
@@ -39,27 +73,21 @@ const NotificationBell = ({ notifications= [] }) => {
             Notifications
           </div>
           <ul className="divide-y">
-            {notifications.map((notification, index) => (
-              <li key={index} className="p-3 hover:bg-gray-100 text-sm">
-                <p className="text-sm text-gray-700">{notification.title}</p>
-                <p className="text-xs text-gray-400">{notification.time}</p>
-
-              </li>
-            ))}
+            {notifications.length === 0 ? (
+              <li className="p-3 text-sm text-gray-500">No new notifications</li>
+            ) : (
+              notifications.map((notification, index) => (
+                <li key={index} className="p-3 hover:bg-gray-100 text-sm">
+                  <p className="text-sm text-gray-700">{notification.title}</p>
+                  <p className="text-xs text-gray-400">{notification.time}</p>
+                </li>
+              ))
+            )}
           </ul>
         </div>
       )}
     </div>
   );
-};
-
-NotificationBell.propTypes = {
-  notifications: PropTypes.arrayOf(
-    PropTypes.shape({
-      title: PropTypes.string.isRequired,
-      time: PropTypes.string,
-    })
-  ),
 };
 
 export default NotificationBell;
