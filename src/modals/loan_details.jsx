@@ -169,7 +169,7 @@ const LoansModal = ({ isOpen, onClose }) => {
           </div>
 
           {/* Summary header */}
-          <div className="bg-[#f9622c] text-white px-6 py-3 flex justify-between text-center">
+          <div className="bg-gray-100 text-gray-600 px-6 py-3 flex justify-between text-center">
             {[
               { label: "Requested Amount", value: principal.toFixed(2) },
               { label: "Total Repayable", value: totalRepayable.toFixed(2) },
@@ -177,7 +177,7 @@ const LoansModal = ({ isOpen, onClose }) => {
             ].map((item, idx) => (
               <div key={idx} className="text-[11px]">
                 <p>{item.label}</p>
-                <p className="font-semibold text-[13px]">{item.value}</p>
+                <p className="font-semibold text-[13px] text-[#f9622c]">{item.value}</p>
               </div>
             ))}
           </div>

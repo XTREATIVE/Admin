@@ -10,12 +10,14 @@ import App from './App';
  import { OrdersProvider } from "./context/orderscontext";
 import { AllProductsProvider } from './context/allproductscontext';
 import {PaymentProvider} from './context/paymentcontext'
-
+import { LoansProvider } from './context/loanscontext';
 
 
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
+
+<LoansProvider>
     <PaymentProvider>
  <AllProductsProvider>
 <OrdersProvider>
@@ -31,6 +33,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     </OrdersProvider>
     </AllProductsProvider>
     </PaymentProvider>
-
+    </LoansProvider>
   </React.StrictMode>
 );

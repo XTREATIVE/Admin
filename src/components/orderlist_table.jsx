@@ -1,7 +1,7 @@
 // OrderTable.js
 import React, { useState, useMemo, useContext } from "react";
 import { Link } from "react-router-dom";
-import { FaEye } from "react-icons/fa";
+import { FaEye, FaCar } from "react-icons/fa";
 import { UserContext } from "../context/usercontext";
 import { OrdersContext } from "../context/orderscontext";
 
@@ -16,6 +16,9 @@ const getOrderStatusClasses = (status) => {
       return "bg-amber-100 text-amber-800";
     case "shipped":
       return "bg-green-100 text-green-800";
+    case "sent to warehouse":
+      // gradient from yellow (left) to green (right)
+      return "bg-gray-100 text-yellow-700";
     case "completed":
       return "bg-emerald-100 text-emerald-800";
     case "delivered":
@@ -35,6 +38,7 @@ const capitalize = (str) =>
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
     .join(" ");
 
+// Compute time since creation
 const getDuration = (isoDateString) => {
   const then = new Date(isoDateString).getTime();
   const now = Date.now();
@@ -102,8 +106,19 @@ const OrderTable = () => {
       const duration = getDuration(order.created_at);
       const total = `UGX ${Number(order.total_price).toLocaleString()}`;
       const username = getUsernameById(order.customer);
-      const statusText = capitalize(order.status);
+      const rawStatus = order.status.toLowerCase();
       const statusClasses = getOrderStatusClasses(order.status);
+
+      // If sent to warehouse, show car + text; else capitalize
+      const statusContent =
+        rawStatus === "sent to warehouse" ? (
+          <>
+            <FaCar className="inline-block text-yellow-700 mr-1" />
+            Sent to WH
+          </>
+        ) : (
+          capitalize(rawStatus)
+        );
 
       return (
         <tr
@@ -122,7 +137,7 @@ const OrderTable = () => {
             <span
               className={`inline-block px-2 py-1 rounded-full text-[9px] ${statusClasses}`}
             >
-              {statusText}
+              {statusContent}
             </span>
           </td>
           <td className="px-4 py-2">
@@ -171,9 +186,7 @@ const OrderTable = () => {
           {currentPage} of {totalPages}
         </span>
         <button
-          onClick={() =>
-            setCurrentPage((p) => Math.min(totalPages, p + 1))
-          }
+          onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
           disabled={currentPage === totalPages}
           className="p-1 disabled:opacity-50"
         >

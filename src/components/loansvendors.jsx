@@ -1,16 +1,10 @@
-// src/components/LoanRepayments.jsx
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import {
-  loanSettings,
-  repaymentBlocks,
-  repaymentHistory,
-  loanApplications,
-} from '../data/loandata';
+import { LoansContext } from '../context/loanscontext';
 import LoansModal from '../modals/loan_details';
 
 const ITEMS_PER_PAGE = 20;
-const { paymentMethods } = loanSettings;
+
 const loanTabs = [
   'Loan Applications',    // Vendor loan applications with Pending, Rejected, or Approved status
   'Upcoming Due Loans',   // Admin overview for upcoming dues
@@ -19,6 +13,7 @@ const loanTabs = [
 ];
 
 const LoanRepayments = () => {
+  const { loans, repaymentBlocks, repaymentHistory, vendors, loading, error } = useContext(LoansContext);
   const [activeTab, setActiveTab] = useState(loanTabs[0]);
   const [currentPage, setCurrentPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -39,9 +34,28 @@ const LoanRepayments = () => {
   const getDataForTab = () => {
     switch (activeTab) {
       case 'Loan Applications':
-        return loanApplications.filter(
-          app => ['Pending', 'Rejected', 'Approved'].includes(app.status)
-        );
+        return loans
+          .filter(app => ['Pending', 'Rejected', 'Approved'].includes(app.status))
+          .map(app => {
+            // Map guarantor vendor IDs to usernames, join with newline
+            const guarantorUsernames = app.guarantors.length > 0
+              ? app.guarantors
+                  .map(guarantorId => {
+                    const vendor = vendors.find(v => v.id === guarantorId);
+                    return vendor ? vendor.username : 'Unknown';
+                  })
+                  .join('\n')
+              : '-';
+
+            return {
+              applicationId: app.id,
+              vendor: { name: app.vendor_username },
+              requestedAmount: app.amount,
+              guarantor: guarantorUsernames,
+              appliedDate: app.created_at.split('T')[0],
+              status: app.status,
+            };
+          });
       case 'Upcoming Due Loans':
         return repaymentBlocks.filter(r => r.status === 'Upcoming');
       case 'Overdue Loans':
@@ -92,7 +106,13 @@ const LoanRepayments = () => {
             case 'Application ID': val = row.applicationId; break;
             case 'Vendor': val = row.vendor.name; break;
             case 'Requested': val = row.requestedAmount; break;
-            case 'Guarantor': val = row.guarantor; break;
+            case 'Guarantor':
+              val = (
+                <span style={{ whiteSpace: 'pre-line' }}>
+                  {row.guarantor}
+                </span>
+              );
+              break;
             case 'Applied On': val = row.appliedDate; break;
             case 'ID': val = row.id; break;
             case 'Vendor (Balance)': val = `${row.vendor.name} (${row.vendor.walletBalance})`; break;
@@ -114,7 +134,9 @@ const LoanRepayments = () => {
                         ? 'bg-red-100 text-red-600'
                         : ['Approved', 'Paid', 'Upcoming'].includes(row.status)
                           ? 'bg-green-100 text-green-900'
-                          : ''
+                          : row.status === 'Overdue'
+                            ? 'bg-red-100 text-red-600'
+                            : ''
                   }`}
                 >
                   {row.status}
@@ -150,6 +172,28 @@ const LoanRepayments = () => {
     ));
   };
 
+  const renderEmptyState = () => {
+    if (data.length === 0 && !loading && !error) {
+      return (
+        <div className="text-center py-4 text-gray-600">
+          {activeTab === 'Loan Applications' && 'No loan applications found.'}
+          {activeTab === 'Upcoming Due Loans' && 'No upcoming loans found.'}
+          {activeTab === 'Overdue Loans' && 'No overdue loans found.'}
+          {activeTab === 'Repayment History' && 'No repayment history available.'}
+        </div>
+      );
+    }
+    return null;
+  };
+
+  if (loading) {
+    return <div className="text-center py-4">Loading...</div>;
+  }
+
+  if (error) {
+    return <div className="text-center py-4 text-red-600">Error: {error}</div>;
+  }
+
   return (
     <div className="flex flex-col">
       <div className="bg-white border-b border-gray-200 px-4 py-2">
@@ -163,32 +207,37 @@ const LoanRepayments = () => {
       </div>
 
       <div className="overflow-x-auto bg-white rounded">
-        <table className="min-w-full table-auto border-collapse">
-          <thead className="bg-gray-50 text-gray-700 text-[10px]">
-            <tr>
-              {renderHeaders().map((h, i) => (
-                <th
-                  key={h}
-                  className={`px-4 py-2 text-left font-medium ${i < renderHeaders().length - 1 ? 'border-r border-gray-200' : ''}`}
-                >{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>{renderRows()}</tbody>
-        </table>
+        {data.length > 0 ? (
+          <table className="min-w-full table-auto border-collapse">
+            <thead className="bg-gray-50 text-gray-700 text-[10px]">
+              <tr>
+                {renderHeaders().map((h, i) => (
+                  <th
+                    key={h}
+                    className={`px-4 py-2 text-left font-medium ${i < renderHeaders().length - 1 ? 'border-r border-gray-200' : ''}`}
+                  >{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>{renderRows()}</tbody>
+          </table>
+        ) : (
+          renderEmptyState()
+        )}
       </div>
 
-      <div className="bg-white border-t border-gray-200 px-4 py-2 flex items-center justify-center space-x-2 text-[11px]">
-        <button onClick={goPrev} disabled={currentPage === 1} className="p-1 disabled:opacity-50">
-          <ChevronLeft size={16} />
-        </button>
-        <span>{currentPage} of {totalPages}</span>
-        <button onClick={goNext} disabled={currentPage === totalPages} className="p-1 disabled:opacity-50">
-          <ChevronRight size={16} />
-        </button>
-      </div>
+      {data.length > 0 && (
+        <div className="bg-white border-t border-gray-200 px-4 py-2 flex items-center justify-center space-x-2 text-[11px]">
+          <button onClick={goPrev} disabled={currentPage === 1} className="p-1 disabled:opacity-50">
+            <ChevronLeft size={16} />
+          </button>
+          <span>{currentPage} of {totalPages}</span>
+          <button onClick={goNext} disabled={currentPage === totalPages} className="p-1 disabled:opacity-50">
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      )}
 
-      {/* Modal for viewing loan details */}
       {isModalOpen && (
         <LoansModal
           isOpen={isModalOpen}
