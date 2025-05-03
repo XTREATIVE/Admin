@@ -60,7 +60,7 @@ const OrderTable = () => {
     useContext(UserContext);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 10;
+  const pageSize = 15;
   const totalPages = Math.ceil(orders.length / pageSize);
   const OFFSET = 1000;
 
