@@ -147,6 +147,7 @@ export const ClaimsProvider = ({ children }) => {
             product_name: itemMap[item.order_item] || `Item ${item.order_item}`, // Use product name from orders
             reason: item.reason, // Include reason
             time: new Date(item.created_at).toLocaleString(), // Format date
+            created_at: item.created_at, // Include raw created_at for graph
             status: item.status, // Include status
             type: item.status.toLowerCase() === "approved" ? "refund" : "claim", // Keep for compatibility
             giftPrice: subtotalMap[item.order_item] || "N/A", // Use subtotal as giftPrice

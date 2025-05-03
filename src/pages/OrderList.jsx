@@ -24,10 +24,12 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { OrdersContext } from "../context/orderscontext";
+import { ClaimsContext } from "../context/claimscontext";
 
 export default function OrderList() {
   const navigate = useNavigate();
   const { orders } = useContext(OrdersContext);
+  const { claims } = useContext(ClaimsContext);
 
   // ——— Date selector state ———
   const today = useMemo(() => new Date(), []);
@@ -39,13 +41,8 @@ export default function OrderList() {
   // ——— Return graph selector state ———
   const [returnRange, setReturnRange] = useState("thisMonth");
 
-  // ——— Claims modal and data ———
+  // ——— Claims modal ———
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const dummyClaims = [
-    { name: "John Alinatwe", message: "Claimed a refund for UGX 50,000", time: "3 min ago", type: "refund" },
-    { name: "Jane Ayebale", message: "Submitted a claim for delayed delivery of UGX 20,000", time: "15 min ago", type: "claim" },
-    { name: "Alice Opio", message: "Claimed compensation for a faulty product - UGX 30,000", time: "45 min ago", type: "claim" },
-  ];
 
   // formatted label for header — always show today's date
   const formattedDate = useMemo(
@@ -53,13 +50,12 @@ export default function OrderList() {
     [today]
   );
 
-  // helper to test if order date is in selected range
+  // helper to test if date is in selected range
   const inRange = (dateObj) => {
     switch (range) {
       case "today":
         return isSameDay(dateObj, today);
       case "thisWeek":
-        // week starting Monday
         return isSameWeek(dateObj, today, { weekStartsOn: 1 });
       case "thisMonth":
         return isSameMonth(dateObj, today);
@@ -88,6 +84,17 @@ export default function OrderList() {
     [orders, range, today, customDate, customRangeStart, customRangeEnd]
   );
 
+  // filter claims by created_at according to range
+  const filteredClaims = useMemo(
+    () =>
+      claims.filter((c) => {
+        const parsed = parseISO(c.created_at);
+        const dateObj = isNaN(parsed) ? new Date(c.created_at) : parsed;
+        return inRange(dateObj);
+      }),
+    [claims, range, today, customDate, customRangeStart, customRangeEnd]
+  );
+
   // compute summary stats
   const pendingOrders = filteredOrders.filter((o) => o.status.toLowerCase() === "pending").length;
   const processingOrders = filteredOrders.filter((o) => o.status.toLowerCase() === "processing").length;
@@ -106,19 +113,41 @@ export default function OrderList() {
     { title: "Delivered", value: deliveredOrders, icon: "✅" },
     { title: "Cancelled", value: cancelledOrders, icon: "❌" },
     { title: "Total Sales", value: `UGX ${totalSales.toLocaleString()}`, icon: "💰" },
-    { title: "Returns", value: "05", icon: "↩️" },
+    { title: "Returns", value: filteredClaims.length, icon: "↩️" },
   ];
 
-  // dummy return-rate data
-  const returnRateData = [
-    { date: "2025-01-15", rate: 3.8 },
-    { date: "2025-02-10", rate: 4.1 },
-    { date: "2025-03-05", rate: 4.7 },
-    { date: "2025-04-08", rate: 4.2 },
-  ];
+  // Aggregate claims and delivered orders by date for return rate calculation
+  const returnRateData = useMemo(() => {
+    // Aggregate claims by date
+    const claimCounts = claims.reduce((acc, claim) => {
+      const date = format(parseISO(claim.created_at), "yyyy-MM-dd");
+      acc[date] = (acc[date] || 0) + 1;
+      return acc;
+    }, {});
 
-  // filter return-rate by returnRange
-  const filteredReturnData = returnRateData.filter((d) => {
+    // Aggregate delivered orders by date
+    const deliveredOrderCounts = orders.reduce((acc, order) => {
+      if (order.status.toLowerCase() === "delivered") {
+        const date = format(parseISO(order.created_at), "yyyy-MM-dd");
+        acc[date] = (acc[date] || 0) + 1;
+      }
+      return acc;
+    }, {});
+
+    // Calculate return rate for each date
+    return Object.keys({ ...claimCounts, ...deliveredOrderCounts }).map((date) => {
+      const claimsOnDate = claimCounts[date] || 0;
+      const deliveredOrdersOnDate = deliveredOrderCounts[date] || 0;
+      const rate = deliveredOrdersOnDate > 0 ? (claimsOnDate / deliveredOrdersOnDate) * 100 : 0;
+      return {
+        date,
+        rate: Number(rate.toFixed(2)), // Round to 2 decimal places
+      };
+    }).sort((a, b) => new Date(a.date) - new Date(b.date)); // Sort by date
+  }, [claims, orders]);
+
+  // filter return rate data by returnRange
+  const filteredReturnRateData = returnRateData.filter((d) => {
     const dt = parseISO(d.date);
     switch (returnRange) {
       case "today":
@@ -213,21 +242,21 @@ export default function OrderList() {
                   </select>
                 </div>
                 <ResponsiveContainer width="100%" height={120}>
-                  <LineChart data={filteredReturnData} margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
+                  <LineChart data={filteredReturnRateData} margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" tick={{ fontSize: 8 }} />
-                    <YAxis domain={[0, "dataMax"]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 8 }} />
+                    <YAxis domain={[0, "dataMax + 10"]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 8 }} />
                     <Tooltip
                       formatter={(val) => `${val}%`}
                       labelFormatter={(lbl) => `Date: ${lbl}`}
                       contentStyle={{ fontSize: "10px" }}
-                      itemStyle={{ fontSize: "10px" }} />          
-
+                      itemStyle={{ fontSize: "10px" }}
+                    />
                     <Line type="monotone" dataKey="rate" stroke="#8884d8" strokeWidth={2} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
-              <RecentClaims claims={dummyClaims} onViewAll={() => setIsModalOpen(true)} />
+              <RecentClaims onViewAll={() => setIsModalOpen(true)} />
             </div>
 
             {/* Right */}
@@ -243,7 +272,7 @@ export default function OrderList() {
 
       {/* Claims Modal */}
       {isModalOpen && (
-        <ClaimsModal claims={dummyClaims} onClose={() => setIsModalOpen(false)} />
+        <ClaimsModal onClose={() => setIsModalOpen(false)} />
       )}
     </div>
   );
