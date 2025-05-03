@@ -47,6 +47,41 @@ export const LoansProvider = ({ children }) => {
     fetchData();
   }, []);
 
+  // Function to update loan status
+  const updateLoanStatus = async (loanId, newStatus, rejectionReason = null) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const token = localStorage.getItem('authToken');
+      const payload = { status: newStatus };
+      if (rejectionReason) payload.rejection_reason = rejectionReason;
+
+      const response = await fetch(`https://api-xtreative.onrender.com/loans/${loanId}/update/`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) throw new Error(`Update API Error ${response.status}: ${response.statusText}`);
+      const updatedLoan = await response.json();
+
+      // Update loans state
+      setLoans(prevLoans =>
+        prevLoans.map(loan => (loan.id === loanId ? { ...loan, ...updatedLoan } : loan))
+      );
+
+      return updatedLoan;
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Derive repaymentBlocks
   const repaymentBlocks = loans
     .filter(l => ['Active', 'Approved', 'Upcoming', 'Overdue'].includes(l.status))
@@ -80,7 +115,7 @@ export const LoansProvider = ({ children }) => {
     }));
 
   return (
-    <LoansContext.Provider value={{ loans, vendors, loading, error, repaymentBlocks, repaymentHistory }}>
+    <LoansContext.Provider value={{ loans, vendors, loading, error, repaymentBlocks, repaymentHistory, updateLoanStatus }}>
       {children}
     </LoansContext.Provider>
   );

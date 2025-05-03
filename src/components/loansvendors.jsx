@@ -6,7 +6,7 @@ import LoansModal from '../modals/loan_details';
 const ITEMS_PER_PAGE = 20;
 
 const loanTabs = [
-  'Loan Applications',    // Vendor loan applications with Pending, Rejected, or Approved status
+  'Loan Applications',    // All vendor loan applications, regardless of status
   'Upcoming Due Loans',   // Admin overview for upcoming dues
   'Repayment History',    // Completed repayments
   'Overdue Loans',        // Loans past due
@@ -19,9 +19,13 @@ const LoanRepayments = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedLoan, setSelectedLoan] = useState(null);
 
-  // Open modal with selected loan
-  const openModal = (loan) => {
-    setSelectedLoan(loan);
+  // Debugging: Log all loans
+  console.log('Loans:', loans);
+
+  // Open modal with the full API loan object
+  const openModal = (loan, tabData) => {
+    console.log('Opening modal with loan:', loan);
+    setSelectedLoan(loan); // Pass the original loan object
     setIsModalOpen(true);
   };
 
@@ -34,28 +38,29 @@ const LoanRepayments = () => {
   const getDataForTab = () => {
     switch (activeTab) {
       case 'Loan Applications':
-        return loans
-          .filter(app => ['Pending', 'Rejected', 'Approved'].includes(app.status))
-          .map(app => {
-            // Map guarantor vendor IDs to usernames, join with newline
-            const guarantorUsernames = app.guarantors.length > 0
-              ? app.guarantors
-                  .map(guarantorId => {
-                    const vendor = vendors.find(v => v.id === guarantorId);
-                    return vendor ? vendor.username : 'Unknown';
-                  })
-                  .join('\n')
-              : '-';
+        const allLoans = Array.isArray(loans) ? loans : [];
+        console.log('Loans for Loan Applications:', allLoans);
+        return allLoans.map(app => {
+          // Map guarantor vendor IDs to usernames, join with newline
+          const guarantorUsernames = Array.isArray(app.guarantors) && app.guarantors.length > 0
+            ? app.guarantors
+                .map(guarantorId => {
+                  const vendor = Array.isArray(vendors) ? vendors.find(v => v.id === guarantorId) : null;
+                  return vendor ? vendor.username : 'Unknown';
+                })
+                .join('\n')
+            : '-';
 
-            return {
-              applicationId: app.id,
-              vendor: { name: app.vendor_username },
-              requestedAmount: app.amount,
-              guarantor: guarantorUsernames,
-              appliedDate: app.created_at.split('T')[0],
-              status: app.status,
-            };
-          });
+          return {
+            applicationId: app.id,
+            vendor: { name: app.vendor_username },
+            requestedAmount: app.amount,
+            guarantor: guarantorUsernames,
+            appliedDate: app.created_at.split('T')[0],
+            status: app.status,
+            originalLoan: app, // Store the original loan for modal
+          };
+        });
       case 'Upcoming Due Loans':
         return repaymentBlocks.filter(r => r.status === 'Upcoming');
       case 'Overdue Loans':
@@ -132,11 +137,17 @@ const LoanRepayments = () => {
                       ? 'bg-orange-100 text-orange-900'
                       : row.status === 'Rejected'
                         ? 'bg-red-100 text-red-600'
-                        : ['Approved', 'Paid', 'Upcoming'].includes(row.status)
+                        : row.status === 'Approved'
                           ? 'bg-green-100 text-green-900'
-                          : row.status === 'Overdue'
-                            ? 'bg-red-100 text-red-600'
-                            : ''
+                          : row.status === 'Active'
+                            ? 'bg-green-100 text-green-900'
+                            : row.status === 'Paid'
+                              ? 'bg-green-100 text-green-900'
+                              : row.status === 'Upcoming'
+                                ? 'bg-green-100 text-green-900'
+                                : row.status === 'Overdue'
+                                  ? 'bg-red-100 text-red-600'
+                                  : 'bg-gray-100 text-gray-900'
                   }`}
                 >
                   {row.status}
@@ -146,7 +157,7 @@ const LoanRepayments = () => {
             case 'Action':
               val = (
                 <button
-                  onClick={() => openModal(row)}
+                  onClick={() => openModal(row.originalLoan, row)}
                   className="px-2 py-1 text-gray-600 hover:underline"
                   aria-label="View Details"
                 >
@@ -157,7 +168,7 @@ const LoanRepayments = () => {
             case 'Admin Action':
               val = (
                 <button
-                  onClick={() => openModal(row)}
+                  onClick={() => openModal(row.originalLoan || row, row)}
                   className="text-[11px] px-2 py-1 border rounded hover:bg-gray-50"
                 >{row.adminAction || 'Action'}</button>
               );
@@ -175,7 +186,7 @@ const LoanRepayments = () => {
   const renderEmptyState = () => {
     if (data.length === 0 && !loading && !error) {
       return (
-        <div className="text-center py-4 text-gray-600">
+        <div className="text-center py-4 text-gray-600 text-[11px]">
           {activeTab === 'Loan Applications' && 'No loan applications found.'}
           {activeTab === 'Upcoming Due Loans' && 'No upcoming loans found.'}
           {activeTab === 'Overdue Loans' && 'No overdue loans found.'}
@@ -187,11 +198,11 @@ const LoanRepayments = () => {
   };
 
   if (loading) {
-    return <div className="text-center py-4">Loading...</div>;
+    return <div className="text-center py-4 text-[11px]">Loading...</div>;
   }
 
   if (error) {
-    return <div className="text-center py-4 text-red-600">Error: {error}</div>;
+    return <div className="text-center py-4 text-red-600 text-[11px]">Error: {error}</div>;
   }
 
   return (

@@ -1,73 +1,133 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import ReactDOM from "react-dom";
 import { FiX, FiZoomIn, FiChevronDown, FiChevronUp } from "react-icons/fi";
-// Import your local images
-import ninFrontImg from "../assets/front.jpg";
-import ninBackImg from "../assets/back.jpg";
-import otherDocImg from "../assets/other-doc.jpg";
+import { FaCheck, FaTimes } from "react-icons/fa";
+import { LoansContext } from "../context/loanscontext";
 
 /**
  * LoansModal.jsx
- * React‑Vite modal component for displaying a dummy vendor loan application.
- * Uses only its own hard‑coded dummy data.
+ * React‑Vite modal component for displaying a vendor loan application.
+ * Uses loan data passed via props and LoansContext for updates.
+ * Shows a permanent green "APPROVED" watermark when the loan status is "Approved".
  */
 
-// ———— Dummy Data ————
-const dummyLoan = {
-  applicationId: "A0123",
-  vendor: { name: "Alinatwe Genny", walletBalance: 10000 },
-  requestedAmount: 50000,
-  purpose: "Restocking my clothes",
-  duration: "1 month",
-  paymentFrequency: "weekly",
-  nin: "1234567890",
-  ninType: "National ID",
-  documents: [
-    { type: "National ID", uri: ninFrontImg, label: "Front" },
-    { type: "National ID", uri: ninBackImg, label: "Back" },
-    { type: "Other", uri: otherDocImg },
-  ],
-  guarantor: "Janet Asimwe",
-  appliedDate: "2025-04-20",
-  status: "Pending",
-  repaymentHistory: [
-    { date: "2025-04-27", amount: "260.00" },
-    { date: "2025-05-04", amount: "260.00" },
-  ],
-};
-
-const LoansModal = ({ isOpen, onClose }) => {
+const LoansModal = ({ isOpen, onClose, loan }) => {
+  const { vendors, updateLoanStatus, error } = useContext(LoansContext);
   const [activeTab, setActiveTab] = useState("details");
   const [zoomSrc, setZoomSrc] = useState(null);
   const [docsOpen, setDocsOpen] = useState(true);
+  const [isApproving, setIsApproving] = useState(false);
+  const [isRejecting, setIsRejecting] = useState(false);
+  const [actionError, setActionError] = useState(null);
+  const [isApproved, setIsApproved] = useState(loan?.status === "Approved"); // Check initial status
 
-  if (!isOpen) return null;
+  // Debugging: Log loan prop
+  console.log('LoansModal loan prop:', loan);
+
+  if (!isOpen || !loan) return null;
 
   const {
-    applicationId,
-    vendor,
-    requestedAmount,
-    purpose,
-    duration,
-    paymentFrequency,
-    nin,
-    ninType,
-    documents,
-    guarantor,
-    appliedDate,
-    status,
-    repaymentHistory,
-  } = dummyLoan;
+    id: applicationId = '',
+    vendor_username = 'Unknown',
+    amount = '0',
+    purpose = '-',
+    duration = '-',
+    payment_frequency = '-',
+    national_id_number = '-',
+    national_id_photo = null,
+    business_documents = null,
+    guarantors = [],
+    status = '', // Use raw status, no default 'Pending'
+    created_at = new Date().toISOString(),
+    total_repayable = '0',
+    weekly_payment = '0',
+    monthly_payment = '0',
+    current_balance = '0',
+  } = loan;
+
+  // Map guarantor IDs to usernames
+  const guarantorUsernames = Array.isArray(guarantors) && guarantors.length > 0
+    ? guarantors
+        .map(guarantorId => {
+          const vendor = Array.isArray(vendors) ? vendors.find(v => v.id === guarantorId) : null;
+          return vendor ? vendor.username : 'Unknown';
+        })
+        .join('\n')
+    : '-';
 
   // Financial calculations
-  const principal = parseFloat(requestedAmount) || 0;
-  const weeksInMonth = 4;
-  const rates = { weekly: 0.0045, monthly: 0.018 };
-  const totalWeekly = principal * (1 + rates.weekly * weeksInMonth);
-  const totalMonthly = principal * (1 + rates.monthly);
-  const totalRepayable = paymentFrequency === "weekly" ? totalWeekly : totalMonthly;
-  const weeklyPayable = (totalWeekly / weeksInMonth).toFixed(2);
-  const monthlyPayable = totalMonthly.toFixed(2);
+  const principal = parseFloat(amount) || 0;
+  const totalRepayable = parseFloat(total_repayable) || principal;
+  const weeklyPayable = parseFloat(weekly_payment) || 0;
+  const monthlyPayable = parseFloat(monthly_payment) || 0;
+
+  // Documents
+  const documents = [];
+  if (national_id_photo) {
+    documents.push({ type: "National ID", uri: national_id_photo, label: "National ID" });
+  }
+  if (business_documents) {
+    documents.push({ type: "Business Document", uri: business_documents, label: "Business Document" });
+  }
+
+  // Handler for Approve using API with Bearer token and PATCH
+  const handleApprove = async () => {
+    setIsApproving(true);
+    setActionError(null);
+
+    // Retrieve token from localStorage
+    const token = localStorage.getItem('authToken');
+    console.log('Auth token (authToken):', token ? 'Present' : 'Missing');
+
+    if (!token) {
+      setActionError('Authentication required. Please log in.');
+      setIsApproving(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(`https://api-xtreative.onrender.com/loans/${applicationId}/approve/`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({}),
+      });
+
+      console.log('Approve API response:', response);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        if (response.status === 401) {
+          throw new Error('Invalid or expired credentials. Please log in again.');
+        }
+        throw new Error(errorData.error || errorData.detail || 'Failed to approve loan');
+      }
+
+      console.log('Loan approved successfully for ID:', applicationId);
+      setIsApproved(true); // Set approved state to show watermark permanently
+    } catch (err) {
+      console.error('Approve error:', err.message);
+      setActionError(err.message || 'Failed to approve loan. Please try again.');
+    } finally {
+      setIsApproving(false);
+    }
+  };
+
+  // Handler for Reject (unchanged, using LoansContext)
+  const handleReject = async () => {
+    setIsRejecting(true);
+    setActionError(null);
+    try {
+      await updateLoanStatus(applicationId, "Rejected", "Loan application rejected by admin.");
+      onClose(); // Close modal on success
+    } catch (err) {
+      setActionError("Failed to reject loan. Please try again.");
+    } finally {
+      setIsRejecting(false);
+    }
+  };
 
   // Render documents with zoom and download functionality
   const renderDocs = () => {
@@ -125,11 +185,11 @@ const LoansModal = ({ isOpen, onClose }) => {
   // Overview data
   const overview = [
     { label: "Application ID", value: applicationId },
-    { label: "Vendor Name", value: vendor.name },
-    { label: "Wallet Balance", value: vendor.walletBalance },
-    { label: "Guarantor", value: guarantor },
-    { label: "Status", value: status },
-    { label: "Applied Date", value: appliedDate },
+    { label: "Vendor Name", value: vendor_username },
+    { label: "Wallet Balance", value: current_balance || '-' },
+    { label: "Guarantor", value: guarantorUsernames },
+    { label: "Status", value: status || 'Unknown' },
+    { label: "Applied Date", value: created_at.split('T')[0] },
   ];
 
   // Zoom modal rendered into body via portal
@@ -151,16 +211,30 @@ const LoansModal = ({ isOpen, onClose }) => {
   );
 
   return (
-    <>      
+    <>
       {/* Main Modal */}
       <div
         className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
         onClick={onClose}
       >
         <div
-          className="w-[90%] md:w-[75%] max-h-[95vh] overflow-y-auto rounded shadow-lg bg-white"
+          className="w-[90%] md:w-[75%] max-h-[95vh] overflow-y-auto rounded shadow-lg bg-white relative"
           onClick={(e) => e.stopPropagation()}
         >
+          {/* Approved Watermark - Display permanently if status is Approved */}
+          {isApproved && (
+            <div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none">
+              <div
+                className="text-green-600 text-[100px] font-bold rotate-[-45deg] opacity-100"
+                style={{
+                  textShadow: '2px 2px 4px rgba(0, 0, 0, 0.3)',
+                }}
+              >
+                APPROVED
+              </div>
+            </div>
+          )}
+
           {/* Close button */}
           <div className="flex justify-end p-6">
             <button onClick={onClose} className="text-gray-600 hover:text-gray-800">
@@ -173,7 +247,7 @@ const LoansModal = ({ isOpen, onClose }) => {
             {[
               { label: "Requested Amount", value: principal.toFixed(2) },
               { label: "Total Repayable", value: totalRepayable.toFixed(2) },
-              { label: "Applied Date", value: appliedDate },
+              { label: "Applied Date", value: created_at.split('T')[0] },
             ].map((item, idx) => (
               <div key={idx} className="text-[11px]">
                 <p>{item.label}</p>
@@ -209,12 +283,21 @@ const LoansModal = ({ isOpen, onClose }) => {
 
             {activeTab === "details" && (
               <div className="mt-6 space-y-6">
+                {/* Error message */}
+                {(error || actionError) && (
+                  <div className="text-red-600 text-[11px] text-center">
+                    {error || actionError}
+                  </div>
+                )}
+
                 {/* Overview grid */}
                 <div className="grid grid-cols-3 gap-4">
                   {overview.map((o) => (
                     <div key={o.label}>
                       <p className="text-gray-500 text-[11px]">{o.label}</p>
-                      <p className="text-gray-700 text-[11px] font-medium">{o.value}</p>
+                      <p className="text-gray-700 text-[11px] font-medium" style={{ whiteSpace: 'pre-line' }}>
+                        {o.value}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -223,13 +306,13 @@ const LoansModal = ({ isOpen, onClose }) => {
                 <div className="grid grid-cols-3 gap-4">
                   {[
                     { label: "Loan Purpose", value: purpose },
-                    { label: "Duration", value: duration },
-                    { label: "Payment Plan", value: paymentFrequency },
-                    { label: "Weekly Payable", value: weeklyPayable },
-                    { label: "Monthly Payable", value: monthlyPayable },
+                    { label: "Duration", value: `${duration} months` },
+                    { label: "Payment Plan", value: payment_frequency },
+                    { label: "Weekly Payable", value: weeklyPayable.toFixed(2) },
+                    { label: "Monthly Payable", value: monthlyPayable.toFixed(2) },
                   ].map((s) => (
                     <div key={s.label}>
-                      <p className="text-gray-500	text-[11px]">{s.label}</p>
+                      <p className="text-gray-500 text-[11px]">{s.label}</p>
                       <p className="text-gray-700 text-[11px] font-medium">{s.value}</p>
                     </div>
                   ))}
@@ -237,8 +320,8 @@ const LoansModal = ({ isOpen, onClose }) => {
 
                 {/* NIN info */}
                 <div>
-                  <p className="text-gray-500 text-[11px]">NIN Number ({ninType})</p>
-                  <p className="text-gray-700	text-[11px] font-medium">{nin}</p>
+                  <p className="text-gray-500 text-[11px]">NIN Number</p>
+                  <p className="text-gray-700 text-[11px] font-medium">{national_id_number}</p>
                 </div>
 
                 {/* Documents section */}
@@ -254,23 +337,38 @@ const LoansModal = ({ isOpen, onClose }) => {
                     {docsOpen && <div className="p-4 text-[11px]">{renderDocs()}</div>}
                   </div>
                 </div>
+
+                {/* Approve/Reject Buttons (only for Pending status) */}
+                {status === "Pending" && (
+                  <div className="flex justify-end space-x-4 mt-6 pb-6">
+                    <button
+                      className="flex items-center justify-center w-24 h-8 text-white text-[11px] rounded-md border border-[#f9622c] bg-[#f9622c]"
+                      onClick={handleApprove}
+                      disabled={isApproving || isRejecting}
+                      aria-label="Approve loan application"
+                    >
+                      <FaCheck className="mr-1" />
+                      {isApproving ? "Approving..." : "Approve"}
+                    </button>
+                    <button
+                      className="flex items-center justify-center w-24 h-8 bg-[#fff] text-[#280300] text-[11px] rounded-md border border-[#280300]"
+                      onClick={handleReject}
+                      disabled={isRejecting || isApproving}
+                      aria-label="Reject loan application"
+                    >
+                      <FaTimes className="mr-1" />
+                      {isRejecting ? "Rejecting..." : "Reject"}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
             {activeTab === "history" && (
-              <div className="mt-6">
-                {repaymentHistory.length ? (
-                  <ul className="divide-y divide-gray-200">
-                    {repaymentHistory.map((item, i) => (
-                      <li key={i} className="flex justify-between py-2 text-[13px]">
-                        <span className="text-gray-700">{item.date}</span>
-                        <span className="font-medium	text-gray-900">{item.amount}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-center text-gray-500 text-[11px]">No repayment history available.</p>
-                )}
+              <div className="mt-6 pb-6">
+                <p className="text-center text-gray-500 text-[11px]">
+                  No repayment history available.
+                </p>
               </div>
             )}
           </div>

@@ -1,4 +1,3 @@
-// src/components/FinanceOverview.jsx
 import React, { useState, useRef } from 'react';
 import {
   CreditCard,
@@ -9,6 +8,7 @@ import {
   EyeOff,
   Lock,
 } from 'lucide-react';
+import axios from 'axios';
 import walletImage from '../assets/money-icon.png';
 import FinancePayout from './finance_payouts';
 
@@ -17,8 +17,10 @@ const FinanceOverview = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [pinDigits, setPinDigits] = useState(['', '', '', '']);
   const [pinError, setPinError] = useState('');
+  const [balance, setBalance] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState('');
   const inputRefs = [useRef(), useRef(), useRef(), useRef()];
-  const CORRECT_PIN = '1234';
 
   const handleEyeClick = () => {
     if (showAmount) {
@@ -26,6 +28,7 @@ const FinanceOverview = () => {
     } else {
       setModalOpen(true);
       setPinError('');
+      setApiError('');
       setPinDigits(['', '', '', '']);
       setTimeout(() => inputRefs[0].current.focus(), 0);
     }
@@ -42,13 +45,53 @@ const FinanceOverview = () => {
     }
   };
 
-  const handlePinSubmit = e => {
+  const handlePinSubmit = async (e) => {
     e.preventDefault();
-    if (pinDigits.join('') === CORRECT_PIN) {
+    const pin = pinDigits.join('');
+    if (pin.length !== 4) {
+      setPinError('Please enter a 4-digit PIN.');
+      return;
+    }
+
+    setLoading(true);
+    setPinError('');
+    setApiError('');
+
+    try {
+      // Retrieve the access token from localStorage (set during login)
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        setApiError('You must be logged in to view the balance.');
+        setLoading(false);
+        return;
+      }
+
+      // Send PIN to the balance endpoint with Bearer token
+      const balanceResponse = await axios.post(
+        'https://api-xtreative.onrender.com/wallets/business-wallet/balance/',
+        { pin },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      // Assuming balanceResponse.data contains { balance: number }
+      const fetchedBalance = balanceResponse.data.balance;
+      setBalance(`UGX ${fetchedBalance.toLocaleString()}`);
       setShowAmount(true);
       setModalOpen(false);
-    } else {
-      setPinError('Incorrect PIN. Please try again.');
+    } catch (error) {
+      if (error.response?.status === 401) {
+        setPinError('Incorrect PIN or invalid credentials.');
+      } else {
+        setApiError('Failed to fetch balance. Please try again later.');
+      }
+      console.error('API Error:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -80,17 +123,22 @@ const FinanceOverview = () => {
                   value={digit}
                   onChange={e => handleDigitChange(idx, e.target.value)}
                   className="w-12 h-12 border border-gray-300 rounded-md text-center text-lg font-medium focus:border-orange-400 focus:outline-none"
+                  disabled={loading}
                 />
               ))}
             </div>
             {pinError && (
               <p className="text-red-600 text-[11px] mb-4">{pinError}</p>
             )}
+            {apiError && (
+              <p className="text-red-600 text-[11px] mb-4">{apiError}</p>
+            )}
             <button
               type="submit"
-              className="w-full py-3 bg-[#f9622c] text-white font-semibold rounded-md text-[11px]"
+              className="w-full py-3 bg-[#f9622c] text-white font-semibold rounded-md text-[11px] disabled:opacity-50"
+              disabled={loading}
             >
-              Submit
+              {loading ? 'Submitting...' : 'Submit'}
             </button>
           </form>
         </div>
@@ -113,7 +161,7 @@ const FinanceOverview = () => {
             </div>
             <div className="flex items-center space-x-2 mb-4">
               <h2 className="text-2xl font-semibold">
-                {showAmount ? 'UGX 50,000,000' : '••••••••••'}
+                {showAmount && balance ? balance : '••••••••••'}
               </h2>
               <button
                 onClick={handleEyeClick}
