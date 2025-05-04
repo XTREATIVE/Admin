@@ -224,7 +224,7 @@ export default function ChatMainWindow({
                   onMouseLeave={() => setMenuOpenFor(null)}
                 >
                   <ul className="divide-y">
-                    {['Reply','Forward','Copy','Delete'].map(a => (
+                    {['Reply','Copy','Delete'].map(a => (
                       <li
                         key={a}
                         className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
