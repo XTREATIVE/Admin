@@ -13,7 +13,6 @@ import {
 } from 'react-icons/bi';
 import EmojiPicker from 'emoji-picker-react';
 
-// Utility to detect emoji-only messages
 const isEmojiOnly = (text) => {
   const emojiRegex = /^[\p{Emoji_Presentation}\p{Emoji}\uFE0F]+$/u;
   return emojiRegex.test(text.trim());
@@ -42,6 +41,7 @@ export default function ChatMainWindow({
   const smileBtnRef = useRef(null);
   const pickerRef = useRef(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showToast, setShowToast] = useState(false);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -61,6 +61,13 @@ export default function ChatMainWindow({
 
   const onEmojiClick = (emojiObject) => {
     setInput((prev) => prev + emojiObject.emoji);
+  };
+
+  const handleCopy = (text) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 2000);
+    });
   };
 
   const renderReplyPreview = () => {
@@ -95,7 +102,7 @@ export default function ChatMainWindow({
   const displayName = current.name || '';
 
   return (
-    <main className="flex-1 flex flex-col bg-gray-50">
+    <main className="flex-1 flex flex-col bg-gray-50 relative">
       {/* Header */}
       <div className="px-6 py-4 bg-white flex items-center justify-between border-b">
         <div className="flex items-center">
@@ -203,7 +210,6 @@ export default function ChatMainWindow({
 
               {hoveredMessage === m.id && (
                 <div
-                  ref={el => (m.menuButtonRef = el)}
                   className={`absolute ${isSent ? 'top-0 right-0' : 'top-0 left-0'} mt-[-6px] mx-1 text-gray-500 cursor-pointer`}
                   onClick={() => setMenuOpenFor(menuOpenFor === m.id ? null : m.id)}
                 >
@@ -219,7 +225,17 @@ export default function ChatMainWindow({
                 >
                   <ul className="divide-y">
                     {['Reply','Forward','Copy','Delete'].map(a => (
-                      <li key={a} className="px-4 py-2 hover:bg-gray-100 cursor-pointer" onClick={() => handleAction(a, m)}>
+                      <li
+                        key={a}
+                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                        onClick={() => {
+                          if (a === 'Copy') {
+                            handleCopy(m.text || '');
+                          } else {
+                            handleAction(a, m);
+                          }
+                        }}
+                      >
                         {a}
                       </li>
                     ))}
@@ -269,6 +285,13 @@ export default function ChatMainWindow({
           </button>
         </div>
       </div>
+
+      {/* Toast Notification */}
+      {showToast && (
+        <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 bg-[#280300] bg-opacity-50 text-white text-xs px-4 py-2 rounded-full shadow-lg z-50">
+          Message copied
+        </div>
+      )}
     </main>
   );
 }
