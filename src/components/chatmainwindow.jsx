@@ -13,14 +13,14 @@ import {
 } from 'react-icons/bi';
 import EmojiPicker from 'emoji-picker-react';
 
-// Utility to detect if text is emoji-only
+// Utility to detect emoji-only messages
 const isEmojiOnly = (text) => {
   const emojiRegex = /^[\p{Emoji_Presentation}\p{Emoji}\uFE0F]+$/u;
   return emojiRegex.test(text.trim());
 };
 
 export default function ChatMainWindow({
-  messages,
+  messages = [],
   setMessages,
   input,
   setInput,
@@ -34,7 +34,7 @@ export default function ChatMainWindow({
   handleAttach,
   handleAttachVideo,
   handleAction,
-  current,
+  current = {},
   fileInputRef,
   videoInputRef,
 }) {
@@ -43,7 +43,6 @@ export default function ChatMainWindow({
   const pickerRef = useRef(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
-  // Close emoji picker when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (
@@ -81,7 +80,7 @@ export default function ChatMainWindow({
       <div className="border-l-4 border-[#f9622c] bg-[#f0f0f0] p-2 mb-2 rounded-lg flex items-center">
         <div className="flex-1">
           <div className="font-semibold text-[10px] text-[#333]">
-            Replying to {from === 'me' ? 'You' : current.name}
+            Replying to {from === 'me' ? 'You' : (current.name || 'Unknown')}
           </div>
           <div className="mt-1 text-gray-600">{preview}</div>
         </div>
@@ -90,22 +89,26 @@ export default function ChatMainWindow({
     );
   };
 
+  const initials = current.name
+    ? current.name.split(' ').map(n => n[0]).join('').slice(0, 2)
+    : '';
+  const displayName = current.name || '';
+
   return (
     <main className="flex-1 flex flex-col bg-gray-50">
       {/* Header */}
       <div className="px-6 py-4 bg-white flex items-center justify-between border-b">
         <div className="flex items-center">
           <div className="w-10 h-10 rounded-full flex items-center justify-center bg-gray-400 text-white font-semibold text-[11px]">
-            {current.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+            {initials}
           </div>
           <div className="ml-3">
-            <h3 className="font-medium text-[12px]">{current.name}</h3>
+            <h3 className="font-medium text-[12px]">{displayName}</h3>
             {current.typing && <span className="text-green-500 text-[11px] italic">typing...</span>}
           </div>
         </div>
         <div className="flex space-x-4 text-gray-600">
           <BiUser className="text-2xl cursor-pointer" />
-          
           <BiDotsVerticalRounded className="text-2xl cursor-pointer" />
         </div>
       </div>
@@ -113,9 +116,25 @@ export default function ChatMainWindow({
       {/* Messages list */}
       <div className="flex-1 overflow-y-auto p-6 space-y-4 text-[12px] thin-scrollbar">
         {messages.map((m) => {
-          const original = m.replyTo && messages.find((x) => x.id === m.replyTo);
           const isSent = m.from === 'me';
           const onlyEmoji = m.text && isEmojiOnly(m.text);
+
+          if (m.deleted) {
+            return (
+              <div key={m.id} className={`relative flex flex-col ${isSent ? 'items-end' : 'items-start'}`}>
+                <div className="relative p-3 max-w-xs rounded-xl bg-gray-100 text-gray-500 italic text-[11px]">
+                  🚫 You deleted this message
+                </div>
+                <div className="flex items-center space-x-1 mt-1 text-xs text-gray-500">
+                  <span>{m.time}</span>
+                  {isSent && (m.read ? <BiCheckDouble /> : <BiCheck />)}
+                </div>
+              </div>
+            );
+          }
+
+          const original = m.replyTo && messages.find(x => x.id === m.replyTo);
+
           return (
             <div
               key={m.id}
@@ -123,11 +142,10 @@ export default function ChatMainWindow({
               onMouseEnter={() => setHoveredMessage(m.id)}
               onMouseLeave={() => setHoveredMessage(null)}
             >
-              {/* Reply preview */}
               {original && (
                 <div className="border-l-4 border-[#f9622c] bg-[#f0f0f0] p-2 mb-1 rounded-lg max-w-xs">
                   <div className="font-semibold text-[10px] text-[#333] mb-1">
-                    {original.from === 'me' ? 'You' : current.name}
+                    {original.from === 'me' ? 'You' : (current.name || 'Unknown')}
                   </div>
                   <div className="text-[10px] truncate">
                     {original.text || original.attachments?.[0]?.name || 'Media'}
@@ -135,7 +153,6 @@ export default function ChatMainWindow({
                 </div>
               )}
 
-              {/* Text or Emoji */}
               {m.text && (
                 <div
                   className={`relative p-3 max-w-xs rounded-xl break-words whitespace-pre-wrap ${
@@ -146,7 +163,6 @@ export default function ChatMainWindow({
                 </div>
               )}
 
-              {/* Images */}
               {m.images && (
                 <div className="mt-2 flex space-x-2">
                   {m.images.map((src, i) => (
@@ -160,12 +176,11 @@ export default function ChatMainWindow({
                 </div>
               )}
 
-              {/* Attachments */}
               {m.attachments && (
                 <div className="mt-2 flex flex-col space-y-2 max-w-xs">
                   {m.attachments.map((att, i) => {
                     const ext = att.name.split('.').pop().toLowerCase();
-                    const icon = ext === 'pdf' ? '📄' : ['jpg', 'jpeg', 'png', 'gif'].includes(ext) ? '🖼️' : '📁';
+                    const icon = ext === 'pdf' ? '📄' : ['jpg','jpeg','png','gif'].includes(ext) ? '🖼️' : '📁';
                     return (
                       <div key={i} className="flex items-center bg-gray-100 rounded-lg p-2 shadow-sm space-x-3">
                         <div className="text-3xl">{icon}</div>
@@ -182,26 +197,28 @@ export default function ChatMainWindow({
                 </div>
               )}
 
-              {/* Video */}
-              {m.video && <video src={m.video} controls className="w-48 rounded-xl mt-2 shadow-md" />}
+              {m.video && (
+                <video src={m.video} controls className="w-48 rounded-xl mt-2 shadow-md" />
+              )}
 
-              {/* Hover menu */}
               {hoveredMessage === m.id && (
                 <div
-                  ref={(el) => (m.menuButtonRef = el)}
+                  ref={el => (m.menuButtonRef = el)}
                   className={`absolute ${isSent ? 'top-0 right-0' : 'top-0 left-0'} mt-[-6px] mx-1 text-gray-500 cursor-pointer`}
-                  onClick={(e) => {
-                    const rect = m.menuButtonRef.getBoundingClientRect();
-                    setMenuOpenFor(menuOpenFor === m.id ? null : m.id);
-                  }}
+                  onClick={() => setMenuOpenFor(menuOpenFor === m.id ? null : m.id)}
                 >
                   <BiDotsVerticalRounded />
                 </div>
               )}
+
               {menuOpenFor === m.id && (
-                <div ref={menuRef} className={`absolute z-20 bg-white rounded-md shadow-lg text-[10px] ${isSent ? 'right-0' : 'left-0'} mt-5`} onMouseLeave={() => setMenuOpenFor(null)}>
+                <div
+                  ref={menuRef}
+                  className={`absolute z-20 bg-white rounded-md shadow-lg text-[10px] ${isSent ? 'right-0' : 'left-0'} mt-5`}
+                  onMouseLeave={() => setMenuOpenFor(null)}
+                >
                   <ul className="divide-y">
-                    {['Reply', 'Forward', 'Copy', 'Delete'].map((a) => (
+                    {['Reply','Forward','Copy','Delete'].map(a => (
                       <li key={a} className="px-4 py-2 hover:bg-gray-100 cursor-pointer" onClick={() => handleAction(a, m)}>
                         {a}
                       </li>
@@ -210,7 +227,6 @@ export default function ChatMainWindow({
                 </div>
               )}
 
-              {/* Timestamp & status */}
               <div className="flex items-center space-x-1 mt-1 text-xs text-gray-500">
                 <span>{m.time}</span>
                 {isSent && (m.read ? <BiCheckDouble /> : <BiCheck />)}
@@ -220,7 +236,7 @@ export default function ChatMainWindow({
         })}
       </div>
 
-      {/* Input area */}
+      {/* Input Area */}
       <div className="px-6 py-4 bg-white border-t relative">
         {renderReplyPreview()}
         <div className="flex items-center space-x-4">
@@ -231,8 +247,8 @@ export default function ChatMainWindow({
             placeholder="Enter your message"
             className="flex-1 border rounded-full px-4 py-2 focus:outline-none text-[12px] resize-none overflow-hidden"
             value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 handleSend();
@@ -240,8 +256,8 @@ export default function ChatMainWindow({
             }}
           />
           {showEmojiPicker && (
-            <div ref={pickerRef} className="absolute bottom-16 left-16 z-30 bg-white font-poppins p-2 rounded-lg shadow-lg">
-              <EmojiPicker onEmojiClick={onEmojiClick} pickerStyle={{ backgroundColor: '#fff', fontFamily: 'Poppins', fontSize: '11px' }} emojiStyle={{ fontSize: '1rem' }} />
+            <div ref={pickerRef} className="absolute bottom-16 left-16 z-30 bg-white p-2 rounded-lg shadow-lg">
+              <EmojiPicker onEmojiClick={onEmojiClick} />
             </div>
           )}
           <BiPaperclip className="text-2xl text-gray-500 cursor-pointer" onClick={() => fileInputRef.current.click()} />

@@ -43,13 +43,13 @@ export default function ChatPage() {
 
     if (imageFiles.length > 0) {
       Promise.all(
-        imageFiles.map(file => {
-          return new Promise(resolve => {
+        imageFiles.map(file =>
+          new Promise(resolve => {
             const reader = new FileReader();
             reader.onload = () => resolve(reader.result);
             reader.readAsDataURL(file);
-          });
-        })
+          })
+        )
       ).then(imageURLs => {
         const newMessage = {
           id: Date.now(),
@@ -64,7 +64,6 @@ export default function ChatPage() {
       });
     }
 
-    // Handle non-image files (e.g., documents)
     otherFiles.forEach(file => {
       const reader = new FileReader();
       reader.onload = () => {
@@ -102,7 +101,6 @@ export default function ChatPage() {
       };
       setMessages(prev => [...prev, newMessage]);
     };
-
     reader.readAsDataURL(file);
     videoInputRef.current.value = '';
   };
@@ -114,7 +112,14 @@ export default function ChatPage() {
         setReplyTo(message);
         break;
       case 'Delete':
-        setMessages(prev => prev.filter(m => m.id !== message.id));
+        // mark message as deleted instead of removing it
+        setMessages(prev =>
+          prev.map(m =>
+            m.id === message.id
+              ? { ...m, deleted: true }
+              : m
+          )
+        );
         break;
       case 'Copy':
         navigator.clipboard.writeText(message.text || '').then(() => alert('Copied!'));
