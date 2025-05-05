@@ -1,8 +1,27 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { BiDotsVerticalRounded, BiSearch } from 'react-icons/bi';
 import { FaUserCircle } from 'react-icons/fa';
+import Fuse from 'fuse.js';
 
 export default function ChatSidebar({ contacts, selected, setSelected }) {
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Initialize Fuse.js with contacts and options
+  const fuse = useMemo(() => {
+    return new Fuse(contacts, {
+      keys: ['name', 'lastMessage'],
+      threshold: 0.3,
+    });
+  }, [contacts]);
+
+  // Filter contacts based on search query
+  const filteredContacts = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return contacts;
+    }
+    return fuse.search(searchQuery).map(result => result.item);
+  }, [searchQuery, fuse, contacts]);
+
   return (
     <aside className="w-1/3 border-r bg-white flex flex-col ml-[80px]">
       <div className="p-4 flex items-center justify-between">
@@ -16,13 +35,15 @@ export default function ChatSidebar({ contacts, selected, setSelected }) {
           <input
             type="text"
             placeholder="Search ..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border rounded-full focus:outline-none text-[11px]"
           />
         </div>
       </div>
 
       <div className="flex space-x-4 px-4 overflow-x-auto hide-scrollbar pb-4">
-        {contacts.map(c => (
+        {filteredContacts.map(c => (
           <div
             key={c.id}
             className="flex flex-col items-center cursor-pointer"
@@ -40,7 +61,7 @@ export default function ChatSidebar({ contacts, selected, setSelected }) {
       </div>
 
       <nav className="flex-1 overflow-y-auto thin-scrollbar">
-        {contacts.map(c => (
+        {filteredContacts.map(c => (
           <div
             key={c.id}
             onClick={() => setSelected(c.id)}
@@ -72,5 +93,5 @@ export default function ChatSidebar({ contacts, selected, setSelected }) {
         ))}
       </nav>
     </aside>
-  );
+);
 }
