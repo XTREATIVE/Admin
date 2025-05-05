@@ -31,7 +31,7 @@ const RecentClaims = ({ onViewAll }) => {
     error === "No authentication token found. Please log in." ||
     error === "Authentication failed. Please log in again."
   ) {
-    navigate("/login");
+    navigate("/");
     return null;
   }
 

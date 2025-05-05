@@ -7,7 +7,7 @@ const ProtectedRoute = ({ children }) => {
 
   // If we DON’T have a token, they must log in first
   if (!accessToken) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/" replace />;
   }
 
   // Otherwise show the protected content
