@@ -78,8 +78,9 @@ const NotificationBell = () => {
             ) : (
               notifications.map((notification, index) => (
                 <li key={index} className="p-3 hover:bg-gray-100 text-sm">
-                  <p className="text-sm text-gray-700">{notification.title}</p>
-                  <p className="text-xs text-gray-400">{notification.time}</p>
+                  <p className="text-sm text-gray-700">{notification.sender.username}</p>
+                  <p className="text-sm text-gray-700">{notification.created_at}</p>
+                  <p className="text-xs text-gray-400">{notification.message_content}</p>
                 </li>
               ))
             )}
