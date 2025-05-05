@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+// 📁 ChatMainWindow.jsx
+import React, { useState, useRef, useEffect, useContext } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
 import {
   BiSmile,
@@ -13,6 +14,7 @@ import {
 } from 'react-icons/bi';
 import EmojiPicker from 'emoji-picker-react';
 import ChatUserModal from '../modals/chatuser_modal';
+import { UserContext } from '../context/usercontext';
 
 const isEmojiOnly = (text) => {
   const emojiRegex = /^[\p{Emoji_Presentation}\p{Emoji}\uFE0F]+$/u;
@@ -30,7 +32,6 @@ export default function ChatMainWindow({
   setHoveredMessage,
   menuOpenFor,
   setMenuOpenFor,
-  handleSend,
   handleAttach,
   handleAttachVideo,
   handleAction,
@@ -38,6 +39,8 @@ export default function ChatMainWindow({
   fileInputRef,
   videoInputRef,
 }) {
+  const { sendMessage, sendingMessage, sendMessageError } = useContext(UserContext);
+
   const menuRef = useRef(null);
   const smileBtnRef = useRef(null);
   const pickerRef = useRef(null);
@@ -104,6 +107,36 @@ export default function ChatMainWindow({
     : '';
   const displayName = current.name || '';
 
+  // Unified send handler integrating context
+  const doSend = async () => {
+    if (input.trim() === '') return;
+
+    // 1) Optimistic local append
+    const tempId = Date.now();
+    const optimistic = {
+      id: tempId,
+      from: 'me',
+      to: current.id,
+      text: input.trim(),
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      read: false,
+      ...(replyTo && { replyTo: replyTo.id }),
+    };
+    setMessages(prev => [...prev, optimistic]);
+    setInput('');
+    setReplyTo(null);
+
+    // 2) Persist via context
+    try {
+      const saved = await sendMessage(optimistic.text, current.id);
+      // 3) Replace temp with real response
+      setMessages(prev => prev.map(m => (m.id === tempId ? saved : m)));
+    } catch (err) {
+      console.error('Send failed', err);
+      // Optionally: show an inline error or revert optimistic update
+    }
+  };
+
   return (
     <>
       <main className="flex-1 flex flex-col bg-gray-50 relative">
@@ -119,10 +152,7 @@ export default function ChatMainWindow({
             </div>
           </div>
           <div className="flex space-x-4 text-gray-600">
-            <BiUser
-              className="text-2xl cursor-pointer"
-              onClick={() => setShowUserModal(true)}
-            />
+            <BiUser className="text-2xl cursor-pointer" onClick={() => setShowUserModal(true)} />
             <BiDotsVerticalRounded className="text-2xl cursor-pointer" />
           </div>
         </div>
@@ -132,14 +162,11 @@ export default function ChatMainWindow({
           {messages.map((m) => {
             const isSent = m.from === 'me';
             const onlyEmoji = m.text && isEmojiOnly(m.text);
+            const original = m.replyTo && messages.find(x => x.id === m.replyTo);
 
-            // Deleted message
             if (m.deleted) {
               return (
-                <div
-                  key={m.id}
-                  className={`relative flex flex-col ${isSent ? 'items-end' : 'items-start'}`}
-                >
+                <div key={m.id} className={`relative flex flex-col ${isSent ? 'items-end' : 'items-start'}`}>
                   <div className="relative p-3 max-w-xs rounded-xl bg-gray-100 text-gray-500 italic text-[11px]">
                     🚫 You deleted this message
                   </div>
@@ -150,8 +177,6 @@ export default function ChatMainWindow({
                 </div>
               );
             }
-
-            const original = m.replyTo && messages.find(x => x.id === m.replyTo);
 
             return (
               <div
@@ -184,12 +209,7 @@ export default function ChatMainWindow({
                 {m.images && (
                   <div className="mt-2 flex space-x-2">
                     {m.images.map((src, i) => (
-                      <img
-                        key={i}
-                        src={src}
-                        className="w-32 h-24 object-cover rounded-md shadow-sm border"
-                        alt=""
-                      />
+                      <img key={i} src={src} className="w-32 h-24 object-cover rounded-md shadow-sm border" alt="" />
                     ))}
                   </div>
                 )}
@@ -198,37 +218,15 @@ export default function ChatMainWindow({
                   <div className="mt-2 flex flex-col space-y-2 max-w-xs">
                     {m.attachments.map((att, i) => {
                       const ext = att.name.split('.').pop().toLowerCase();
-                      const icon = ext === 'pdf'
-                        ? '📄'
-                        : ['jpg','jpeg','png','gif'].includes(ext)
-                          ? '🖼️'
-                          : '📁';
+                      const icon = ext === 'pdf' ? '📄' : ['jpg','jpeg','png','gif'].includes(ext) ? '🖼️' : '📁';
                       return (
-                        <div
-                          key={i}
-                          className="flex items-center bg-gray-100 rounded-lg p-2 shadow-sm space-x-3"
-                        >
+                        <div key={i} className="flex items-center bg-gray-100 rounded-lg p-2 shadow-sm space-x-3">
                           <div className="text-3xl">{icon}</div>
                           <div className="flex-1">
-                            <div className="text-[12px] font-medium break-all">
-                              {att.name}
-                            </div>
+                            <div className="text-[12px] font-medium break-all">{att.name}</div>
                             <div className="flex space-x-2 mt-1">
-                              <a
-                                href={att.data}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 text-[11px] underline"
-                              >
-                                Open
-                              </a>
-                              <a
-                                href={att.data}
-                                download={att.name}
-                                className="text-blue-600 text-[11px] underline"
-                              >
-                                Save As
-                              </a>
+                              <a href={att.data} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-[11px] underline">Open</a>
+                              <a href={att.data} download={att.name} className="text-blue-600 text-[11px] underline">Save As</a>
                             </div>
                           </div>
                         </div>
@@ -238,47 +236,23 @@ export default function ChatMainWindow({
                 )}
 
                 {m.video && (
-                  <video
-                    src={m.video}
-                    controls
-                    className="w-48 rounded-xl mt-2 shadow-md"
-                  />
+                  <video src={m.video} controls className="w-48 rounded-xl mt-2 shadow-md" />
                 )}
 
                 {hoveredMessage === m.id && (
                   <div
-                    className={`absolute ${
-                      isSent ? 'top-0 right-0' : 'top-0 left-0'
-                    } mt-[-6px] mx-1 text-gray-500 cursor-pointer`}
-                    onClick={() =>
-                      setMenuOpenFor(menuOpenFor === m.id ? null : m.id)
-                    }
+                    className={`absolute ${isSent ? 'top-0 right-0' : 'top-0 left-0'} mt-[-6px] mx-1 text-gray-500 cursor-pointer`}
+                    onClick={() => setMenuOpenFor(menuOpenFor === m.id ? null : m.id)}
                   >
                     <BiDotsVerticalRounded />
                   </div>
                 )}
 
                 {menuOpenFor === m.id && (
-                  <div
-                    ref={menuRef}
-                    className={`absolute z-20 bg-white rounded-md shadow-lg text-[10px] ${
-                      isSent ? 'right-0' : 'left-0'
-                    } mt-5`}
-                    onMouseLeave={() => setMenuOpenFor(null)}
-                  >
+                  <div ref={menuRef} className={`absolute z-20 bg-white rounded-md shadow-lg text-[10px] ${isSent ? 'right-0' : 'left-0'} mt-5`} onMouseLeave={() => setMenuOpenFor(null)}>
                     <ul className="divide-y">
                       {['Reply', 'Copy', 'Delete'].map(a => (
-                        <li
-                          key={a}
-                          className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                          onClick={() => {
-                            if (a === 'Copy') {
-                              handleCopy(m.text || '');
-                            } else {
-                              handleAction(a, m);
-                            }
-                          }}
-                        >
+                        <li key={a} className="px-4 py-2 hover:bg-gray-100 cursor-pointer" onClick={() => (a === 'Copy' ? handleCopy(m.text || '') : handleAction(a, m))}>
                           {a}
                         </li>
                       ))}
@@ -314,50 +288,31 @@ export default function ChatMainWindow({
               onKeyDown={e => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
-                  handleSend();
+                  doSend();
                 }
               }}
             />
             {showEmojiPicker && (
-              <div
-                ref={pickerRef}
-                className="absolute bottom-16 left-16 z-30 bg-white p-2 rounded-lg shadow-lg"
-              >
+              <div ref={pickerRef} className="absolute bottom-16 left-16 z-30 bg-white p-2 rounded-lg shadow-lg">
                 <EmojiPicker onEmojiClick={onEmojiClick} />
               </div>
             )}
-            <BiPaperclip
-              className="text-2xl text-gray-500 cursor-pointer"
-              onClick={() => fileInputRef.current.click()}
-            />
-            <input
-              type="file"
-              ref={fileInputRef}
-              className="hidden"
-              multiple
-              onChange={handleAttach}
-            />
-            <BiVideo
-              className="text-2xl text-gray-500 cursor-pointer"
-              onClick={() => videoInputRef.current.click()}
-            />
-            <input
-              type="file"
-              ref={videoInputRef}
-              className="hidden"
-              accept="video/*"
-              onChange={handleAttachVideo}
-            />
+            <BiPaperclip className="text-2xl text-gray-500 cursor-pointer" onClick={() => fileInputRef.current.click()} />
+            <input type="file" ref={fileInputRef} className="hidden" multiple onChange={handleAttach} />
+            <BiVideo className="text-2xl text-gray-500 cursor-pointer" onClick={() => videoInputRef.current.click()} />
+            <input type="file" ref={videoInputRef} className="hidden" accept="video/*" onChange={handleAttachVideo} />
             <button
-              onClick={handleSend}
-              className="bg-[#f9622c] p-3 rounded-full text-white"
+              onClick={doSend}
+              disabled={sendingMessage}
+              className="bg-[#f9622c] p-3 rounded-full text-white disabled:opacity-50"
             >
-              <BiSend />
+              {sendingMessage ? <BiSend className="animate-spin" /> : <BiSend />}
             </button>
           </div>
+          {sendMessageError && <div className="text-red-500 text-xs mt-1">{sendMessageError}</div>}
         </div>
 
-        {/* Toast Notification */}
+        {/* Copy Toast */}
         {showToast && (
           <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 bg-[#280300] bg-opacity-50 text-white text-xs px-4 py-2 rounded-full shadow-lg z-50">
             Message copied
@@ -365,12 +320,9 @@ export default function ChatMainWindow({
         )}
       </main>
 
-      {/* Chat User Modal */}
+      {/* User Info Modal */}
       {showUserModal && (
-        <ChatUserModal
-          user={current}
-          onClose={() => setShowUserModal(false)}
-        />
+        <ChatUserModal user={current} onClose={() => setShowUserModal(false)} />
       )}
     </>
   );

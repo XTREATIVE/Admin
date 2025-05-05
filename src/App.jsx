@@ -20,7 +20,8 @@ import "./styles/index.css";
 import Finance from "./pages/finance.jsx";
 import Loans from "./pages/loans.jsx";
 import Profile from "./pages/profile.jsx"; 
-import Chat from "./pages/chat.jsx"
+import Chat from "./pages/chat.jsx";
+import Reset_Password from "./pages/reset_password.jsx"
 
 // Import the custom navigation limiting hook
 import { useSingleStepNavigationLimit } from "./hooks/custom.jsx";
@@ -54,6 +55,7 @@ function App() {
         <Route path="/reports" element={<Reports />} />
         <Route path="/finance" element={<Finance />} />
         <Route path="/loans" element={<Loans />} />
+        <Route path="/reset_password" element={<Reset_Password />} />
       </Routes>
       {/* ToastContainer should be rendered outside of <Routes> */}
       <ToastContainer position="bottom-right" autoClose={3000} />

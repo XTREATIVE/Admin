@@ -22,6 +22,15 @@ export default function ChatSidebar({ contacts, selected, setSelected }) {
     return fuse.search(searchQuery).map(result => result.item);
   }, [searchQuery, fuse, contacts]);
 
+  // Only show contacts that have conversation history
+  // You can adjust the condition (lastMessage or messages array) as needed
+  const conversationContacts = useMemo(() => {
+    return filteredContacts.filter(c => 
+      Boolean(c.lastMessage) 
+      || (Array.isArray(c.messages) && c.messages.length > 0)
+    );
+  }, [filteredContacts]);
+
   return (
     <aside className="w-1/3 border-r bg-white flex flex-col ml-[80px]">
       <div className="p-4 flex items-center justify-between">
@@ -61,7 +70,7 @@ export default function ChatSidebar({ contacts, selected, setSelected }) {
       </div>
 
       <nav className="flex-1 overflow-y-auto thin-scrollbar">
-        {filteredContacts.map(c => (
+        {conversationContacts.map(c => (
           <div
             key={c.id}
             onClick={() => setSelected(c.id)}
@@ -93,5 +102,5 @@ export default function ChatSidebar({ contacts, selected, setSelected }) {
         ))}
       </nav>
     </aside>
-);
+  );
 }

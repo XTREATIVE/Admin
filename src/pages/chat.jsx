@@ -1,12 +1,14 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useContext, useMemo, useEffect } from 'react';
 import Sidebar from '../components/sidebar';
 import Header from '../components/header';
 import ChatSidebar from '../components/chatsidebar';
 import ChatMainWindow from '../components/chatmainwindow';
-import { dummyNotifications, contacts, initialMessages } from '../data/chatadata';
+import { dummyNotifications, initialMessages } from '../data/chatadata';
+import { UserContext } from '../context/usercontext';
 
 export default function ChatPage() {
-  const [selected, setSelected] = useState(3);
+  const { users, loadingUsers, error } = useContext(UserContext);
+  const [selected, setSelected] = useState(null);
   const [messages, setMessages] = useState(initialMessages);
   const [input, setInput] = useState('');
   const [replyTo, setReplyTo] = useState(null);
@@ -16,8 +18,39 @@ export default function ChatPage() {
   const fileInputRef = useRef();
   const videoInputRef = useRef();
 
-  const current = contacts.find(c => c.id === selected);
+  // Build contacts: only customers (case-insensitive), map to sidebar shape
+  const contacts = useMemo(() => {
+    if (loadingUsers || error) return [];
+    return users
+      .filter(u => u.role && u.role.toLowerCase() === 'customer')
+      .map(u => ({
+        id: u.id,
+        name: u.username,
+        // Find most recent message to/from that user
+        ...(() => {
+          const convo = [...messages].reverse().find(
+            m => m.from === u.id || m.to === u.id
+          );
+          return {
+            lastMessage: convo?.text || '',
+            time: convo?.time || '',
+          };
+        })(),
+        typing: false,
+      }));
+  }, [users, loadingUsers, error, messages]);
 
+  // Default to first customer once we have contacts
+  useEffect(() => {
+    if (!loadingUsers && !error && contacts.length > 0 && selected === null) {
+      setSelected(contacts[0].id);
+    }
+  }, [contacts, loadingUsers, error, selected]);
+
+  // The currently selected contact object
+  const current = contacts.find(c => c.id === selected) || null;
+
+  // Handlers
   const handleSend = () => {
     if (input.trim() === '') return;
     const newMessage = {
@@ -27,7 +60,7 @@ export default function ChatPage() {
       text: input.trim(),
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       read: false,
-      ...(replyTo && { replyTo: replyTo.id })
+      ...(replyTo && { replyTo: replyTo.id }),
     };
     setMessages(prev => [...prev, newMessage]);
     setInput('');
@@ -58,7 +91,7 @@ export default function ChatPage() {
           images: imageURLs,
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           read: false,
-          ...(replyTo && { replyTo: replyTo.id })
+          ...(replyTo && { replyTo: replyTo.id }),
         };
         setMessages(prev => [...prev, newMessage]);
       });
@@ -74,7 +107,7 @@ export default function ChatPage() {
           attachments: [{ name: file.name, data: reader.result }],
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           read: false,
-          ...(replyTo && { replyTo: replyTo.id })
+          ...(replyTo && { replyTo: replyTo.id }),
         };
         setMessages(prev => [...prev, newMessage]);
       };
@@ -97,7 +130,7 @@ export default function ChatPage() {
         video: reader.result,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         read: false,
-        ...(replyTo && { replyTo: replyTo.id })
+        ...(replyTo && { replyTo: replyTo.id }),
       };
       setMessages(prev => [...prev, newMessage]);
     };
@@ -112,13 +145,8 @@ export default function ChatPage() {
         setReplyTo(message);
         break;
       case 'Delete':
-        // mark message as deleted instead of removing it
         setMessages(prev =>
-          prev.map(m =>
-            m.id === message.id
-              ? { ...m, deleted: true }
-              : m
-          )
+          prev.map(m => (m.id === message.id ? { ...m, deleted: true } : m))
         );
         break;
       case 'Copy':
@@ -132,6 +160,9 @@ export default function ChatPage() {
     }
   };
 
+  if (loadingUsers) return <div>Loading chats…</div>;
+  if (error) return <div>Error: {error}</div>;
+
   return (
     <div className="h-screen font-poppins flex flex-col">
       <Header notifications={dummyNotifications} />
@@ -142,25 +173,29 @@ export default function ChatPage() {
           selected={selected}
           setSelected={setSelected}
         />
-        <ChatMainWindow
-          current={current}
-          messages={messages}
-          setMessages={setMessages}
-          input={input}
-          setInput={setInput}
-          replyTo={replyTo}
-          setReplyTo={setReplyTo}
-          hoveredMessage={hoveredMessage}
-          setHoveredMessage={setHoveredMessage}
-          menuOpenFor={menuOpenFor}
-          setMenuOpenFor={setMenuOpenFor}
-          handleSend={handleSend}
-          handleAttach={handleAttach}
-          handleAttachVideo={handleAttachVideo}
-          handleAction={handleAction}
-          fileInputRef={fileInputRef}
-          videoInputRef={videoInputRef}
-        />
+        {current && (
+          <ChatMainWindow
+            current={current}
+            messages={messages.filter(
+              m => m.to === selected || m.from === selected
+            )}
+            setMessages={setMessages}
+            input={input}
+            setInput={setInput}
+            replyTo={replyTo}
+            setReplyTo={setReplyTo}
+            hoveredMessage={hoveredMessage}
+            setHoveredMessage={setHoveredMessage}
+            menuOpenFor={menuOpenFor}
+            setMenuOpenFor={setMenuOpenFor}
+            handleSend={handleSend}
+            handleAttach={handleAttach}
+            handleAttachVideo={handleAttachVideo}
+            handleAction={handleAction}
+            fileInputRef={fileInputRef}
+            videoInputRef={videoInputRef}
+          />
+        )}
       </div>
     </div>
   );

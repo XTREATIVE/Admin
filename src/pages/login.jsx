@@ -1,3 +1,4 @@
+// src/components/LoginScreen.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Formik } from "formik";
@@ -72,34 +73,6 @@ const LoginScreen = () => {
           background-color: #fff;
           display: flex;
           flex-direction: column;
-        }
-        /* Header styling */
-        .login-header {
-          padding: 20px 16px;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          border: 1px solid #ccc;
-        }
-        /* Container for logo and title */
-        .logo-title-container {
-          display: flex;
-          align-items: center;
-        }
-        .login-title {
-          font-size: 1.5rem;
-          font-weight: bold;
-          color: #f9622c;
-          margin-left: -30px;
-        }
-        .login-welcome {
-          display: flex;
-          align-items: center;
-          font-size: 1rem;
-          color: #280300;
-        }
-        .login-welcome span {
-          margin-left: 8px;
         }
         /* Container and card styling */
         .login-container {
@@ -187,6 +160,9 @@ const LoginScreen = () => {
           cursor: pointer;
           padding: 0;
         }
+        .forgot-password:hover {
+          text-decoration: underline;
+        }
         /* Sign in button styling */
         .login-button {
           width: 100%;
@@ -206,26 +182,22 @@ const LoginScreen = () => {
           background-color: #999;
           cursor: not-allowed;
         }
-        /* General error and success message containers */
-        .error-message {
-          margin-top: 16px;
-          background-color: #ffe6e6;
-          color: #d9534f;
-          text-align: center;
-          padding: 8px;
-          border-radius: 4px;
-          font-size:12px;
-        }
+        .error-message,
         .success-message {
           margin-top: 16px;
-          background-color: #e6ffe6;
-          color: #28a745;
-          text-align: center;
           padding: 8px;
           border-radius: 4px;
-          font-size:12px;
+          font-size: 12px;
+          text-align: center;
         }
-        /* Loader styling */
+        .error-message {
+          background-color: #ffe6e6;
+          color: #d9534f;
+        }
+        .success-message {
+          background-color: #e6ffe6;
+          color: #28a745;
+        }
         .loader {
           margin: 0 auto 16px;
           border: 4px solid #f3f3f3;
@@ -236,10 +208,13 @@ const LoginScreen = () => {
           animation: spin 1s linear infinite;
         }
         @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
+          0% {
+            transform: rotate(0deg);
+          }
+          100% {
+            transform: rotate(360deg);
+          }
         }
-        /* Footer styling */
         .login-footer {
           margin-top: 32px;
           display: flex;
@@ -260,7 +235,6 @@ const LoginScreen = () => {
         }
       `}</style>
 
-      {/* Centered Sign-In Card */}
       <div className="login-container">
         <div className="login-card">
           <h2 className="login-card-title">Sign In</h2>
@@ -279,9 +253,8 @@ const LoginScreen = () => {
               isSubmitting,
             }) => (
               <form onSubmit={handleSubmit} className="login-form">
-                {isSubmitting && <div className="loader"></div>}
+                {isSubmitting && <div className="loader" />}
 
-                {/* Email Field */}
                 <div className="form-group">
                   <input
                     type="email"
@@ -301,7 +274,6 @@ const LoginScreen = () => {
                   )}
                 </div>
 
-                {/* Password Field */}
                 <div className="form-group">
                   <input
                     type={showPassword ? "text" : "password"}
@@ -331,22 +303,23 @@ const LoginScreen = () => {
                   )}
                 </div>
 
-                {/* Forgot Password Link */}
                 <div className="forgot-password-container">
                   <button
                     type="button"
                     className="forgot-password"
-                    onClick={() => alert("Forgot Password?")}
+                    onClick={() => {
+                      sessionStorage.removeItem("resetToken");
+                      navigate("/reset_password");
+                    }}
                   >
                     Forgot Password?
                   </button>
                 </div>
 
-                {/* Sign In Button */}
                 <button
                   type="submit"
-                  className="login-button"
-                  disabled={isSubmitting}
+                    className="login-button"
+                    disabled={isSubmitting}
                 >
                   {isSubmitting ? "Signing In..." : "Sign In"}
                 </button>
@@ -363,7 +336,6 @@ const LoginScreen = () => {
             )}
           </Formik>
 
-          {/* Footer Logo */}
           <div className="login-footer">
             <img src={logo} alt="Logo" className="login-logo" />
           </div>
