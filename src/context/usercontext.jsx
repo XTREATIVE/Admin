@@ -55,7 +55,7 @@ export const UserProvider = ({ children }) => {
 
       // 2) Send message to conversation
       const msgRes = await fetch(
-        `https://api-xtreative.onrender.com/chatsapp/conversations/${convId}/messages/`,
+        `https://api-xtreative.onrender.com/chatsapp/conversations/${convId}/messages/create/`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },

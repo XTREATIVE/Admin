@@ -1,4 +1,3 @@
-// 📁 ChatMainWindow.jsx
 import React, { useState, useRef, useEffect, useContext } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
 import {
@@ -10,7 +9,8 @@ import {
   BiCheck,
   BiCheckDouble,
   BiX,
-  BiUser
+  BiUser,
+  BiTime
 } from 'react-icons/bi';
 import EmojiPicker from 'emoji-picker-react';
 import ChatUserModal from '../modals/chatuser_modal';
@@ -111,7 +111,7 @@ export default function ChatMainWindow({
   const doSend = async () => {
     if (input.trim() === '') return;
 
-    // 1) Optimistic local append
+    // 1) Optimistic local append w/ pending flag
     const tempId = Date.now();
     const optimistic = {
       id: tempId,
@@ -120,6 +120,7 @@ export default function ChatMainWindow({
       text: input.trim(),
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       read: false,
+      pending: true,
       ...(replyTo && { replyTo: replyTo.id }),
     };
     setMessages(prev => [...prev, optimistic]);
@@ -129,11 +130,17 @@ export default function ChatMainWindow({
     // 2) Persist via context
     try {
       const saved = await sendMessage(optimistic.text, current.id);
-      // 3) Replace temp with real response
-      setMessages(prev => prev.map(m => (m.id === tempId ? saved : m)));
+      // 3) Replace temp with real response (clear pending)
+      setMessages(prev =>
+        prev.map(m =>
+          m.id === tempId
+            ? { ...saved, pending: false }
+            : m
+        )
+      );
     } catch (err) {
       console.error('Send failed', err);
-      // Optionally: show an inline error or revert optimistic update
+      // Optionally: mark error state on that message
     }
   };
 
@@ -159,7 +166,7 @@ export default function ChatMainWindow({
 
         {/* Messages list */}
         <div className="flex-1 overflow-y-auto p-6 space-y-4 text-[12px] thin-scrollbar">
-          {messages.map((m) => {
+          {messages.map(m => {
             const isSent = m.from === 'me';
             const onlyEmoji = m.text && isEmojiOnly(m.text);
             const original = m.replyTo && messages.find(x => x.id === m.replyTo);
@@ -235,13 +242,11 @@ export default function ChatMainWindow({
                   </div>
                 )}
 
-                {m.video && (
-                  <video src={m.video} controls className="w-48 rounded-xl mt-2 shadow-md" />
-                )}
+                {m.video && <video src={m.video} controls className="w-48 rounded-xl mt-2 shadow-md" />}
 
                 {hoveredMessage === m.id && (
                   <div
-                    className={`absolute ${isSent ? 'top-0 right-0' : 'top-0 left-0'} mt-[-6px] mx-1 text-gray-500 cursor-pointer`}
+                    className={`/******/ absolute ${isSent ? 'top-0 right-0' : 'top-0 left-0'} mt-[-6px] mx-1 text-gray-500 cursor-pointer`}
                     onClick={() => setMenuOpenFor(menuOpenFor === m.id ? null : m.id)}
                   >
                     <BiDotsVerticalRounded />
@@ -260,9 +265,13 @@ export default function ChatMainWindow({
                   </div>
                 )}
 
-                <div className="flex items-center space-x-1 mt-1 text-xs text-gray-500">
+                <div className="flex items-center space-x-1 mt-1 text-[11px] text-gray-500">
                   <span>{m.time}</span>
-                  {isSent && (m.read ? <BiCheckDouble /> : <BiCheck />)}
+                  {isSent && (
+                    m.pending
+                      ? <BiTime title="Sending…" />
+                      : (m.read ? <BiCheckDouble /> : <BiCheck />)
+                  )}
                 </div>
               </div>
             );
