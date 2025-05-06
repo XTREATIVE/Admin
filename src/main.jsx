@@ -11,13 +11,15 @@ import App from './App';
 import { AllProductsProvider } from './context/allproductscontext';
 import {PaymentProvider} from './context/paymentcontext'
 import { LoansProvider } from './context/loanscontext';
-import {ClaimsProvider} from './context/claimscontext'
+import {ClaimsProvider} from './context/claimscontext';
+import {PayoutsProvider} from './context/payoutscontext'
 
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
 
 <LoansProvider>
+<PayoutsProvider>
     <PaymentProvider>
  <AllProductsProvider>
 <OrdersProvider>
@@ -34,6 +36,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     </OrdersProvider>
     </AllProductsProvider>
     </PaymentProvider>
+    </PayoutsProvider>
     </LoansProvider>
    
   </React.StrictMode>

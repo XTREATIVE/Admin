@@ -4,7 +4,7 @@ import { Formik } from "formik";
 import * as Yup from "yup";
 import { useNavigate } from "react-router-dom";
 import { IoLockClosed } from "react-icons/io5";
-import resetImage from "../assets/reset_pass.png";
+import resetImage from "../assets/reset_pass.jpeg";
 import OTPVerification from "../components/otp_verification";
 import SetNewPassword from "../components/set_new_password";
 
