@@ -155,7 +155,7 @@ const ResetPassword = () => {
       </div>
 
       <div className="right-panel">
-        <img src={resetImage} alt="Reset Password Illustration" />
+        <img src={resetImage} alt="Reset Password Illustration" loading="lazy" />
       </div>
     </div>
   );
