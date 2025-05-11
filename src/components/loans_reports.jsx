@@ -1,8 +1,5 @@
-// src/components/LoanReport.jsx
 import React, { useState, useMemo, useContext } from "react";
 import {
-  ChevronLeft,
-  ChevronRight,
   Users,
   Percent,
   TrendingUp,
@@ -26,7 +23,6 @@ import { LoansContext } from "../context/loanscontext";
 const formatUGX = (value) =>
   value != null ? `UGX ${value.toLocaleString("en-UG")}` : "UGX 0";
 
-const ITEMS_PER_PAGE = 20;
 const TABS = [
   { key: "applications", label: "Applications" },
   { key: "due", label: "Due & Overdue Loans" },
@@ -45,7 +41,7 @@ const COLUMN_CONFIG = {
       accessor: (row, vendors) =>
         (row.guarantors || [])
           .map((id) => vendors.find((v) => v.id === id)?.username)
-          .join("\n"),
+          .join(", "),
     },
     { header: "Status", accessor: (row) => row.status },
     { header: "Applied Date", accessor: (row) => row.created_at.split("T")[0] },
@@ -75,7 +71,6 @@ const COLUMN_CONFIG = {
       accessor: (row) => (row.daysUntilDue < 0 ? Math.abs(row.daysUntilDue) : "-"),
     },
     { header: "Amt Due", accessor: (row) => formatUGX(row.amountDue) },
-  
   ],
   history: [
     { header: "ID", accessor: (row) => row.id },
@@ -88,38 +83,81 @@ const COLUMN_CONFIG = {
   ],
 };
 
-export default function LoanReport() {
+export default function LoanReport({ isGeneratingPDF, searchTerm, onTabChange }) {
   const { loans, repaymentBlocks, repaymentHistory, vendors, loading, error } =
     useContext(LoansContext);
   const [activeTab, setActiveTab] = useState("applications");
-  const [currentPage, setCurrentPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedLoan, setSelectedLoan] = useState(null);
 
+  // Notify parent of tab change
+  const handleTabChange = (tabKey) => {
+    setActiveTab(tabKey);
+    if (onTabChange) {
+      onTabChange(tabKey);
+    }
+  };
+
+  // Filter data based on searchTerm
+  const filteredLoans = useMemo(() => {
+    if (!searchTerm) return loans;
+    const term = searchTerm.toLowerCase();
+    return loans.filter(
+      (loan) =>
+        loan.id.toLowerCase().includes(term) ||
+        loan.vendor_username.toLowerCase().includes(term) ||
+        loan.purpose.toLowerCase().includes(term) ||
+        loan.status.toLowerCase().includes(term) ||
+        loan.national_id_number.toLowerCase().includes(term)
+    );
+  }, [loans, searchTerm]);
+
+  const filteredRepaymentBlocks = useMemo(() => {
+    if (!searchTerm) return repaymentBlocks;
+    const term = searchTerm.toLowerCase();
+    return repaymentBlocks.filter(
+      (block) =>
+        block.id.toLowerCase().includes(term) ||
+        block.vendor_username.toLowerCase().includes(term) ||
+        (block.loanId || block.applicationId)?.toLowerCase().includes(term)
+    );
+  }, [repaymentBlocks, searchTerm]);
+
+  const filteredRepaymentHistory = useMemo(() => {
+    if (!searchTerm) return repaymentHistory;
+    const term = searchTerm.toLowerCase();
+    return repaymentHistory.filter(
+      (history) =>
+        history.id.toLowerCase().includes(term) ||
+        history.vendor_username.toLowerCase().includes(term) ||
+        (history.loanId || history.applicationId)?.toLowerCase().includes(term)
+    );
+  }, [repaymentHistory, searchTerm]);
+
   // Combined summary & leaderboard stats
   const stats = useMemo(() => {
-    const overdue = repaymentBlocks.filter((r) => r.status === "Overdue");
+    const overdue = filteredRepaymentBlocks.filter((r) => r.status === "Overdue");
     return {
-      outstandingBalance: loans.reduce(
+      outstandingBalance: filteredLoans.reduce(
         (sum, l) => sum + (l.amount - (l.repaidAmount || 0)),
         0
       ),
-      activeLoans: loans.filter((l) => l.status === "Active").length,
-      principalDisbursed: loans.reduce((sum, l) => sum + l.amount, 0),
-      interestEarned: repaymentHistory.reduce(
+      activeLoans: filteredLoans.filter((l) => l.status === "Active").length,
+      principalDisbursed: filteredLoans.reduce((sum, l) => sum + l.amount, 0),
+      interestEarned: filteredRepaymentHistory.reduce(
         (sum, r) => sum + (r.interest || 0),
         0
       ),
-      totalRepayable: loans.reduce(
+      totalRepayable: filteredLoans.reduce(
         (sum, l) => sum + (l.totalRepayable || 0),
         0
       ),
-      totalRepaid: repaymentHistory.reduce((sum, r) => sum + r.amountPaid, 0),
-      pendingApprovals: loans.filter((l) => l.status === "Pending").length,
+      totalRepaid: filteredRepaymentHistory.reduce((sum, r) => sum + r.amountPaid, 0),
+      pendingApprovals: filteredLoans.filter((l) => l.status === "Pending").length,
       overdueLoans: overdue.length,
       overdueAmount: overdue.reduce((sum, r) => sum + (r.amountDue || 0), 0),
     };
-  }, [loans, repaymentBlocks, repaymentHistory]);
+  }, [filteredLoans, filteredRepaymentBlocks, filteredRepaymentHistory]);
 
   const summaryCards = [
     { label: "Total Active Loans", icon: Users, value: stats.activeLoans },
@@ -142,49 +180,51 @@ export default function LoanReport() {
       .sort((a, b) => b.amt - a.amt)
       .slice(0, 5);
   };
-  const disbursedRanking = useMemo(() => getRanking(loans, "amount"), [loans]);
-  const repaidRanking = useMemo(() => getRanking(repaymentHistory, "amountPaid"), [
-    repaymentHistory,
+  const disbursedRanking = useMemo(() => getRanking(filteredLoans, "amount"), [filteredLoans]);
+  const repaidRanking = useMemo(() => getRanking(filteredRepaymentHistory, "amountPaid"), [
+    filteredRepaymentHistory,
   ]);
   const topDisburser = disbursedRanking[0] || { vendor: "", amt: 0 };
   const topRepayer = repaidRanking[0] || { vendor: "", amt: 0 };
 
   // Data for tables
   const dataMap = {
-    applications: loans,
-    due: repaymentBlocks.filter((r) => r.status === "Upcoming" || r.status === "Overdue"),
-    history: repaymentHistory,
+    applications: filteredLoans,
+    due: filteredRepaymentBlocks.filter((r) => r.status === "Upcoming" || r.status === "Overdue"),
+    history: filteredRepaymentHistory,
   };
-  const pageData = useMemo(() => {
-    const data = dataMap[activeTab] || [];
-    const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    return data.slice(start, start + ITEMS_PER_PAGE);
-  }, [activeTab, currentPage, loans, repaymentBlocks, repaymentHistory]);
-  const totalPages = Math.max(
-    1,
-    Math.ceil((dataMap[activeTab] || []).length / ITEMS_PER_PAGE)
-  );
 
   if (loading) return <p className="p-4 text-[11px]">Loading...</p>;
   if (error) return <p className="p-4 text-red-600 text-[11px]">Error: {error}</p>;
 
   const renderTable = () => {
     const cols = COLUMN_CONFIG[activeTab] || [];
+    const data = dataMap[activeTab] || [];
     return (
-      <>
-        <table className="min-w-full text-[10px] mb-4 border-collapse">
+      <div className="overflow-x-auto">
+        <table className="w-full table-auto border-collapse text-[10px]">
           <thead className="bg-gray-50">
             <tr>
               {cols.map((c, i) => (
-                <th key={i} className="px-4 py-2 border text-left">{c.header}</th>
+                <th
+                  key={i}
+                  className="px-2 py-1 border text-left break-words"
+                  style={{ maxWidth: i < 2 ? "120px" : "auto" }}
+                >
+                  {c.header}
+                </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {pageData.map((row, ri) => (
+            {data.map((row, ri) => (
               <tr key={ri} className="hover:bg-gray-100">
                 {cols.map((c, ci) => (
-                  <td key={ci} className="px-4 py-2 border text-left">
+                  <td
+                    key={ci}
+                    className="px-2 py-1 border text-left break-words"
+                    style={{ maxWidth: ci < 2 ? "120px" : "auto" }}
+                  >
                     {c.accessor(row, vendors)}
                   </td>
                 ))}
@@ -192,44 +232,29 @@ export default function LoanReport() {
             ))}
           </tbody>
         </table>
-        <div className="flex justify-center space-x-4 py-2">
-          <button
-            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-            disabled={currentPage === 1}
-            className="p-1 disabled:opacity-50"
-          >
-            <ChevronLeft size={16} />
-          </button>
-          <span className="text-[11px]">{currentPage} of {totalPages}</span>
-          <button
-            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-            disabled={currentPage === totalPages}
-            className="p-1 disabled:opacity-50"
-          >
-            <ChevronRight size={16} />
-          </button>
-        </div>
-      </>
+      </div>
     );
   };
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex border-b bg-gray-50">
-        {TABS.map((tab) => (
-          <div
-            key={tab.key}
-            onClick={() => { setActiveTab(tab.key); setCurrentPage(1); }}
-            className={`flex-1 text-center py-2 cursor-pointer text-[11px] ${
-              activeTab === tab.key
-                ? "bg-white border-t border-l border-r text-gray-800"
-                : "text-gray-600 hover:text-gray-800"
-            }`}
-          >
-            {tab.label}
-          </div>
-        ))}
-      </div>
+      {!isGeneratingPDF && (
+        <div className="flex border-b bg-gray-50">
+          {TABS.map((tab) => (
+            <div
+              key={tab.key}
+              onClick={() => handleTabChange(tab.key)} // Use handleTabChange to notify parent
+              className={`flex-1 text-center py-2 cursor-pointer text-[11px] ${
+                activeTab === tab.key
+                  ? "bg-white border-t border-l border-r text-gray-800"
+                  : "text-gray-600 hover:text-gray-800"
+              }`}
+            >
+              {tab.label}
+            </div>
+          ))}
+        </div>
+      )}
       <div className="p-6 flex-1 overflow-auto">
         {activeTab === "details" ? (
           <LoanDetails />
@@ -279,10 +304,10 @@ export default function LoanReport() {
             {/* Separator */}
             <hr className="my-4 border-gray-300" />
 
-            {/* Top‐level highlights */}
+            {/* Top-level highlights */}
             <div className="flex justify-between text-[11px] font-medium">
               <div>
-                #1 Top Disbuser: <strong>{topDisburser.vendor}</strong> – <strong>{formatUGX(topDisburser.amt)}</strong>
+                #1 Top Disburser: <strong>{topDisburser.vendor}</strong> – <strong>{formatUGX(topDisburser.amt)}</strong>
               </div>
               <div>
                 #1 Top Repayer: <strong>{topRepayer.vendor}</strong> – <strong>{formatUGX(topRepayer.amt)}</strong>

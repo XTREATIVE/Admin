@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useContext } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { FaCar } from "react-icons/fa";
 import { OrdersContext } from "../context/orderscontext";
 
@@ -32,7 +31,6 @@ const getDuration = (iso) => {
   return "Just now";
 };
 
-const ITEMS_PER_PAGE = 20;
 const TABS = [
   { key: "pending", label: "Pending Orders" },
   { key: "warehouse", label: "Orders At Warehouse" },
@@ -40,10 +38,9 @@ const TABS = [
   { key: "returns", label: "Returns" },
 ];
 
-export default function OrderReports() {
+export default function OrderReports({ hideTabsWhenGeneratingPDF = false }) {
   const { orders, loading, error } = useContext(OrdersContext);
   const [activeTab, setActiveTab] = useState(TABS[0].key);
-  const [currentPage, setCurrentPage] = useState(1);
   const OFFSET = 1000;
 
   const filtered = useMemo(() => {
@@ -60,12 +57,6 @@ export default function OrderReports() {
         return [];
     }
   }, [activeTab, orders]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
-  const pageData = filtered.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
 
   if (loading)
     return <p className="p-4 text-[11px]">Loading...</p>;
@@ -96,7 +87,7 @@ export default function OrderReports() {
             </tr>
           </thead>
           <tbody>
-            {pageData.map(o => {
+            {filtered.map(o => {
               const id = `ORD${o.id + OFFSET}`;
               const date = new Date(o.created_at).toLocaleDateString("en-GB");
               const duration = getDuration(o.created_at);
@@ -132,53 +123,31 @@ export default function OrderReports() {
             })}
           </tbody>
         </table>
-        <Pagination />
       </div>
     );
   };
 
-  const Pagination = () => (
-    <div className="flex justify-center py-2 space-x-4 text-[11px]">
-      <button
-        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-        disabled={currentPage === 1}
-        className="p-1 disabled:opacity-50"
-      >
-        <ChevronLeft size={16} />
-      </button>
-      <span>
-        {currentPage} of {totalPages}
-      </span>
-      <button
-        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-        disabled={currentPage === totalPages}
-        className="p-1 disabled:opacity-50"
-      >
-        <ChevronRight size={16} />
-      </button>
-    </div>
-  );
-
   return (
     <div className="flex flex-col h-full">
-      <div className="flex bg-gray-50 border-b text-[11px]">
-        {TABS.map(t => (
-          <div
-            key={t.key}
-            onClick={() => {
-              setActiveTab(t.key);
-              setCurrentPage(1);
-            }}
-            className={`flex-1 py-2 text-center cursor-pointer ${
-              activeTab === t.key
-                ? "bg-white border-t border-l border-r text-gray-800"
-                : "text-gray-600 hover:text-gray-800"
-            }`}
-          >
-            {t.label}
-          </div>
-        ))}
-      </div>
+      {!hideTabsWhenGeneratingPDF && (
+        <div className="flex bg-gray-50 border-b text-[11px]">
+          {TABS.map(t => (
+            <div
+              key={t.key}
+              onClick={() => {
+                setActiveTab(t.key);
+              }}
+              className={`flex-1 py-2 text-center cursor-pointer ${
+                activeTab === t.key
+                  ? "bg-white border-t border-l border-r text-gray-800"
+                  : "text-gray-600 hover:text-gray-800"
+              }`}
+            >
+              {t.label}
+            </div>
+          ))}
+        </div>
+      )}
       <div className="p-6 flex-1 overflow-auto">
         {renderTable()}
       </div>

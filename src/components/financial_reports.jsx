@@ -1,5 +1,4 @@
-// src/components/FinancialReports.jsx
-import React, { useState, useMemo, useContext } from "react";
+import React, { useState, useMemo, useContext, useEffect } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -26,42 +25,63 @@ const TABS = [
   { key: "summary", label: "Summary & Payout Leaderboard" },
 ];
 
-export default function FinancialReports() {
+export default function FinancialReports({ isGeneratingPDF, searchTerm, onTabChange }) {
   const { blocks, loading, error } = useContext(PayoutsContext);
   const [activeTab, setActiveTab] = useState(TABS[0].key);
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Filter payouts by tab
+  // Notify parent of tab change
+  const handleTabChange = (tabKey) => {
+    setActiveTab(tabKey);
+    setCurrentPage(1); // Reset page when switching tabs
+    if (onTabChange) {
+      onTabChange(tabKey);
+    }
+  };
+
+  // Filter payouts by tab and searchTerm
   const filtered = useMemo(() => {
+    let result = [...blocks];
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      result = result.filter((b) =>
+        b.id.toLowerCase().includes(term) ||
+        b.date.toLowerCase().includes(term) ||
+        b.time.toLowerCase().includes(term) ||
+        b.vendor.toLowerCase().includes(term) ||
+        b.orderid.toLowerCase().includes(term) ||
+        b.status.toLowerCase().includes(term)
+      );
+    }
     switch (activeTab) {
       case "upcoming":
-        return blocks.filter((b) => b.status === "Upcoming");
+        return result.filter((b) => b.status === "Upcoming");
       case "pending":
-        return blocks.filter((b) => b.status === "Pending");
+        return result.filter((b) => b.status === "Pending");
       case "history":
-        return blocks.filter((b) => b.status === "Paid");
+        return result.filter((b) => b.status === "Paid");
       case "refunds":
-        return blocks.filter((b) => ["Refunded", "Cancelled"].includes(b.status));
+        return result.filter((b) => ["Refunded", "Cancelled"].includes(b.status));
       default:
-        return blocks;
+        return result;
     }
-  }, [activeTab, blocks]);
+  }, [activeTab, blocks, searchTerm]);
 
   // Summary & leaderboard aggregates
   const summary = useMemo(() => {
-    const totalSales = blocks.reduce((sum, b) => sum + (b.sales || 0), 0);
-    const totalCommission = blocks.reduce((sum, b) => sum + (b.commissionAmount || 0), 0);
-    const payoutsMade = blocks.filter((b) => b.status === "Paid").length;
-    const inventoryValue = blocks.reduce((sum, b) => sum + (b.inventoryValue || 0), 0);
-    const pendingPayouts = blocks
+    const totalSales = filtered.reduce((sum, b) => sum + (b.sales || 0), 0);
+    const totalCommission = filtered.reduce((sum, b) => sum + (b.commissionAmount || 0), 0);
+    const payoutsMade = filtered.filter((b) => b.status === "Paid").length;
+    const inventoryValue = filtered.reduce((sum, b) => sum + (b.inventoryValue || 0), 0);
+    const pendingPayouts = filtered
       .filter((b) => b.status === "Pending" || b.status === "Upcoming")
       .reduce((sum, b) => sum + (b.netPayout || 0), 0);
-    const refunds = blocks
+    const refunds = filtered
       .filter((b) => ["Refunded", "Cancelled"].includes(b.status))
       .reduce((sum, b) => sum + (b.netPayout || 0), 0);
 
     const byVendor = {};
-    blocks.forEach((b) => {
+    filtered.forEach((b) => {
       byVendor[b.vendor] = (byVendor[b.vendor] || 0) + (b.netPayout || 0);
     });
     const leaderboard = Object.entries(byVendor)
@@ -78,7 +98,7 @@ export default function FinancialReports() {
       refunds,
       leaderboard,
     };
-  }, [blocks]);
+  }, [filtered]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
   const pageData = filtered.slice(
@@ -86,30 +106,33 @@ export default function FinancialReports() {
     currentPage * ITEMS_PER_PAGE
   );
 
+  // Debugging effect to log isGeneratingPDF state
+  useEffect(() => {
+    console.log("isGeneratingPDF:", isGeneratingPDF);
+  }, [isGeneratingPDF]);
+
   if (loading) return <p className="p-4 text-[11px]">Loading...</p>;
   if (error) return <p className="p-4 text-red-600 text-[11px]">Error: {error}</p>;
 
   return (
     <div className="flex flex-col h-full">
-      {/* Tabs */}
-      <div className="flex bg-gray-50 border-b text-[11px]">
-        {TABS.map((tab) => (
-          <div
-            key={tab.key}
-            onClick={() => {
-              setActiveTab(tab.key);
-              setCurrentPage(1);
-            }}
-            className={`flex-1 py-2 text-center cursor-pointer ${
-              activeTab === tab.key
-                ? "bg-white border-t border-l border-r text-gray-800"
-                : "text-gray-600 hover:text-gray-800"
-            }`}
-          >
-            {tab.label}
-          </div>
-        ))}
-      </div>
+      {!isGeneratingPDF && (
+        <div className="flex bg-gray-50 border-b text-[11px]">
+          {TABS.map((tab) => (
+            <div
+              key={tab.key}
+              onClick={() => handleTabChange(tab.key)}
+              className={`flex-1 py-2 text-center cursor-pointer ${
+                activeTab === tab.key
+                  ? "bg-white border-t border-l border-r text-gray-800"
+                  : "text-gray-600 hover:text-gray-800"
+              }`}
+            >
+              {tab.label}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Content */}
       <div className="p-6 flex-1 overflow-auto">

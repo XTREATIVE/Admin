@@ -1,5 +1,4 @@
-// src/components/ReportContent.jsx
-import React, { useState, useMemo, useEffect, useRef } from "react";
+import React, { useState, useMemo, useEffect, useRef, useContext } from "react";
 import { ChevronDown, Search } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -19,9 +18,11 @@ import OrderReports from "./order_reports";
 import ProductReports from "./product_reports";
 import VendorReports from "./vendor_reports";
 import CustomerReports from "./customer_reports";
+import { ProductsContext } from "../context/allproductscontext";
 
 import { blocks } from "../data/reportsdata";
 import topProductImg from "../assets/Shirt.jpg";
+import logoImg from "../assets/logo.png";
 
 const ITEMS_PER_PAGE = 20;
 const FILTER_OPTIONS = [
@@ -41,15 +42,58 @@ export default function ReportContent() {
   const [sortOption, setSortOption] = useState(FILTER_OPTIONS[0].key);
   const [searchTerm, setSearchTerm] = useState("");
   const [userFilter, setUserFilter] = useState("");
+  const [topProductImgBase64, setTopProductImgBase64] = useState("");
+  const [logoImgBase64, setLogoImgBase64] = useState("");
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [loanActiveTab, setLoanActiveTab] = useState("applications"); // State to track LoanReport's active tab
+  const [financialActiveTab, setFinancialActiveTab] = useState("upcoming"); // State to track FinancialReports's active tab
   const reportRef = useRef();
+  const { products } = useContext(ProductsContext);
+
+  // Convert topProductImg to Base64
+  useEffect(() => {
+    const convertImageToBase64 = async () => {
+      try {
+        const response = await fetch(topProductImg);
+        const blob = await response.blob();
+        const reader = new FileReader();
+        reader.onloadend = () => setTopProductImgBase64(reader.result);
+        reader.readAsDataURL(blob);
+      } catch (error) {
+        console.error("Failed to convert top product image to Base64:", error);
+        setTopProductImgBase64("");
+      }
+    };
+    convertImageToBase64();
+  }, []);
+
+  // Convert logoImg to Base64
+  useEffect(() => {
+    const convertLogoToBase64 = async () => {
+      try {
+        const response = await fetch(logoImg);
+        const blob = await response.blob();
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setLogoImgBase64(reader.result);
+          console.log("Logo image loaded successfully");
+        };
+        reader.readAsDataURL(blob);
+      } catch (error) {
+        console.error("Failed to convert logo image to Base64:", error);
+        setLogoImgBase64("");
+      }
+    };
+    convertLogoToBase64();
+  }, []);
 
   const openTabs = useMemo(
     () =>
       reportType === "sales"
         ? [
-            { key: "sales", label: `SALES REPORT : ${fromDate} - ${toDate}` },
-            { key: "summary", label: "SALES SUMMARY" },
-            { key: "orderStats", label: "SALES LEADERBOARD" },
+            { key: "sales", label: `Sales Report: ${fromDate} - ${toDate}` },
+            { key: "summary", label: "Sales Summary" },
+            { key: "orderStats", label: "Sales Leaderboard" },
           ]
         : [],
     [reportType, fromDate, toDate]
@@ -63,7 +107,7 @@ export default function ReportContent() {
     setUserFilter("");
   }, [openTabs]);
 
-  // Filter & search
+  // Filter & search for Sales Report
   const filteredData = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
     const user = userFilter.trim().toLowerCase();
@@ -91,18 +135,17 @@ export default function ReportContent() {
       case "vendorAZ":
         return data.sort((a, b) => a.vendor.localeCompare(b.vendor));
       case "vendorZA":
-        return data.sort((a, b) => b.vendor.localeCompare(a.vendor));
+        return data.sort((a, b) => b.vendor.localeCompare(b.vendor));
       default:
-        return data.sort((a, b) => new Date(b.date) - new Date(a.date));
+        return data.sort((a, b) => new Date(b.date) - new Date(b.date));
     }
   }, [filteredData, sortOption]);
 
   // Pagination
   const totalPages = Math.max(1, Math.ceil(sortedData.length / ITEMS_PER_PAGE));
-  const pageData = sortedData.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
+  const pageData = isGeneratingPDF
+    ? sortedData
+    : sortedData.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   // Summary computation
   const summaryData = useMemo(() => {
@@ -123,7 +166,7 @@ export default function ReportContent() {
       case "vendorAZ":
         return data.sort((a, b) => a.vendor.localeCompare(b.vendor));
       case "vendorZA":
-        return data.sort((a, b) => b.vendor.localeCompare(a.vendor));
+        return data.sort((a, b) => b.vendor.localeCompare(b.vendor));
       case "topSelling":
         return data.sort((a, b) => b.sales - a.sales);
       default:
@@ -164,43 +207,264 @@ export default function ReportContent() {
       .slice(0, 5);
   }, [filteredData]);
 
-  const topVendor = vendorRankingData[0] || { vendor: "", sales: 0 };
-  const topProduct = productRankingData[0] || { product: "", count: 0 };
+  const topVendor = vendorRankingData[0] || { vendor: "N/A", sales: 0 };
+  const topProduct = productRankingData[0] || { product: "N/A", count: 0 };
 
   // PDF export
   const handleGeneratePDF = async () => {
-    if (!reportRef.current) return;
-    const canvas = await html2canvas(reportRef.current, { scale: 2 });
-    const img = canvas.toDataURL("image/png");
-    const pdf = new jsPDF("p", "pt", "a4");
-    const w = pdf.internal.pageSize.getWidth();
-    const h = (canvas.height * w) / canvas.width;
-    pdf.addImage(img, "PNG", 0, 0, w, h);
-    pdf.save(`report_${reportType}_${fromDate}_to_${toDate}.pdf`);
+    if (!reportRef.current) {
+      console.error("Report reference is not available");
+      return;
+    }
+
+    if (!logoImgBase64) {
+      console.error("Logo image is not loaded");
+      return;
+    }
+
+    try {
+      setIsGeneratingPDF(true);
+      // Wait for the DOM to update with isGeneratingPDF = true
+      await new Promise((resolve) => setTimeout(resolve, 100)); // 100ms delay to ensure re-render
+
+      const pdf = new jsPDF("p", "pt", "a4");
+
+      // Load and register Poppins font
+      let poppinsRegistered = false;
+      try {
+        const poppinsRegularResponse = await fetch(
+          "https://fonts.gstatic.com/s/poppins/v20/pxiEyp8kv8JHgFVrJJfecn1HGF0.ttf"
+        );
+        if (!poppinsRegularResponse.ok) throw new Error("Font file not found");
+        const poppinsRegularBlob = await poppinsRegularResponse.blob();
+        const poppinsRegularReader = new FileReader();
+        await new Promise((resolve) => {
+          poppinsRegularReader.onloadend = () => {
+            const base64data = poppinsRegularReader.result.split(",")[1];
+            pdf.addFileToVFS("Poppins-Regular.ttf", base64data);
+            pdf.addFont("Poppins-Regular.ttf", "Poppins", "normal");
+            console.log("Poppins Regular font loaded successfully");
+            resolve();
+          };
+          poppinsRegularReader.readAsDataURL(poppinsRegularBlob);
+        });
+
+        const poppinsBoldResponse = await fetch(
+          "https://fonts.gstatic.com/s/poppins/v20/pxiByp8kv8JHgFVrLCz7Z1xlFd2JQEk.ttf"
+        );
+        if (!poppinsBoldResponse.ok) throw new Error("Font file not found");
+        const poppinsBoldBlob = await poppinsBoldResponse.blob();
+        const poppinsBoldReader = new FileReader();
+        await new Promise((resolve) => {
+          poppinsBoldReader.onloadend = () => {
+            const base64data = poppinsBoldReader.result.split(",")[1];
+            pdf.addFileToVFS("Poppins-Bold.ttf", base64data);
+            pdf.addFont("Poppins-Bold.ttf", "Poppins", "bold");
+            console.log("Poppins Bold font loaded successfully");
+            poppinsRegistered = true;
+            resolve();
+          };
+          poppinsBoldReader.readAsDataURL(poppinsBoldBlob);
+        });
+      } catch (error) {
+        console.error("Failed to load Poppins font:", error);
+        poppinsRegistered = false;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      const canvas = await html2canvas(reportRef.current, {
+        scale: 3,
+        logging: true,
+        useCORS: true,
+        windowWidth: reportRef.current.scrollWidth,
+        windowHeight: reportRef.current.scrollHeight,
+      });
+
+      console.log("Canvas dimensions:", canvas.width, canvas.height);
+
+      const imgData = canvas.toDataURL("image/png");
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const imgHeight = (canvas.height * pageWidth) / canvas.width;
+
+      const headerHeight = 60;
+      const footerMargin = 20;
+      const adjustedPageHeight = pageHeight - headerHeight - footerMargin;
+      const totalPages = Math.ceil(imgHeight / adjustedPageHeight);
+
+      console.log("Total PDF pages:", totalPages, "Image height:", imgHeight);
+
+      // Determine the active tab label for the filename and header
+      let activeTabLabel = "";
+      if (reportType === "sales") {
+        const activeTabObj = openTabs.find((tab) => tab.key === activeTab);
+        activeTabLabel = activeTabObj ? activeTabObj.label : "Unknown";
+      } else if (reportType === "loan") {
+        const loanTabs = [
+          { key: "applications", label: "Applications" },
+          { key: "due", label: "Due & Overdue Loans" },
+          { key: "history", label: "Repayment History" },
+          { key: "overview", label: "Summary & Leaderboard" },
+          { key: "details", label: "Loan Details" },
+        ];
+        const activeLoanTab = loanTabs.find((tab) => tab.key === loanActiveTab);
+        activeTabLabel = activeLoanTab ? activeLoanTab.label : "Unknown";
+      } else if (reportType === "financial") {
+        const financialTabs = [
+          { key: "upcoming", label: "Upcoming Payouts" },
+          { key: "pending", label: "Pending Payouts" },
+          { key: "history", label: "Payout History" },
+          { key: "refunds", label: "Refunds/Cancelled Payouts" },
+          { key: "summary", label: "Summary & Payout Leaderboard" },
+        ];
+        const activeFinancialTabObj = financialTabs.find((tab) => tab.key === financialActiveTab);
+        activeTabLabel = activeFinancialTabObj ? activeFinancialTabObj.label : "Unknown";
+      } else {
+        // For other report types (orders, product, vendor, customer)
+        activeTabLabel = reportType.charAt(0).toUpperCase() + reportType.slice(1);
+      }
+
+      for (let page = 0; page < totalPages; page++) {
+        if (page > 0) {
+          pdf.addPage();
+        }
+
+        const logoHeight = 40;
+        const logoWidth = logoHeight * 2;
+        const margin = 20;
+
+        const leftLogoX = margin;
+        const logoY = 10;
+        pdf.addImage(
+          logoImgBase64,
+          "PNG",
+          leftLogoX,
+          logoY,
+          logoWidth,
+          logoHeight
+        );
+
+        const sectionWidth = pageWidth / 3;
+        const middleText = `${
+          reportType.charAt(0).toUpperCase() + reportType.slice(1)
+        } Report`;
+        const tabText = `${activeTabLabel}`; // Active tab name wrapped in brackets
+        const generatedText = `Generated on: ${new Date().toLocaleDateString()}`;
+
+        // Report Type Heading
+        pdf.setFont(poppinsRegistered ? "Poppins" : "Helvetica", "bold");
+        pdf.setFontSize(14);
+        pdf.setTextColor(0, 0, 0);
+        const middleTextWidth = pdf.getTextWidth(middleText);
+        const middleTextX = sectionWidth + (sectionWidth - middleTextWidth) / 2;
+        const middleTextY = logoY + 15;
+        pdf.text(middleText, middleTextX, middleTextY);
+
+        // Active Tab Name (below Report Type)
+        pdf.setFont(poppinsRegistered ? "Poppins" : "Helvetica", "bold");
+        pdf.setFontSize(7);
+        pdf.setTextColor(128, 128, 128); // Slightly lighter color for distinction
+        const tabTextWidth = pdf.getTextWidth(tabText);
+        const tabTextX = sectionWidth + (sectionWidth - tabTextWidth) / 2;
+        const tabTextY = middleTextY + 16; // Position below the report type
+        pdf.text(tabText, tabTextX, tabTextY);
+
+        // Generated On Text (below Tab Name)
+        pdf.setFont(poppinsRegistered ? "Poppins" : "Helvetica", "bold");
+        pdf.setFontSize(7);
+        pdf.setTextColor(128, 128, 128);
+        const generatedTextWidth = pdf.getTextWidth(generatedText);
+        const generatedTextX = sectionWidth + (sectionWidth - generatedTextWidth) / 2;
+        const generatedTextY = tabTextY + 10; // Position below the tab name
+        pdf.text(generatedText, generatedTextX, generatedTextY);
+
+        const rightText1 = `Start Date: ${fromDate}`;
+        const rightText2 = `End Date: ${toDate}`;
+        pdf.setFont(poppinsRegistered ? "Poppins" : "Helvetica", "bold");
+        pdf.setFontSize(7);
+
+        const rightText1Width = pdf.getTextWidth(rightText1);
+        const rightText2Width = pdf.getTextWidth(rightText2);
+        const maxRightTextWidth = Math.max(rightText1Width, rightText2Width);
+
+        const rightTextX = pageWidth - maxRightTextWidth - margin;
+        const rightTextY1 = logoY + 10;
+        const rightTextY2 = rightTextY1 + 15;
+
+        pdf.text(rightText1, rightTextX, rightTextY1);
+        pdf.text(rightText2, rightTextX, rightTextY2);
+
+        pdf.setDrawColor(240, 240, 240);
+        pdf.line(margin, headerHeight - 5, pageWidth - margin, headerHeight - 5);
+
+        console.log(
+          `Page ${page + 1} - Header added:`,
+          `Left Logo position: (${leftLogoX}, ${logoY})`,
+          `Middle Text: "${middleText}" at (${middleTextX}, ${middleTextY})`,
+          `Tab Text: "${tabText}" at (${tabTextX}, ${tabTextY})`,
+          `Generated Text: "${generatedText}" at (${generatedTextX}, ${generatedTextY})`,
+          `Right Text 1: "${rightText1}" at (${rightTextX}, ${rightTextY1})`,
+          `Right Text 2: "${rightText2}" at (${rightTextX}, ${rightTextY2})`,
+          `Logo size: ${logoWidth}x${logoHeight}`
+        );
+
+        const offsetY = page * adjustedPageHeight;
+        const startY = headerHeight;
+        const visibleHeight = Math.min(adjustedPageHeight, imgHeight - offsetY);
+        if (visibleHeight > 0) {
+          pdf.setGState(new pdf.GState({ opacity: 0.9 }));
+          pdf.addImage(
+            imgData,
+            "PNG",
+            0,
+            startY + offsetY,
+            pageWidth,
+            visibleHeight,
+            undefined,
+            "FAST"
+          );
+          pdf.setGState(new pdf.GState({ opacity: 1 }));
+
+          pdf.setFont(poppinsRegistered ? "Poppins" : "Helvetica", "normal");
+          pdf.setFontSize(7);
+          pdf.setTextColor(200, 200, 200);
+          const pageText = `Page ${page + 1}`;
+          const pageTextWidth = pdf.getTextWidth(pageText);
+          const pageTextX = pageWidth - pageTextWidth - margin;
+          const pageTextY = pageHeight - footerMargin + 5;
+          pdf.text(pageText, pageTextX, pageTextY);
+        }
+      }
+
+      // Sanitize the activeTabLabel to remove invalid filename characters
+      const sanitizedTabLabel = activeTabLabel.replace(/[^a-zA-Z0-9\s-]/g, "").replace(/\s+/g, "_");
+
+      // Save the PDF with the active tab label in the filename
+      pdf.save(`report_${reportType}_${sanitizedTabLabel}_${fromDate}_to_${toDate}.pdf`);
+    } catch (error) {
+      console.error("PDF generation failed:", error);
+    } finally {
+      setIsGeneratingPDF(false);
+    }
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden text-[11px]" ref={reportRef}>
+    <div className="flex-1 flex flex-col overflow-hidden text-[11px] bg-gray-50">
       {/* Controls */}
       <div className="flex items-center px-6 py-4 bg-white space-x-4">
         <div className="relative">
           <select
             value={reportType}
             onChange={(e) => setReportType(e.target.value)}
-            className="border rounded px-2 py-1 pr-8"
+            className="border rounded px-2 py-1 pr-8 text-gray-700"
           >
             <option value="sales">Sales Reports</option>
             <option value="loan">Loan Reports</option>
             <option value="financial">Financial Reports</option>
             <option value="orders">Order Reports</option>
             <option value="product">Product Reports</option>
-            <option value="vendor">Vendor Reports</option>
-            <option value="customer">Customer Reports</option>
+           
           </select>
-          <ChevronDown
-            size={14}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500"
-          />
         </div>
         <input
           type="text"
@@ -210,7 +474,7 @@ export default function ReportContent() {
             setUserFilter(e.target.value);
             setCurrentPage(1);
           }}
-          className="border rounded px-2 py-1"
+          className="border rounded px-2 py-1 text-gray-700"
         />
         <div className="relative flex-1 max-w-xs">
           <Search
@@ -219,13 +483,13 @@ export default function ReportContent() {
           />
           <input
             type="text"
-            placeholder="Order ID, product…"
+            placeholder="Search Order ID, product, vendor, etc."
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
               setCurrentPage(1);
             }}
-            className="pl-8 w-full border rounded px-2 py-1"
+            className="pl-8 w-full border rounded px-2 py-1 text-gray-700"
           />
         </div>
         <div className="relative">
@@ -235,7 +499,7 @@ export default function ReportContent() {
               setSortOption(e.target.value);
               setCurrentPage(1);
             }}
-            className="border rounded px-2 py-1 pr-8"
+            className="border rounded px-2 py-1 pr-8 text-gray-700"
           >
             {FILTER_OPTIONS.map((o) => (
               <option key={o.key} value={o.key}>
@@ -243,44 +507,40 @@ export default function ReportContent() {
               </option>
             ))}
           </select>
-          <ChevronDown
-            size={14}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500"
-          />
         </div>
         <div className="flex items-center ml-auto space-x-2">
           <input
             type="date"
             value={fromDate}
             onChange={(e) => setFromDate(e.target.value)}
-            className="border rounded px-2 py-1"
+            className="border rounded px-2 py-1 text-gray-700"
           />
           <input
             type="date"
             value={toDate}
             onChange={(e) => setToDate(e.target.value)}
-            className="border rounded px-2 py-1"
+            className="border rounded px-2 py-1 text-gray-700"
           />
           <button
             onClick={handleGeneratePDF}
-            className="bg-[#f9622c] text-white rounded px-4 py-1 hover:bg-orange-600"
+            className="bg-gray-700 text-white rounded px-4 py-1 hover:bg-gray-800"
           >
             Generate PDF
           </button>
         </div>
       </div>
 
-      {/* Sub-tabs */}
-      {reportType === "sales" && (
-        <div className="flex border-b bg-gray-50 px-6">
+      {/* Sub-tabs - Hide during PDF generation */}
+      {reportType === "sales" && !isGeneratingPDF && (
+        <div className="flex border-b bg-gray-100 px-6">
           {openTabs.map((tab) => (
             <div
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`flex-1 text-center py-2 cursor-pointer ${
+              className={`flex-1 text-center py-2 cursor-pointer text-gray-700 ${
                 activeTab === tab.key
                   ? "bg-white border-t border-l border-r"
-                  : "text-gray-600 hover:text-gray-800"
+                  : "hover:text-gray-900"
               }`}
             >
               {tab.label}
@@ -290,13 +550,13 @@ export default function ReportContent() {
       )}
 
       {/* Content */}
-      <div className="flex-1 overflow-auto bg-white p-6">
+      <div className="flex-1 overflow-auto p-6" ref={reportRef}>
         {/* SALES */}
         {reportType === "sales" && activeTab === "sales" && (
-          <>
+          <div className="bg-white border rounded-lg p-4">
             <table className="min-w-full text-left text-[10px] border-collapse">
               <thead>
-                <tr>
+                <tr className="bg-gray-100">
                   {[
                     "Date",
                     "Time",
@@ -306,19 +566,18 @@ export default function ReportContent() {
                     "Commission (UGX)",
                     "Net Payout (UGX)",
                   ].map((h) => (
-                    <th key={h} className="px-4 py-2 bg-gray-100 border">
+                    <th key={h} className="px-2 py-1 border">
                       {h}
                     </th>
-                 
-                ))}
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {pageData.map((b, i) => (
-                  <tr key={i} className="hover:bg-gray-50">
+                  <tr key={i} className="border-t">
                     {[b.date, b.time, b.vendor, b.orderid, b.sales, b.commissionAmount, b.netPayout].map(
                       (c, j) => (
-                        <td key={j} className="px-4 py-2 border">
+                        <td key={j} className="px-2 py-1 border ">
                           {c}
                         </td>
                       )
@@ -327,37 +586,39 @@ export default function ReportContent() {
                 ))}
               </tbody>
             </table>
-            <div className="flex justify-center space-x-2 py-2">
-              <button
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="p-1 disabled:opacity-50"
-              >
-                ←
-              </button>
-              <span>
-                {currentPage} of {totalPages}
-              </span>
-              <button
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className="p-1 disabled:opacity-50"
-              >
-                →
-              </button>
-            </div>
-          </>
+            {!isGeneratingPDF && (
+              <div className="flex justify-center space-x-2 py-2 mt-4 text-[11px]">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-2 py-1 border rounded text-gray-600 disabled:opacity-50"
+                >
+                  Previous
+                </button>
+                <span>
+                  {currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-2 py-1 border rounded text-gray-600 disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </div>
         )}
 
         {reportType === "sales" && activeTab === "summary" && (
-          <div>
-            <div className="flex justify-between bg-gray-50 px-4 py-2 font-semibold mb-4">
+          <div className="bg-white border rounded-lg p-4">
+            <div className="flex justify-between bg-gray-50 px-3 py-2 font-semibold mb-4 text-[11px]">
               <span>Sales Summary: {fromDate} – {toDate}</span>
               <span>Total Sales: UGX {totals.sales.toFixed(2)}</span>
             </div>
             <table className="min-w-full text-left text-[11px] border-collapse">
               <thead>
-                <tr>
+                <tr className="bg-gray-100">
                   {[
                     "Vendor",
                     "Orders",
@@ -365,7 +626,7 @@ export default function ReportContent() {
                     "Commission (UGX)",
                     "Net Payout (UGX)",
                   ].map((h) => (
-                    <th key={h} className="px-4 py-2 bg-gray-100 border">
+                    <th key={h} className="px-2 py-1 border">
                       {h}
                     </th>
                   ))}
@@ -373,7 +634,7 @@ export default function ReportContent() {
               </thead>
               <tbody>
                 {sortedSummary.map((r, i) => (
-                  <tr key={i} className="hover:bg-gray-50">
+                  <tr key={i} className="border-t">
                     {[
                       r.vendor,
                       r.orders,
@@ -381,7 +642,7 @@ export default function ReportContent() {
                       r.commission.toFixed(2),
                       r.net.toFixed(2),
                     ].map((c, j) => (
-                      <td key={j} className="px-4 py-2 border">
+                      <td key={j} className="px-2 py-1 border">
                         {c}
                       </td>
                     ))}
@@ -390,11 +651,11 @@ export default function ReportContent() {
               </tbody>
               <tfoot>
                 <tr className="bg-gray-50 font-semibold">
-                  <td className="px-4 py-2">Totals</td>
-                  <td className="px-4 py-2">{totals.orders}</td>
-                  <td className="px-4 py-2">{totals.sales.toFixed(2)}</td>
-                  <td className="px-4 py-2">{totals.commission.toFixed(2)}</td>
-                  <td className="px-4 py-2">{totals.net.toFixed(2)}</td>
+                  <td className="px-2 py-1 border">Totals</td>
+                  <td className="px-2 py-1 border">{totals.orders}</td>
+                  <td className="px-2 py-1 border">{totals.sales.toFixed(2)}</td>
+                  <td className="px-2 py-1 border">{totals.commission.toFixed(2)}</td>
+                  <td className="px-2 py-1 border">{totals.net.toFixed(2)}</td>
                 </tr>
               </tfoot>
             </table>
@@ -402,11 +663,11 @@ export default function ReportContent() {
         )}
 
         {reportType === "sales" && activeTab === "orderStats" && (
-          <div>
-            <h2 className="font-semibold mb-4">Sales Leaderboard: {fromDate} – {toDate}</h2>
+          <div className="bg-white border rounded-lg p-4">
+            <h3 className="font-semibold mb-4 text-gray-800">Sales Leaderboard: {fromDate} – {toDate}</h3>
             <div className="grid md:grid-cols-2 gap-8">
               <div className="h-64">
-                <h3 className="font-medium mb-2">Top 5 Vendors</h3>
+                <h4 className="font-medium mb-2 text-gray-700">Top 5 Vendors</h4>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     data={vendorRankingData}
@@ -416,12 +677,12 @@ export default function ReportContent() {
                     <XAxis dataKey="vendor" tick={{ fontSize: 10 }} />
                     <YAxis />
                     <Tooltip formatter={(v) => new Intl.NumberFormat().format(v)} />
-                    <Bar dataKey="sales" name="Sales (UGX)" barSize={20} />
+                    <Bar dataKey="sales" name="Sales (UGX)" barSize={20} fill="#4a5568" />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
               <div className="h-64">
-                <h3 className="font-medium mb-2">Top 5 Products</h3>
+                <h4 className="font-medium mb-2 text-gray-700">Top 5 Products</h4>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     data={productRankingData}
@@ -431,46 +692,64 @@ export default function ReportContent() {
                     <XAxis dataKey="product" tick={{ fontSize: 10 }} />
                     <YAxis />
                     <Tooltip />
-                    <Bar dataKey="count" name="Units Sold" barSize={20} />
+                    <Bar dataKey="count" name="Units Sold" barSize={20} fill="#4a5568" />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             </div>
-            <div className="sticky bottom-0 bg-white border-t py-3 px-6 flex justify-between items-center">
+            <div className="border-t py-3 px-4 flex justify-between items-center mt-4">
               <div className="flex items-center space-x-3">
-                <img src={topProductImg} alt={topProduct.product} className="w-8 h-8 rounded" />
+                {topProductImgBase64 ? (
+                  <img src={topProductImgBase64} alt={topProduct.product} className="w-8 h-8 rounded border" />
+                ) : (
+                  <div className="w-8 h-8 bg-gray-200 flex items-center justify-center text-gray-500 text-[10px] border rounded">
+                    No Image
+                  </div>
+                )}
                 <div>
-                  <div className="font-medium">#1 Top Product</div>
-                  <div>
+                  <div className="font-medium text-gray-700">#1 Top Product</div>
+                  <div className="text-gray-600">
                     {topProduct.product} – {topProduct.count} units
                   </div>
                 </div>
               </div>
               <div className="text-center">
-                <div className="font-medium">#1 Top Vendor</div>
-                <div>{topVendor.vendor} – {new Intl.NumberFormat().format(topVendor.sales)} UGX</div>
+                <div className="font-medium text-gray-700">#1 Top Vendor</div>
+                <div className="text-gray-600">{topVendor.vendor} – {new Intl.NumberFormat().format(topVendor.sales)} UGX</div>
               </div>
             </div>
           </div>
         )}
 
         {/* LOAN REPORT */}
-        {reportType === "loan" && <LoanReport />}
+        {reportType === "loan" && (
+          <LoanReport
+            searchTerm={searchTerm}
+            isGeneratingPDF={isGeneratingPDF}
+            onTabChange={(tabKey) => setLoanActiveTab(tabKey)} // Pass callback to update loanActiveTab
+          />
+        )}
 
         {/* FINANCIAL REPORT */}
-        {reportType === "financial" && <FinancialReports />}
+        {reportType === "financial" && (
+          <FinancialReports
+            searchTerm={searchTerm}
+            isGeneratingPDF={isGeneratingPDF}
+            onTabChange={(tabKey) => setFinancialActiveTab(tabKey)} // Pass callback to update financialActiveTab
+          />
+        )}
 
         {/* ORDER REPORT */}
-        {reportType === "orders" && <OrderReports />}
+        {reportType === "orders" && <OrderReports searchTerm={searchTerm} hideTabsWhenGeneratingPDF={isGeneratingPDF} />}
 
         {/* PRODUCT REPORT */}
-        {reportType === "product" && <ProductReports />}
+        {reportType === "product" && <ProductReports searchTerm={searchTerm} disableReviewsPagination={true} />}
 
         {/* VENDOR REPORT */}
-        {reportType === "vendor" && <VendorReports />}
+        {reportType === "vendor" && <VendorReports searchTerm={searchTerm} />}
 
         {/* CUSTOMER REPORT */}
-        {reportType === "customer" && <CustomerReports />}
+        {reportType === "customer" && <CustomerReports searchTerm={searchTerm} />}
       </div>
     </div>
   );
