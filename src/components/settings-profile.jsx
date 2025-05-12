@@ -27,7 +27,7 @@ const SettingsProfile = () => {
     country,
     coords,
     setManualCurrency,
-    setManualCountry,
+    setManualCountry, // Added to support country override
     resetToAutoCurrency,
     loading,
     error,
@@ -119,7 +119,7 @@ const SettingsProfile = () => {
   const handleCountryChange = (e) => {
     const newCountry = e.target.value;
     setSelectedCountry(newCountry);
-    setManualCountry(newCountry);
+    setManualCountry(newCountry); // Use context's setManualCountry
     toast.success(`Country set to ${newCountry}`);
   };
 
@@ -458,8 +458,6 @@ const SettingsProfile = () => {
                   Reset to GPS-Detected Currency
                 </button>
               </div>
-
-             
             </div>
           </div>
         )}

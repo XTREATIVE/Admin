@@ -1,27 +1,28 @@
 import React, { createContext, useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 
-// Create the Currency Context
 export const CurrencyContext = createContext();
 
-// Currency Provider Component
 export const CurrencyProvider = ({ children }) => {
-  const [currency, setCurrency] = useState(() => {
-    return localStorage.getItem('currency') || 'USD';
-  });
-  const [country, setCountry] = useState(() => {
-    return localStorage.getItem('country') || 'Unknown';
-  });
+  const [currency, setCurrency] = useState(() => localStorage.getItem('currency') || 'UGX');
+  const [country, setCountry] = useState(() => localStorage.getItem('country') || 'Uganda');
   const [exchangeRates, setExchangeRates] = useState({ USD: 1, UGX: 3700, RWF: 1300, KES: 130 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  // Add GPS coordinates
   const [coords, setCoords] = useState({ latitude: null, longitude: null });
 
   const EXCHANGE_RATE_API_KEY = '250ca4fa8a355ef1d25027ab';
   const BASE_CURRENCY = 'USD';
   const DEFAULT_SOURCE_CURRENCY = 'UGX';
   const SUPPORTED_CURRENCIES = ['USD', 'UGX', 'RWF', 'KES'];
+
+  // Coordinate ranges for supported countries
+  const countryRanges = {
+    Uganda: { lat: { min: -1.5, max: 1.5 }, lon: { min: 29.5, max: 35.0 }, currency: 'UGX' },
+    Kenya: { lat: { min: -5.0, max: 5.0 }, lon: { min: 33.5, max: 41.0 }, currency: 'KES' },
+    Rwanda: { lat: { min: -2.8, max: -1.0 }, lon: { min: 28.8, max: 30.9 }, currency: 'RWF' },
+    'United States': { lat: { min: 24.0, max: 49.0 }, lon: { min: -125.0, max: -66.0 }, currency: 'USD' },
+  };
 
   // Fetch exchange rates
   useEffect(() => {
@@ -52,49 +53,49 @@ export const CurrencyProvider = ({ children }) => {
     fetchExchangeRates();
   }, []);
 
-  // Detect location using GPS only, set coords & country/currency
+  // Detect location using GPS and map coordinates to country
   useEffect(() => {
-    const handleSuccess = async ({ coords: { latitude, longitude } }) => {
-      setCoords({ latitude, longitude });
-      try {
-        const response = await fetch(
-          `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
-        );
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = await response.json();
-        const userCountry = data.countryName || 'Unknown';
+    if (localStorage.getItem('currencyManuallySet') === 'true') {
+      setLoading(false);
+      return; // Skip geolocation if manually set
+    }
 
-        setCountry(userCountry);
-        localStorage.setItem('country', userCountry);
-
-        let newCurrency = 'USD';
-        if (userCountry === 'Uganda') newCurrency = 'UGX';
-        else if (userCountry === 'Rwanda') newCurrency = 'RWF';
-        else if (userCountry === 'Kenya') newCurrency = 'KES';
-
-        setCurrency(newCurrency);
-        localStorage.setItem('currency', newCurrency);
-        setError(null);
-      } catch (err) {
-        console.error('GPS reverse-geocode error:', err.message);
-        setError('Unable to determine country from GPS. Using defaults.');
-        setCountry('Unknown');
-        setCurrency('USD');
-        localStorage.setItem('country', 'Unknown');
-        localStorage.setItem('currency', 'USD');
-      } finally {
-        setLoading(false);
+    const determineCountryFromCoords = (latitude, longitude) => {
+      for (const [country, range] of Object.entries(countryRanges)) {
+        if (
+          latitude >= range.lat.min &&
+          latitude <= range.lat.max &&
+          longitude >= range.lon.min &&
+          longitude <= range.lon.max
+        ) {
+          return { country, currency: range.currency };
+        }
       }
+      return { country: 'Uganda', currency: 'UGX' }; // Default to Uganda
+    };
+
+    const handleSuccess = ({ coords: { latitude, longitude } }) => {
+      console.log('Geolocation Coordinates:', { latitude, longitude });
+      setCoords({ latitude, longitude });
+
+      const { country: userCountry, currency: newCurrency } = determineCountryFromCoords(latitude, longitude);
+
+      setCountry(userCountry);
+      setCurrency(newCurrency);
+      localStorage.setItem('country', userCountry);
+      localStorage.setItem('currency', newCurrency);
+      setError(null);
+      setLoading(false);
     };
 
     const handleError = (err) => {
       console.error('Geolocation error:', err.message);
-      setError('Geolocation failed or permission denied. Using defaults.');
+      setError('Geolocation failed or permission denied. Please select your country manually.');
       setCoords({ latitude: null, longitude: null });
-      setCountry('Unknown');
-      setCurrency('USD');
-      localStorage.setItem('country', 'Unknown');
-      localStorage.setItem('currency', 'USD');
+      setCountry('Uganda');
+      setCurrency('UGX');
+      localStorage.setItem('country', 'Uganda');
+      localStorage.setItem('currency', 'UGX');
       setLoading(false);
     };
 
@@ -137,6 +138,8 @@ export const CurrencyProvider = ({ children }) => {
 
   const resetToAutoCurrency = () => {
     localStorage.removeItem('currencyManuallySet');
+    localStorage.removeItem('country');
+    localStorage.removeItem('currency');
     setLoading(true);
     window.location.reload();
   };
