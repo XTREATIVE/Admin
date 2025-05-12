@@ -16,8 +16,6 @@ import LoanReport from "./loans_reports";
 import FinancialReports from "./financial_reports";
 import OrderReports from "./order_reports";
 import ProductReports from "./product_reports";
-import VendorReports from "./vendor_reports";
-import CustomerReports from "./customer_reports";
 import { ProductsContext } from "../context/allproductscontext";
 
 import { blocks } from "../data/reportsdata";
@@ -320,7 +318,7 @@ export default function ReportContent() {
         const activeFinancialTabObj = financialTabs.find((tab) => tab.key === financialActiveTab);
         activeTabLabel = activeFinancialTabObj ? activeFinancialTabObj.label : "Unknown";
       } else {
-        // For other report types (orders, product, vendor, customer)
+        // For other report types (orders, product)
         activeTabLabel = reportType.charAt(0).toUpperCase() + reportType.slice(1);
       }
 
@@ -463,8 +461,6 @@ export default function ReportContent() {
             <option value="financial">Financial Reports</option>
             <option value="orders">Order Reports</option>
             <option value="product">Product Reports</option>
-            <option value="vendor">Vendor Reports</option>
-            <option value="customer">Customer Reports</option>
           </select>
         </div>
         <input
@@ -783,12 +779,6 @@ export default function ReportContent() {
             isGeneratingPDF={isGeneratingPDF}
           />
         )}
-
-        {/* VENDOR REPORT */}
-        {reportType === "vendor" && <VendorReports searchTerm={searchTerm} />}
-
-        {/* CUSTOMER REPORT */}
-        {reportType === "customer" && <CustomerReports searchTerm={searchTerm} />}
       </div>
     </div>
   );
