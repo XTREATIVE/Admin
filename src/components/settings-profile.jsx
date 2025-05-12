@@ -17,6 +17,7 @@ const emailSchema = Yup.object().shape({
     .email("Invalid email address")
     .required("Email Field Required"),
 });
+
 const pinSchema = Yup.object().shape({
   currentPin: Yup.string()
     .length(4, "PIN must be 4 digits")
@@ -33,6 +34,7 @@ const SettingsProfile = () => {
   const {
     currency,
     country,
+    coords,
     setManualCurrency,
     resetToAutoCurrency,
     loading,
@@ -46,23 +48,22 @@ const SettingsProfile = () => {
   const [settingsLoading, setSettingsLoading] = useState(false);
   const inputRefs = useRef([]);
 
-  // State for Additional Settings
+  // For country/currency overrides
   const [selectedCountry, setSelectedCountry] = useState(country);
   const [selectedCurrency, setSelectedCurrency] = useState(currency);
 
-  // Country-currency mapping
   const countryCurrencyMap = {
-    Uganda: 'UGX',
-    Rwanda: 'RWF',
-    Kenya: 'KES',
-    'United States': 'USD',
-    Unknown: 'USD',
+    Uganda: "UGX",
+    Rwanda: "RWF",
+    Kenya: "KES",
+    "United States": "USD",
+    Unknown: "USD",
   };
 
-  // Available countries and currencies
-  const countries = ['Uganda', 'Rwanda', 'Kenya', 'United States'];
-  const currencies = ['USD', 'UGX', 'RWF', 'KES'];
+  const countries = Object.keys(countryCurrencyMap);
+  const currencies = ["USD", "UGX", "RWF", "KES"];
 
+  // Focus first OTP input when entering otp step
   useEffect(() => {
     if (step === "otp") {
       setOtpDigits(Array(6).fill(""));
@@ -71,31 +72,34 @@ const SettingsProfile = () => {
     }
   }, [step]);
 
+  // Step 1: Send OTP
   const handleEmailSubmit = (values, { setSubmitting }) => {
-    // TODO: send OTP to email
     setTimeout(() => {
       setSubmitting(false);
       setStep("otp");
     }, 800);
   };
 
+  // Handle each OTP digit
   const handleDigitChange = (idx, val) => {
     if (/^[0-9]?$/.test(val)) {
       const newDigits = [...otpDigits];
       newDigits[idx] = val;
       setOtpDigits(newDigits);
-      if (val && idx < 5) inputRefs.current[idx + 1]?.focus();
+      if (val && idx < 5) {
+        inputRefs.current[idx + 1]?.focus();
+      }
     }
   };
 
-  const handleOtpSubmit = e => {
+  // Step 2: Verify OTP
+  const handleOtpSubmit = (e) => {
     e.preventDefault();
     const code = otpDigits.join("");
     if (code.length < 6) {
       setOtpError("Please enter all 6 digits.");
       return;
     }
-    // TODO: verify OTP code
     setSettingsLoading(true);
     setTimeout(() => {
       setSettingsLoading(false);
@@ -103,8 +107,8 @@ const SettingsProfile = () => {
     }, 800);
   };
 
+  // Step 3: Change PIN
   const handlePinSubmit = (values, { setSubmitting, resetForm }) => {
-    // TODO: update PIN on server
     setTimeout(() => {
       setSubmitting(false);
       resetForm();
@@ -113,26 +117,26 @@ const SettingsProfile = () => {
     }, 800);
   };
 
-  // Handle country change
+  // Country selector change
   const handleCountryChange = (e) => {
     const newCountry = e.target.value;
     setSelectedCountry(newCountry);
-    const newCurrency = countryCurrencyMap[newCountry] || 'USD';
-    setSelectedCurrency(newCurrency);
-    setManualCurrency(newCurrency);
-    localStorage.setItem('country', newCountry);
+    const newCurr = countryCurrencyMap[newCountry] || "USD";
+    setSelectedCurrency(newCurr);
+    setManualCurrency(newCurr);
+    localStorage.setItem("country", newCountry);
     toast.success(`Country set to ${newCountry}`);
   };
 
-  // Handle currency change
+  // Currency selector change
   const handleCurrencyChange = (e) => {
-    const newCurrency = e.target.value;
-    setSelectedCurrency(newCurrency);
-    setManualCurrency(newCurrency);
-    toast.success(`Currency set to ${newCurrency}`);
+    const newCurr = e.target.value;
+    setSelectedCurrency(newCurr);
+    setManualCurrency(newCurr);
+    toast.success(`Currency set to ${newCurr}`);
   };
 
-  // Handle reset to auto-detected currency
+  // Reset to GPS Auto
   const handleReset = () => {
     resetToAutoCurrency();
     setSelectedCountry(country);
@@ -144,10 +148,13 @@ const SettingsProfile = () => {
     <div className="h-full">
       {/* Tabs */}
       <div className="flex space-x-6 border-b mb-6">
-        {TABS.map(tab => (
+        {TABS.map((tab) => (
           <button
             key={tab}
-            onClick={() => { setActiveTab(tab); setStep("intro"); }}
+            onClick={() => {
+              setActiveTab(tab);
+              setStep("intro");
+            }}
             className={`pb-2 text-[13px] font-medium ${
               activeTab === tab
                 ? "border-b-2 border-[#f9622c] text-[#f9622c]"
@@ -159,14 +166,30 @@ const SettingsProfile = () => {
         ))}
       </div>
 
+      {/* Wallet Pin tab */}
       {activeTab === "Wallet Pin" && (
         <div className="p-8 max-w-2xl mx-auto">
-          {/* Intro Step */}
           {step === "intro" && (
             <div className="text-center space-y-10">
-              <h2 className="text-sm font-semibold text-gray-900">Change Wallet PIN</h2>
+              <h2 className="text-sm font-semibold text-gray-900">
+                Change Wallet PIN
+              </h2>
               <p className="text-[11px] text-gray-600">
-                To ensure the highest level of protection for your business funds, you can update your 4-digit wallet PIN at any time from this settings page. Changing your PIN is a quick way to guard against unauthorized access—whether you’ve simply forgotten your current code, suspect it may have been compromised, or just want to refresh your security credentials. Before you select a new PIN, we’ll send a one-time verification link to your registered email address. Once you click that link and confirm it’s you, you’ll be guided through choosing and confirming your new 4-digit code. Your old PIN will be immediately deactivated as soon as the update is complete, and from that moment on all outgoing transactions and sensitive actions will require your fresh, newly created PIN. This additional layer of email verification helps ensure that only you can make critical changes to your business wallet, giving you full confidence that your company’s funds remain under your sole control.
+                To ensure the highest level of protection for your business funds,
+                you can update your 4-digit wallet PIN at any time from this
+                settings page. Changing your PIN is a quick way to guard against
+                unauthorized access—whether you’ve simply forgotten your current
+                code, suspect it may have been compromised, or just want to refresh
+                your security credentials. Before you select a new PIN, we’ll send
+                a one-time verification link to your registered email address.
+                Once you click that link and confirm it’s you, you’ll be guided
+                through choosing and confirming your new 4-digit code. Your old PIN
+                will be immediately deactivated as soon as the update is complete,
+                and from that moment on all outgoing transactions and sensitive
+                actions will require your fresh, newly created PIN. This additional
+                layer of email verification helps ensure that only you can make
+                critical changes to your business wallet, giving you full confidence
+                that your company’s funds remain under your sole control.
               </p>
               <button
                 onClick={() => setStep("email")}
@@ -177,10 +200,12 @@ const SettingsProfile = () => {
             </div>
           )}
 
-          {/* Step 1: Email Entry */}
           {step === "email" && (
-            <>
-              <IoMailOutline size={48} className="text-[#f9622c] mb-4 mx-auto block" />
+            <div>
+              <IoMailOutline
+                size={48}
+                className="text-[#f9622c] mb-4 mx-auto block"
+              />
               <h2 className="text-xl font-semibold text-gray-900 mb-2 text-center">
                 Verify Your Email
               </h2>
@@ -192,7 +217,15 @@ const SettingsProfile = () => {
                 validationSchema={emailSchema}
                 onSubmit={handleEmailSubmit}
               >
-                {({ values, errors, touched, handleChange, handleBlur, handleSubmit, isSubmitting }) => (
+                {({
+                  values,
+                  errors,
+                  touched,
+                  handleChange,
+                  handleBlur,
+                  handleSubmit,
+                  isSubmitting,
+                }) => (
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -207,7 +240,9 @@ const SettingsProfile = () => {
                         className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-[#f9622c]"
                       />
                       {touched.email && errors.email && (
-                        <p className="text-xs text-red-600 mt-1">{errors.email}</p>
+                        <p className="text-xs text-red-600 mt-1">
+                          {errors.email}
+                        </p>
                       )}
                     </div>
                     <button
@@ -220,13 +255,15 @@ const SettingsProfile = () => {
                   </form>
                 )}
               </Formik>
-            </>
+            </div>
           )}
 
-          {/* Step 2: OTP Verification */}
           {step === "otp" && (
             <form onSubmit={handleOtpSubmit} className="space-y-4">
-              <IoLockClosed size={48} className="text-[#f9622c] mb-2 mx-auto block" />
+              <IoLockClosed
+                size={48}
+                className="text-[#f9622c] mb-2 mx-auto block"
+              />
               <h2 className="text-lg font-medium text-gray-900 text-center">
                 Enter OTP
               </h2>
@@ -234,11 +271,11 @@ const SettingsProfile = () => {
                 {otpDigits.map((digit, idx) => (
                   <input
                     key={idx}
-                    ref={el => inputRefs.current[idx] = el}
+                    ref={(el) => (inputRefs.current[idx] = el)}
                     type="text"
                     maxLength={1}
                     value={digit}
-                    onChange={e => handleDigitChange(idx, e.target.value)}
+                    onChange={(e) => handleDigitChange(idx, e.target.value)}
                     className="w-10 h-10 border border-gray-300 rounded text-center focus:border-[#f9622c]"
                     disabled={settingsLoading}
                   />
@@ -265,10 +302,12 @@ const SettingsProfile = () => {
             </form>
           )}
 
-          {/* Step 3: PIN Change */}
           {step === "pin" && (
-            <>
-              <IoLockClosed size={48} className="text-[#f9622c] mb-4 mx-auto block" />
+            <div>
+              <IoLockClosed
+                size={48}
+                className="text-[#f9622c] mb-4 mx-auto block"
+              />
               <h2 className="text-xl font-semibold text-gray-900 mb-2 text-center">
                 Change Wallet PIN
               </h2>
@@ -277,9 +316,16 @@ const SettingsProfile = () => {
                 validationSchema={pinSchema}
                 onSubmit={handlePinSubmit}
               >
-                {({ values, errors, touched, handleChange, handleBlur, handleSubmit, isSubmitting }) => (
+                {({
+                  values,
+                  errors,
+                  touched,
+                  handleChange,
+                  handleBlur,
+                  handleSubmit,
+                  isSubmitting,
+                }) => (
                   <form onSubmit={handleSubmit} className="space-y-6">
-                    {/* Current PIN full width */}
                     <div className="flex flex-col">
                       <label className="text-sm font-medium text-gray-700 mb-1">
                         Current PIN
@@ -294,10 +340,11 @@ const SettingsProfile = () => {
                         className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-[#f9622c]"
                       />
                       {touched.currentPin && errors.currentPin && (
-                        <p className="text-xs text-red-600 mt-1">{errors.currentPin}</p>
+                        <p className="text-xs text-red-600 mt-1">
+                          {errors.currentPin}
+                        </p>
                       )}
                     </div>
-                    {/* New PIN and Confirm PIN side by side */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="flex flex-col">
                         <label className="text-sm font-medium text-gray-700 mb-1">
@@ -313,7 +360,9 @@ const SettingsProfile = () => {
                           className="px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-[#f9622c]"
                         />
                         {touched.newPin && errors.newPin && (
-                          <p className="text-xs text-red-600 mt-1">{errors.newPin}</p>
+                          <p className="text-xs text-red-600 mt-1">
+                            {errors.newPin}
+                          </p>
                         )}
                       </div>
                       <div className="flex flex-col">
@@ -330,7 +379,9 @@ const SettingsProfile = () => {
                           className="px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-[#f9622c]"
                         />
                         {touched.confirmPin && errors.confirmPin && (
-                          <p className="text-xs text-red-600 mt-1">{errors.confirmPin}</p>
+                          <p className="text-xs text-red-600 mt-1">
+                            {errors.confirmPin}
+                          </p>
                         )}
                       </div>
                     </div>
@@ -344,20 +395,29 @@ const SettingsProfile = () => {
                   </form>
                 )}
               </Formik>
-            </>
+            </div>
           )}
         </div>
       )}
 
+      {/* Additional Settings tab */}
       {activeTab === "Additional Settings" && (
         <div className="p-8 max-w-2xl mx-auto">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">Additional Settings</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-6">
+            Additional Settings
+          </h2>
 
-          {loading && <p className="text-gray-600 mb-4 text-sm">Loading settings...</p>}
-          {error && <p className="text-red-600 mb-4 text-sm">{error}</p>}
+          {loading && (
+            <p className="text-gray-600 mb-4 text-sm">Loading settings...</p>
+          )}
+          {error && (
+            <p className="text-red-600 mb-4 text-sm">{error}</p>
+          )}
 
           <div className="space-y-6">
-            <h3 className="text-lg font-medium text-gray-900">Localization Settings</h3>
+            <h3 className="text-lg font-medium text-gray-900">
+              Localization Settings
+            </h3>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -405,9 +465,15 @@ const SettingsProfile = () => {
               </button>
             </div>
 
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-gray-600 space-y-1">
               <p>Current Country: {country}</p>
               <p>Current Currency: {currency}</p>
+              {coords.latitude != null && coords.longitude != null && (
+                <p>
+                  Coordinates: {coords.latitude.toFixed(6)},{" "}
+                  {coords.longitude.toFixed(6)}
+                </p>
+              )}
             </div>
           </div>
         </div>

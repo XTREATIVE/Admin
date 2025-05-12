@@ -12,13 +12,15 @@ export const CurrencyProvider = ({ children }) => {
   const [country, setCountry] = useState(() => {
     return localStorage.getItem('country') || 'Unknown';
   });
-  const [exchangeRates, setExchangeRates] = useState({ USD: 1, UGX: 3700, RWF: 1300, KES: 130 }); // Default rates
+  const [exchangeRates, setExchangeRates] = useState({ USD: 1, UGX: 3700, RWF: 1300, KES: 130 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // Add GPS coordinates
+  const [coords, setCoords] = useState({ latitude: null, longitude: null });
 
   const EXCHANGE_RATE_API_KEY = '250ca4fa8a355ef1d25027ab';
-  const BASE_CURRENCY = 'USD'; // For API fetch
-  const DEFAULT_SOURCE_CURRENCY = 'UGX'; // Backend prices are in UGX
+  const BASE_CURRENCY = 'USD';
+  const DEFAULT_SOURCE_CURRENCY = 'UGX';
   const SUPPORTED_CURRENCIES = ['USD', 'UGX', 'RWF', 'KES'];
 
   // Fetch exchange rates
@@ -36,9 +38,7 @@ export const CurrencyProvider = ({ children }) => {
         const rates = {};
         SUPPORTED_CURRENCIES.forEach((curr) => {
           rates[curr] = data.conversion_rates[curr] || exchangeRates[curr] || 1;
-          if (!data.conversion_rates[curr]) console.warn(`No rate for ${curr}, using default: ${rates[curr]}`);
         });
-        console.log('Fetched exchange rates:', JSON.stringify(rates, null, 2));
         setExchangeRates(rates);
         setError(null);
       } catch (err) {
@@ -52,15 +52,17 @@ export const CurrencyProvider = ({ children }) => {
     fetchExchangeRates();
   }, []);
 
-  // Detect location using browser GPS and reverse geocode to get country and currency
+  // Detect location using GPS only, set coords & country/currency
   useEffect(() => {
-    const detectByIP = async () => {
-      setLoading(true);
+    const handleSuccess = async ({ coords: { latitude, longitude } }) => {
+      setCoords({ latitude, longitude });
       try {
-        const response = await fetch('https://ipapi.co/json/');
-        if (!response.ok) throw new Error(`HTTP ${response.status}: Failed to fetch country data`);
+        const response = await fetch(
+          `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+        );
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
-        const userCountry = data.country_name || 'Unknown';
+        const userCountry = data.countryName || 'Unknown';
 
         setCountry(userCountry);
         localStorage.setItem('country', userCountry);
@@ -74,8 +76,8 @@ export const CurrencyProvider = ({ children }) => {
         localStorage.setItem('currency', newCurrency);
         setError(null);
       } catch (err) {
-        console.error('IP detection error:', err.message);
-        setError('Unable to detect location. Using default currency.');
+        console.error('GPS reverse-geocode error:', err.message);
+        setError('Unable to determine country from GPS. Using defaults.');
         setCountry('Unknown');
         setCurrency('USD');
         localStorage.setItem('country', 'Unknown');
@@ -85,128 +87,58 @@ export const CurrencyProvider = ({ children }) => {
       }
     };
 
-    const detectByGPS = () => {
-      if (!navigator.geolocation) {
-        console.warn('Geolocation not supported, falling back to IP-based detection');
-        detectByIP();
-        return;
-      }
-
-      setLoading(true);
-      navigator.geolocation.getCurrentPosition(
-        async ({ coords }) => {
-          try {
-            const { latitude, longitude } = coords;
-            const response = await fetch(
-              `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
-            );
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const data = await response.json();
-            const userCountry = data.countryName || 'Unknown';
-
-            setCountry(userCountry);
-            localStorage.setItem('country', userCountry);
-
-            let newCurrency = 'USD';
-            if (userCountry === 'Uganda') newCurrency = 'UGX';
-            else if (userCountry === 'Rwanda') newCurrency = 'RWF';
-            else if (userCountry === 'Kenya') newCurrency = 'KES';
-
-            setCurrency(newCurrency);
-            localStorage.setItem('currency', newCurrency);
-            setError(null);
-          } catch (err) {
-            console.error('GPS detection error:', err.message);
-            detectByIP();
-          } finally {
-            setLoading(false);
-          }
-        },
-        (err) => {
-          console.error('Geolocation error:', err.message);
-          detectByIP();
-        },
-        { timeout: 5000 }
-      );
+    const handleError = (err) => {
+      console.error('Geolocation error:', err.message);
+      setError('Geolocation failed or permission denied. Using defaults.');
+      setCoords({ latitude: null, longitude: null });
+      setCountry('Unknown');
+      setCurrency('USD');
+      localStorage.setItem('country', 'Unknown');
+      localStorage.setItem('currency', 'USD');
+      setLoading(false);
     };
 
-    if (!localStorage.getItem('currencyManuallySet')) {
-      detectByGPS();
+    if (!navigator.geolocation) {
+      handleError(new Error('Geolocation not supported'));
     } else {
-      setLoading(false);
+      navigator.geolocation.getCurrentPosition(handleSuccess, handleError, { timeout: 5000 });
     }
   }, []);
 
-  // Function to convert price to the current currency
+  // Convert price
   const convertPrice = (price) => {
-    if (!price || isNaN(price) || price <= 0) {
-      console.warn(`Invalid price: ${price}`);
-      return 0;
-    }
-
-    if (!SUPPORTED_CURRENCIES.includes(currency)) {
-      console.warn(`Unsupported target currency: ${currency}, defaulting to UGX`);
-      setCurrency('UGX');
-      return price;
-    }
-
+    if (!price || isNaN(price) || price <= 0) return 0;
     const sourceRate = exchangeRates[DEFAULT_SOURCE_CURRENCY] || 1;
     const targetRate = exchangeRates[currency] || 1;
-    const rate = targetRate / sourceRate;
-    const converted = Number((price * rate).toFixed(2));
-
-    console.log(
-      `Converting ${price} from ${DEFAULT_SOURCE_CURRENCY} to ${currency}: ` +
-      `sourceRate=${sourceRate.toFixed(4)}, targetRate=${targetRate.toFixed(4)}, ` +
-      `rate=${rate.toFixed(4)}, result=${converted}`
-    );
-
-    return converted;
+    return Number((price * (targetRate / sourceRate)).toFixed(2));
   };
 
-  // Function to manually set currency
+  // Manual overrides
   const setManualCurrency = (newCurrency) => {
     if (SUPPORTED_CURRENCIES.includes(newCurrency)) {
-      console.log('Manually setting currency to:', newCurrency);
       setCurrency(newCurrency);
       localStorage.setItem('currency', newCurrency);
       localStorage.setItem('currencyManuallySet', 'true');
       setError(null);
     } else {
-      console.error('Unsupported currency:', newCurrency);
       setError(`Unsupported currency: ${newCurrency}`);
     }
   };
 
-  // Function to manually set country
   const setManualCountry = (newCountry) => {
-    console.log('Manually setting country to:', newCountry);
     setCountry(newCountry);
     localStorage.setItem('country', newCountry);
-    const newCurrency = {
-      Uganda: 'UGX',
-      Rwanda: 'RWF',
-      Kenya: 'KES',
-      'United States': 'USD',
-      Unknown: 'USD',
-    }[newCountry] || 'USD';
+    const newCurrency = { Uganda: 'UGX', Rwanda: 'RWF', Kenya: 'KES', 'United States': 'USD' }[newCountry] || 'USD';
     setCurrency(newCurrency);
     localStorage.setItem('currency', newCurrency);
     localStorage.setItem('currencyManuallySet', 'true');
     setError(null);
   };
 
-  // Function to reset to auto-detected currency
   const resetToAutoCurrency = () => {
-    console.log('Resetting to auto-detected currency');
     localStorage.removeItem('currencyManuallySet');
-    localStorage.removeItem('country');
     setLoading(true);
-    setError(null);
-    setCurrency('USD');
-    setCountry('Unknown');
-    // Trigger GPS detection again
-    navigator.geolocation && navigator.geolocation.getCurrentPosition(() => window.location.reload());
+    window.location.reload();
   };
 
   return (
@@ -214,6 +146,7 @@ export const CurrencyProvider = ({ children }) => {
       value={{
         currency,
         country,
+        coords,
         exchangeRates,
         convertPrice,
         loading,
