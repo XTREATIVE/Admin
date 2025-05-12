@@ -206,10 +206,10 @@ const SettingsProfile = () => {
                   size={48}
                   className="text-[#f9622c] mb-4 mx-auto block"
                 />
-                <h2 className="text-xl font-semibold text-gray-900 mb-2 text-center">
+                <h2 className="text-sm font-semibold text-gray-900 mb-2 text-center">
                   Verify Your Email
                 </h2>
-                <p className="text-sm text-gray-600 mb-6 text-center">
+                <p className="text-[13px] text-gray-600 mb-6 text-center">
                   Enter your email to receive an OTP before changing your PIN.
                 </p>
                 <Formik
@@ -228,7 +228,7 @@ const SettingsProfile = () => {
                   }) => (
                     <form onSubmit={handleSubmit} className="space-y-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-[13px] font-medium text-gray-700 mb-1">
                           Email Address
                         </label>
                         <input
@@ -237,7 +237,7 @@ const SettingsProfile = () => {
                           value={values.email}
                           onChange={handleChange}
                           onBlur={handleBlur}
-                          className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-[#f9622c]"
+                          className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-[#f9622c] text-[13px]"
                         />
                         {touched.email && errors.email && (
                           <p className="text-xs text-red-600 mt-1">
@@ -248,7 +248,7 @@ const SettingsProfile = () => {
                       <button
                         type="submit"
                         disabled={isSubmitting}
-                        className="w-full py-2 bg-[#f9622c] text-white rounded font-medium hover:bg-orange-600"
+                        className="w-full py-2 bg-[#f9622c] text-white rounded font-medium hover:bg-orange-600 text-[13px]"
                       >
                         {isSubmitting ? "Sending…" : "Send OTP"}
                       </button>
@@ -264,7 +264,7 @@ const SettingsProfile = () => {
                   size={48}
                   className="text-[#f9622c] mb-2 mx-auto block"
                 />
-                <h2 className="text-lg font-medium text-gray-900 text-center">
+                <h2 className="text-sm font-medium text-gray-900 text-center">
                   Enter OTP
                 </h2>
                 <div className="flex justify-center space-x-2 mb-2">
@@ -287,7 +287,7 @@ const SettingsProfile = () => {
                 <button
                   type="submit"
                   disabled={settingsLoading}
-                  className="w-full py-2 bg-[#f9622c] text-white rounded font-medium hover:bg-orange-600"
+                  className="w-full py-2 bg-[#f9622c] text-white rounded font-medium hover:bg-orange-600 text-[13px]"
                 >
                   {settingsLoading ? "Verifying…" : "Verify OTP"}
                 </button>
@@ -308,7 +308,7 @@ const SettingsProfile = () => {
                   size={48}
                   className="text-[#f9622c] mb-4 mx-auto block"
                 />
-                <h2 className="text-xl font-semibold text-gray-900 mb-2 text-center">
+                <h2 className="text-sm font-semibold text-gray-900 mb-2 text-center">
                   Change Wallet PIN
                 </h2>
                 <Formik
@@ -327,7 +327,7 @@ const SettingsProfile = () => {
                   }) => (
                     <form onSubmit={handleSubmit} className="space-y-6">
                       <div className="flex flex-col">
-                        <label className="text-sm font-medium text-gray-700 mb-1">
+                        <label className="text-[13px] font-medium text-gray-700 mb-1">
                           Current PIN
                         </label>
                         <input
@@ -347,7 +347,7 @@ const SettingsProfile = () => {
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="flex flex-col">
-                          <label className="text-sm font-medium text-gray-700 mb-1">
+                          <label className="text-[13px] font-medium text-gray-700 mb-1">
                             New PIN
                           </label>
                           <input
@@ -366,7 +366,7 @@ const SettingsProfile = () => {
                           )}
                         </div>
                         <div className="flex flex-col">
-                          <label className="text-sm font-medium text-gray-700 mb-1">
+                          <label className="text-[13px] font-medium text-gray-700 mb-1">
                             Confirm PIN
                           </label>
                           <input
@@ -388,7 +388,7 @@ const SettingsProfile = () => {
                       <button
                         type="submit"
                         disabled={isSubmitting}
-                        className="w-full py-2 bg-[#f9622c] text-white rounded font-medium hover:bg-orange-600"
+                        className="w-full py-2 bg-[#f9622c] text-white rounded font-medium hover:bg-orange-600 text-[13px]"
                       >
                         {isSubmitting ? "Updating…" : "Update PIN"}
                       </button>
