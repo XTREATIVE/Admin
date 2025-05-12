@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useContext } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { OrdersContext } from "../context/orderscontext";
+import { CurrencyContext } from "../context/CurrencyContext";
 
 const ITEMS_PER_PAGE = 20;
 const TABS = [
@@ -11,11 +12,12 @@ const TABS = [
 ];
 
 export default function OrderReports() {
-  const { orders, products, loading, error } = useContext(OrdersContext);
+  const { orders, products, loading: loadingOrders, error: errorOrders } = useContext(OrdersContext);
+  const { currency, loading: loadingCurrency, error: errorCurrency } = useContext(CurrencyContext);
   const [activeTab, setActiveTab] = useState(TABS[0].key);
   const [currentPage, setCurrentPage] = useState(1);
 
-  // filter data based on tab
+  // Filter data based on tab
   const filtered = useMemo(() => {
     switch (activeTab) {
       case "pending":
@@ -37,10 +39,20 @@ export default function OrderReports() {
     currentPage * ITEMS_PER_PAGE
   );
 
-  if (loading) return <p className="p-4 text-[11px]">Loading...</p>;
-  if (error) return <p className="p-4 text-red-600 text-[11px]">Error: {error}</p>;
+  // Combine loading and error states
+  if (loadingOrders || loadingCurrency) {
+    return <p className="p-4 text-[11px]">Loading...</p>;
+  }
+  if (errorOrders || errorCurrency) {
+    return (
+      <div className="p-4 text-red-600 text-[11px]">
+        {errorOrders && <p>Orders error: {errorOrders}</p>}
+        {errorCurrency && <p>Currency error: {errorCurrency}</p>}
+      </div>
+    );
+  }
 
-  // render table headers and rows dynamic
+  // Render table headers and rows dynamically
   const renderTable = () => {
     let headers = [];
     let rows = [];
@@ -49,8 +61,14 @@ export default function OrderReports() {
       headers = ["Product ID", "Name", "SKU", "Quantity", "Location"];
       rows = pageData.map(p => [p.id, p.name, p.sku, p.quantity, p.location]);
     } else {
-      headers = ["Order ID", "Date", "Customer", "Total (UGX)", "Status"];
-      rows = pageData.map(o => [o.id, o.date, o.customer, `UGX ${o.total.toLocaleString()}`, o.status]);
+      headers = ["Order ID", "Date", "Customer", `Total (${currency})`, "Status"];
+      rows = pageData.map(o => [
+        o.id,
+        o.date,
+        o.customer,
+        `${o.total.toLocaleString()} ${currency}`,
+        o.status,
+      ]);
     }
 
     return (

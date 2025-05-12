@@ -13,11 +13,12 @@ import {PaymentProvider} from './context/paymentcontext'
 import { LoansProvider } from './context/loanscontext';
 import {ClaimsProvider} from './context/claimscontext';
 import {PayoutsProvider} from './context/payoutscontext'
-
+import {CurrencyProvider} from './context/currencycontext'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
 
+<CurrencyProvider>
 <LoansProvider>
 <PayoutsProvider>
     <PaymentProvider>
@@ -38,6 +39,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     </PaymentProvider>
     </PayoutsProvider>
     </LoansProvider>
+    </CurrencyProvider>
    
   </React.StrictMode>
 );

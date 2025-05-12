@@ -1,14 +1,13 @@
-// src/components/SettingsProfile.jsx
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useContext } from "react";
 import { Formik } from "formik";
 import * as Yup from "yup";
 import { IoMailOutline, IoLockClosed } from "react-icons/io5";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { CurrencyContext } from "../context/currencycontext";
 
 const TABS = [
   "Wallet Pin",
- 
   "Additional Settings",
 ];
 
@@ -31,12 +30,38 @@ const pinSchema = Yup.object().shape({
 });
 
 const SettingsProfile = () => {
+  const {
+    currency,
+    country,
+    setManualCurrency,
+    resetToAutoCurrency,
+    loading,
+    error,
+  } = useContext(CurrencyContext);
+
   const [activeTab, setActiveTab] = useState(TABS[0]);
   const [step, setStep] = useState("intro"); // intro, email, otp, pin
   const [otpDigits, setOtpDigits] = useState(Array(6).fill(""));
   const [otpError, setOtpError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [settingsLoading, setSettingsLoading] = useState(false);
   const inputRefs = useRef([]);
+
+  // State for Additional Settings
+  const [selectedCountry, setSelectedCountry] = useState(country);
+  const [selectedCurrency, setSelectedCurrency] = useState(currency);
+
+  // Country-currency mapping
+  const countryCurrencyMap = {
+    Uganda: 'UGX',
+    Rwanda: 'RWF',
+    Kenya: 'KES',
+    'United States': 'USD',
+    Unknown: 'USD',
+  };
+
+  // Available countries and currencies
+  const countries = ['Uganda', 'Rwanda', 'Kenya', 'United States'];
+  const currencies = ['USD', 'UGX', 'RWF', 'KES'];
 
   useEffect(() => {
     if (step === "otp") {
@@ -71,9 +96,9 @@ const SettingsProfile = () => {
       return;
     }
     // TODO: verify OTP code
-    setLoading(true);
+    setSettingsLoading(true);
     setTimeout(() => {
-      setLoading(false);
+      setSettingsLoading(false);
       setStep("pin");
     }, 800);
   };
@@ -86,6 +111,33 @@ const SettingsProfile = () => {
       setStep("intro");
       toast.success("Wallet PIN updated successfully!");
     }, 800);
+  };
+
+  // Handle country change
+  const handleCountryChange = (e) => {
+    const newCountry = e.target.value;
+    setSelectedCountry(newCountry);
+    const newCurrency = countryCurrencyMap[newCountry] || 'USD';
+    setSelectedCurrency(newCurrency);
+    setManualCurrency(newCurrency);
+    localStorage.setItem('country', newCountry);
+    toast.success(`Country set to ${newCountry}`);
+  };
+
+  // Handle currency change
+  const handleCurrencyChange = (e) => {
+    const newCurrency = e.target.value;
+    setSelectedCurrency(newCurrency);
+    setManualCurrency(newCurrency);
+    toast.success(`Currency set to ${newCurrency}`);
+  };
+
+  // Handle reset to auto-detected currency
+  const handleReset = () => {
+    resetToAutoCurrency();
+    setSelectedCountry(country);
+    setSelectedCurrency(currency);
+    toast.info("Reset to auto-detected currency");
   };
 
   return (
@@ -108,7 +160,7 @@ const SettingsProfile = () => {
       </div>
 
       {activeTab === "Wallet Pin" && (
-        <div className="p-8 max-w-2xl mx-auto ">
+        <div className="p-8 max-w-2xl mx-auto">
           {/* Intro Step */}
           {step === "intro" && (
             <div className="text-center space-y-10">
@@ -188,7 +240,7 @@ const SettingsProfile = () => {
                     value={digit}
                     onChange={e => handleDigitChange(idx, e.target.value)}
                     className="w-10 h-10 border border-gray-300 rounded text-center focus:border-[#f9622c]"
-                    disabled={loading}
+                    disabled={settingsLoading}
                   />
                 ))}
               </div>
@@ -197,15 +249,15 @@ const SettingsProfile = () => {
               )}
               <button
                 type="submit"
-                disabled={loading}
+                disabled={settingsLoading}
                 className="w-full py-2 bg-[#f9622c] text-white rounded font-medium hover:bg-orange-600"
               >
-                {loading ? "Verifying…" : "Verify OTP"}
+                {settingsLoading ? "Verifying…" : "Verify OTP"}
               </button>
               <button
                 type="button"
                 onClick={() => setStep("email")}
-                disabled={loading}
+                disabled={settingsLoading}
                 className="w-full py-1 text-sm text-gray-700 underline"
               >
                 Back to Email
@@ -297,10 +349,67 @@ const SettingsProfile = () => {
         </div>
       )}
 
-      {activeTab !== "Wallet Pin" && (
-        <div className="p-6 text-gray-600">
-          {/* Stub for other tabs */}
-          <p>{activeTab} content goes here…</p>
+      {activeTab === "Additional Settings" && (
+        <div className="p-8 max-w-2xl mx-auto">
+          <h2 className="text-xl font-semibold text-gray-900 mb-6">Additional Settings</h2>
+
+          {loading && <p className="text-gray-600 mb-4 text-sm">Loading settings...</p>}
+          {error && <p className="text-red-600 mb-4 text-sm">{error}</p>}
+
+          <div className="space-y-6">
+            <h3 className="text-lg font-medium text-gray-900">Localization Settings</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Country
+                </label>
+                <select
+                  value={selectedCountry}
+                  onChange={handleCountryChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-[#f9622c] text-sm"
+                  disabled={loading || settingsLoading}
+                >
+                  <option value="">Select a country</option>
+                  {countries.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Currency
+                </label>
+                <select
+                  value={selectedCurrency}
+                  onChange={handleCurrencyChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-[#f9622c] text-sm"
+                  disabled={loading || settingsLoading}
+                >
+                  {currencies.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                onClick={handleReset}
+                className="w-full py-2 bg-[#f9622c] text-white rounded font-medium hover:bg-orange-600 text-sm"
+                disabled={loading || settingsLoading}
+              >
+                Reset to Auto-Detected Currency
+              </button>
+            </div>
+
+            <div className="text-sm text-gray-600">
+              <p>Current Country: {country}</p>
+              <p>Current Currency: {currency}</p>
+            </div>
+          </div>
         </div>
       )}
     </div>

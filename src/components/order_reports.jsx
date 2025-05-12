@@ -105,7 +105,7 @@ export default function OrderReports({ hideTabsWhenGeneratingPDF = false }) {
                 );
 
               return (
-                <tr key={o.id} className="hover:bg-gray-100">
+                <tr key={o.id} className="hover:bg-gray-100 border-b border-gray-200">
                   {[id, date, o.customer, duration, total, items].map((c, i) => (
                     <td key={i} className="px-4 py-2 border-r">
                       {c}

@@ -45,8 +45,8 @@ export default function ReportContent() {
   const [topProductImgBase64, setTopProductImgBase64] = useState("");
   const [logoImgBase64, setLogoImgBase64] = useState("");
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
-  const [loanActiveTab, setLoanActiveTab] = useState("applications"); // State to track LoanReport's active tab
-  const [financialActiveTab, setFinancialActiveTab] = useState("upcoming"); // State to track FinancialReports's active tab
+  const [loanActiveTab, setLoanActiveTab] = useState("applications");
+  const [financialActiveTab, setFinancialActiveTab] = useState("upcoming");
   const reportRef = useRef();
   const { products } = useContext(ProductsContext);
 
@@ -463,7 +463,8 @@ export default function ReportContent() {
             <option value="financial">Financial Reports</option>
             <option value="orders">Order Reports</option>
             <option value="product">Product Reports</option>
-           
+            <option value="vendor">Vendor Reports</option>
+            <option value="customer">Customer Reports</option>
           </select>
         </div>
         <input
@@ -523,7 +524,7 @@ export default function ReportContent() {
           />
           <button
             onClick={handleGeneratePDF}
-            className="bg-gray-700 text-white rounded px-4 py-1 hover:bg-gray-800"
+            className="bg-[#f9622c] text-white rounded px-4 py-1 hover:bg-orange-800"
           >
             Generate PDF
           </button>
@@ -575,13 +576,19 @@ export default function ReportContent() {
               <tbody>
                 {pageData.map((b, i) => (
                   <tr key={i} className="border-t">
-                    {[b.date, b.time, b.vendor, b.orderid, b.sales, b.commissionAmount, b.netPayout].map(
-                      (c, j) => (
-                        <td key={j} className="px-2 py-1 border ">
-                          {c}
-                        </td>
-                      )
-                    )}
+                    {[
+                      b.date,
+                      b.time,
+                      b.vendor,
+                      b.orderid,
+                      b.sales,
+                      b.commissionAmount,
+                      b.netPayout,
+                    ].map((c, j) => (
+                      <td key={j} className="px-2 py-1 border ">
+                        {c}
+                      </td>
+                    ))}
                   </tr>
                 ))}
               </tbody>
@@ -664,7 +671,9 @@ export default function ReportContent() {
 
         {reportType === "sales" && activeTab === "orderStats" && (
           <div className="bg-white border rounded-lg p-4">
-            <h3 className="font-semibold mb-4 text-gray-800">Sales Leaderboard: {fromDate} – {toDate}</h3>
+            <h3 className="font-semibold mb-4 text-gray-800">
+              Sales Leaderboard: {fromDate} – {toDate}
+            </h3>
             <div className="grid md:grid-cols-2 gap-8">
               <div className="h-64">
                 <h4 className="font-medium mb-2 text-gray-700">Top 5 Vendors</h4>
@@ -676,8 +685,15 @@ export default function ReportContent() {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="vendor" tick={{ fontSize: 10 }} />
                     <YAxis />
-                    <Tooltip formatter={(v) => new Intl.NumberFormat().format(v)} />
-                    <Bar dataKey="sales" name="Sales (UGX)" barSize={20} fill="#4a5568" />
+                    <Tooltip
+                      formatter={(v) => new Intl.NumberFormat().format(v)}
+                    />
+                    <Bar
+                      dataKey="sales"
+                      name="Sales (UGX)"
+                      barSize={20}
+                      fill="#4a5568"
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -692,7 +708,12 @@ export default function ReportContent() {
                     <XAxis dataKey="product" tick={{ fontSize: 10 }} />
                     <YAxis />
                     <Tooltip />
-                    <Bar dataKey="count" name="Units Sold" barSize={20} fill="#4a5568" />
+                    <Bar
+                      dataKey="count"
+                      name="Units Sold"
+                      barSize={20}
+                      fill="#4a5568"
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -700,7 +721,11 @@ export default function ReportContent() {
             <div className="border-t py-3 px-4 flex justify-between items-center mt-4">
               <div className="flex items-center space-x-3">
                 {topProductImgBase64 ? (
-                  <img src={topProductImgBase64} alt={topProduct.product} className="w-8 h-8 rounded border" />
+                  <img
+                    src={topProductImgBase64}
+                    alt={topProduct.product}
+                    className="w-8 h-8 rounded border"
+                  />
                 ) : (
                   <div className="w-8 h-8 bg-gray-200 flex items-center justify-center text-gray-500 text-[10px] border rounded">
                     No Image
@@ -715,7 +740,10 @@ export default function ReportContent() {
               </div>
               <div className="text-center">
                 <div className="font-medium text-gray-700">#1 Top Vendor</div>
-                <div className="text-gray-600">{topVendor.vendor} – {new Intl.NumberFormat().format(topVendor.sales)} UGX</div>
+                <div className="text-gray-600">
+                  {topVendor.vendor} –{" "}
+                  {new Intl.NumberFormat().format(topVendor.sales)} UGX
+                </div>
               </div>
             </div>
           </div>
@@ -726,7 +754,7 @@ export default function ReportContent() {
           <LoanReport
             searchTerm={searchTerm}
             isGeneratingPDF={isGeneratingPDF}
-            onTabChange={(tabKey) => setLoanActiveTab(tabKey)} // Pass callback to update loanActiveTab
+            onTabChange={(tabKey) => setLoanActiveTab(tabKey)}
           />
         )}
 
@@ -735,15 +763,26 @@ export default function ReportContent() {
           <FinancialReports
             searchTerm={searchTerm}
             isGeneratingPDF={isGeneratingPDF}
-            onTabChange={(tabKey) => setFinancialActiveTab(tabKey)} // Pass callback to update financialActiveTab
+            onTabChange={(tabKey) => setFinancialActiveTab(tabKey)}
           />
         )}
 
         {/* ORDER REPORT */}
-        {reportType === "orders" && <OrderReports searchTerm={searchTerm} hideTabsWhenGeneratingPDF={isGeneratingPDF} />}
+        {reportType === "orders" && (
+          <OrderReports
+            searchTerm={searchTerm}
+            hideTabsWhenGeneratingPDF={isGeneratingPDF}
+          />
+        )}
 
         {/* PRODUCT REPORT */}
-        {reportType === "product" && <ProductReports searchTerm={searchTerm} disableReviewsPagination={true} />}
+        {reportType === "product" && (
+          <ProductReports
+            searchTerm={searchTerm}
+            disableReviewsPagination={true}
+            isGeneratingPDF={isGeneratingPDF}
+          />
+        )}
 
         {/* VENDOR REPORT */}
         {reportType === "vendor" && <VendorReports searchTerm={searchTerm} />}

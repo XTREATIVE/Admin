@@ -7,7 +7,7 @@ import Loader from "../pages/Loader";
 import StatsCard from "../components/Cards";
 import OrderHistory from "../components/product_Order_History";
 
-export default function ProductReports({ disableReviewsPagination = false }) {
+export default function ProductReports({ disableReviewsPagination = false, isGeneratingPDF = false }) {
   const [activeTab, setActiveTab] = useState("products");
   const { loading: loadingProducts, products, getProductById } = useContext(ProductsContext);
   const { orders, loading: loadingOrders } = useContext(OrdersContext);
@@ -399,21 +399,24 @@ export default function ProductReports({ disableReviewsPagination = false }) {
     <div className="flex flex-col h-full p-6 bg-gray-50">
       <main className="flex-1 overflow-auto">
         <div className="bg-white shadow rounded-lg">
-          <div className="flex border-b bg-gray-100 px-6">
-            {TABS.map((tab) => (
-              <div
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`flex-1 text-center py-2 cursor-pointer text-gray-700 ${
-                  activeTab === tab.key
-                    ? "bg-white border-t border-l border-r"
-                    : "hover:text-gray-900"
-                }`}
-              >
-                {tab.label}
-              </div>
-            ))}
-          </div>
+          {/* Conditionally render tabs only if not generating PDF */}
+          {!isGeneratingPDF && (
+            <div className="flex border-b bg-gray-100 px-6">
+              {TABS.map((tab) => (
+                <div
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`flex-1 text-center py-2 cursor-pointer text-gray-700 ${
+                    activeTab === tab.key
+                      ? "bg-white border-t border-l border-r"
+                      : "hover:text-gray-900"
+                  }`}
+                >
+                  {tab.label}
+                </div>
+              ))}
+            </div>
+          )}
           <div className="p-6">
             {activeTab === "products" ? renderProductsTable() : renderDetails()}
           </div>
