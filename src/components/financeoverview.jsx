@@ -185,7 +185,7 @@ const FinanceOverview = () => {
             <div>
               <p className="text-gray-500 text-[12px]">Commission Earnings</p>
               <p className="text-xl font-semibold text-[#f9622c]">
-                UGX 500,000
+                UGX 90,000
               </p>
             </div>
           </div>
