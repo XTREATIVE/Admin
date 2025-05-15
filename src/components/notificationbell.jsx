@@ -19,37 +19,70 @@ const NotificationBell = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      const token = localStorage.getItem("authToken");
+  // Fetch notifications from different endpoints
+  const fetchNotifications = async (url) => {
+    const token = localStorage.getItem("authToken");
 
-      if (!token) {
-        console.warn("No auth token found. User might not be logged in.");
-        return;
+    if (!token) {
+      console.warn("No auth token found. User might not be logged in.");
+      return [];
+    }
+
+    try {
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        console.error("Failed to fetch notifications from", url, await response.text());
+        return [];
       }
 
+      return await response.json();
+    } catch (error) {
+      console.error("Error fetching notifications from", url, error);
+      return [];
+    }
+  };
+
+  useEffect(() => {
+    const fetchAllNotifications = async () => {
       try {
-        const response = await fetch("https://api-xtreative.onrender.com/chatsapp/notifications/", {
-          headers: {
-            "Authorization": `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
+        const Notifications = await fetchNotifications(
+          "https://api-xtreative.onrender.com/notifications/get/"
+        );
 
-        if (!response.ok) {
-          console.error("Failed to fetch notifications:", await response.text());
-          return;
-        }
+        const orderNotifications = await fetchNotifications(
+          "https://api-xtreative.onrender.com/orders/place-order/"
+        );
 
-        const data = await response.json();
-        setNotifications(data);
+        const loanNotifications = await fetchNotifications(
+          "https://api-xtreative.onrender.com/loans/list/"
+        );
+
+        const vendorNotifications = await fetchNotifications(
+          "https://api-xtreative.onrender.com/vendors/list/"
+        );
+
+        // Merge notifications and sort by timestamp
+        const allNotifications = [
+          ...Notifications.map((notif) => ({ ...notif, type: "Chat" })),
+          ...orderNotifications.map((notif) => ({ ...notif, type: "Order" })),
+          ...loanNotifications.map((notif) => ({ ...notif, type: "Loan" })),
+          ...vendorNotifications.map((notif) => ({ ...notif, type: "Vendor" })),
+        ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+        setNotifications(allNotifications);
       } catch (error) {
         console.error("Error fetching notifications:", error);
       }
     };
 
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30000); // Refresh every 30 seconds
+    fetchAllNotifications();
+    const interval = setInterval(fetchAllNotifications, 30000); // Refresh every 30 seconds
     return () => clearInterval(interval);
   }, []);
 
@@ -78,9 +111,12 @@ const NotificationBell = () => {
             ) : (
               notifications.map((notification, index) => (
                 <li key={index} className="p-3 hover:bg-gray-100 text-sm">
-                  <p className="text-sm text-gray-700">{notification.sender.username}</p>
+                  <p className="text-sm text-gray-700 font-semibold">
+                    {notification.type} Notification
+                  </p>
+                  <p className="text-sm text-gray-700">{notification.sender?.username || notification.title}</p>
                   <p className="text-sm text-gray-700">{notification.created_at}</p>
-                  <p className="text-xs text-gray-400">{notification.message_content}</p>
+                  <p className="text-xs text-gray-400">{notification.message_content || notification.details}</p>
                 </li>
               ))
             )}
