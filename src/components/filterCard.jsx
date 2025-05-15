@@ -1,17 +1,15 @@
-import React, { useState, useEffect, useMemo, useContext } from "react";
+// FilterAndCard.jsx
+import React, { useState, useEffect, useMemo } from "react";
 import Slider from "@mui/material/Slider";
 import "../styles/index.css";
 import { IoIosArrowUp, IoIosArrowDown } from "react-icons/io";
 import { FaStar } from "react-icons/fa";
 import ProductSection from "./product_section";
 import Loader from "../pages/Loader";
-import { CurrencyContext } from "../context/currencycontext";
 
 const API_URL = "https://api-xtreative.onrender.com/products/listing/";
 
 const FilterAndCard = () => {
-  const { currency, loading: loadingCurrency, error: errorCurrency } = useContext(CurrencyContext);
-
   // Toggle states for filter sections
   const [openCategory, setOpenCategory] = useState(true);
   const [openPrice, setOpenPrice] = useState(false);
@@ -66,7 +64,7 @@ const FilterAndCard = () => {
         data.sort((a, b) => b.id - a.id);
         setAllProducts(data);
 
-        // Compute price bounds
+        // compute price bounds
         const prices = data.map((p) => Number(p.price));
         const min = Math.min(...prices);
         const max = Math.max(...prices);
@@ -104,7 +102,7 @@ const FilterAndCard = () => {
     if (minPrice === maxPrice) {
       return [
         {
-          label: `${currency} ${minPrice} - ${currency} ${maxPrice}`,
+          label: `UGX ${minPrice} - UGX ${maxPrice}`,
           value: `${minPrice}-${maxPrice}`,
           count: allProducts.length,
         },
@@ -121,17 +119,10 @@ const FilterAndCard = () => {
           Number(p.price) >= low &&
           Number(p.price) < (i === ranges - 1 ? high + 1 : high)
       ).length;
-      return {
-        label: `${currency} ${low} - ${currency} ${high}`,
-        value: `${low}-${high}`,
-        count: cnt,
-      };
+      return { label: `UGX ${low} - UGX ${high}`, value: `${low}-${high}`, count: cnt };
     });
-    return [
-      { label: "All Price", value: "all", count: allProducts.length },
-      ...opts,
-    ];
-  }, [minPrice, maxPrice, allProducts, currency]);
+    return [{ label: "All Price", value: "all", count: allProducts.length }, ...opts];
+  }, [minPrice, maxPrice, allProducts]);
 
   const dynamicSizeOptions = useMemo(() => {
     const counts = allProducts.reduce((acc, p) => {
@@ -214,19 +205,6 @@ const FilterAndCard = () => {
   const handleSearchKeyDown = (e) => {
     if (e.key === "Enter") handleApplyFilters();
   };
-
-  // Combine loading and error states
-  if (loadingCurrency || loadingProducts) {
-    return <Loader />;
-  }
-  if (errorCurrency || fetchError) {
-    return (
-      <div className="p-4 text-center text-red-600">
-        {fetchError && <p>{fetchError}</p>}
-        {errorCurrency && <p>Currency error: {errorCurrency}</p>}
-      </div>
-    );
-  }
 
   return (
     <div className="flex w-full gap-4">
@@ -312,7 +290,6 @@ const FilterAndCard = () => {
                   max={maxPrice}
                   step={50}
                   valueLabelDisplay="auto"
-                  valueLabelFormat={(value) => `${currency} ${value}`}
                   sx={{
                     color: "#f9622c",
                     height: 4,
@@ -323,7 +300,7 @@ const FilterAndCard = () => {
                 />
                 <div className="flex items-center space-x-2 mt-2 text-[11px] text-gray-600">
                   <div className="flex-1 flex items-center border rounded p-2">
-                    <span className="mr-1">{currency}</span>
+                    <span className="mr-1">UGX</span>
                     <input
                       type="number"
                       value={selectedPriceRange[0]}
@@ -339,7 +316,7 @@ const FilterAndCard = () => {
                   </div>
                   <span>to</span>
                   <div className="flex-1 flex items-center border rounded p-2">
-                    <span className="mr-1">{currency}</span>
+                    <span className="mr-1">UGX</span>
                     <input
                       type="number"
                       value={selectedPriceRange[1]}
@@ -360,7 +337,6 @@ const FilterAndCard = () => {
 
           {/* Size & Fit */}
           <div>
-           
             <button
               onClick={() => setOpenSize(!openSize)}
               className="w-full flex items-center justify-between bg-blue-50 p-2 rounded text-[11px] text-gray-600"
@@ -432,12 +408,17 @@ const FilterAndCard = () => {
       {/* Right Side (Products display area) */}
       <div className="w-3/4 p-4">
         <div className="bg-white shadow-md rounded-lg p-6">
-          <ProductSection
-            products={allProducts}
-            filters={appliedFilters}
-            loading={false}
-            currency={currency}
-          />
+          {fetchError ? (
+            <div className="p-4 text-center text-red-600">{fetchError}</div>
+          ) : loadingProducts ? (
+            <Loader />
+          ) : (
+            <ProductSection
+              products={allProducts}
+              filters={appliedFilters}
+              loading={false}
+            />
+          )}
         </div>
       </div>
     </div>

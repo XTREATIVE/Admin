@@ -6,6 +6,7 @@ import Header from "../components/header";
 import StatsCard from "../components/Cards";
 import CustomerDetailCard from "../components/customer_details";
 import DeliveryDetailsCard from "../components/DeliveryDetailsCard";
+import TransactionHistoryCard from "../components/customer_transaction_history";
 import Shirt from "../assets/shirt.jpg";
 import Sweater from "../assets/sweater.jpg";
 import Bag from "../assets/Bag.jpg";
@@ -99,13 +100,8 @@ export default function CustomerDetails() {
               {/* Transaction History and Cart divided into a 3-column grid */}
               <div className="grid grid-cols-3 gap-4">
                 {/* Transaction History Card spanning two columns */}
-                <div className="bg-white p-4 rounded shadow col-span-3 md:col-span-2">
-                  <h2 className="text-sm font-semibold mb-2">
-                    Transaction History
-                  </h2>
-                  <p className="text-[12px] text-gray-700">
-                    Placeholder for transaction history data...
-                  </p>
+                <div className="col-span-3 md:col-span-2">
+                  <TransactionHistoryCard transactions={customer?.transactions || []} />
                 </div>
 
                 {/* Cart Card spanning one column with fixed max width */}
