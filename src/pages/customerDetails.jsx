@@ -7,7 +7,7 @@ import StatsCard from "../components/Cards";
 import CustomerDetailCard from "../components/customer_details";
 import DeliveryDetailsCard from "../components/DeliveryDetailsCard";
 import TransactionHistoryCard from "../components/customer_transaction_history";
-import Shirt from "../assets/shirt.jpg";
+import Shirt from "../assets/Shirt.jpg";
 import Sweater from "../assets/sweater.jpg";
 import Bag from "../assets/Bag.jpg";
 
