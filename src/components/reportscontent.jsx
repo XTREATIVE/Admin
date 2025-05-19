@@ -316,7 +316,7 @@ export default function ReportContent() {
           { key: "summary", label: "Summary & Payout Leaderboard" },
         ];
         const activeFinancialTabObj = financialTabs.find((tab) => tab.key === financialActiveTab);
-        activeTabLabel = activeFinancialTabObj ? activeFinancialTabObj.label : "Unknown";
+        activeTabLabel = activeFinancialTabObj ? activeTabObj.label : "Unknown";
       } else {
         // For other report types (orders, product)
         activeTabLabel = reportType.charAt(0).toUpperCase() + reportType.slice(1);
@@ -448,6 +448,16 @@ export default function ReportContent() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden text-[11px] bg-gray-50">
+      {/* Spinner Loader Overlay */}
+      {isGeneratingPDF && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="flex flex-col items-center">
+            <div className="w-12 h-12 border-4 border-t-4 border-gray-200 border-t-[#f9622c] rounded-full animate-spin"></div>
+            <p className="mt-2 text-white text-sm">Generating PDF...</p>
+          </div>
+        </div>
+      )}
+
       {/* Controls */}
       <div className="flex items-center px-6 py-4 bg-white space-x-4">
         <div className="relative">
@@ -520,7 +530,8 @@ export default function ReportContent() {
           />
           <button
             onClick={handleGeneratePDF}
-            className="bg-[#f9622c] text-white rounded px-4 py-1 hover:bg-orange-800"
+            className="bg-[#f9622c] text-white rounded px-4 py-1 hover:bg-orange-800 disabled:opacity-50"
+            disabled={isGeneratingPDF}
           >
             Generate PDF
           </button>
