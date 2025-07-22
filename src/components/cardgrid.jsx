@@ -126,7 +126,7 @@ export default function StatsCardsGrid() {
     },
     { title: "Orders", value: totalOrders, timeframe: `for ${rangeLabel}` },
     { title: "New Customers", value: newCustomers, timeframe: `for ${rangeLabel}` },
-    { title: "Total Earnings", value: `UGX ${9000}`, timeframe: `for ${rangeLabel}` },
+    { title: "Total Earnings", value: `UGX ${0}`, timeframe: `for ${rangeLabel}` },
   ];
 
   // Chat click handler navigates to '/chat'

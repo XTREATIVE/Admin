@@ -10,7 +10,7 @@ const Profile = () => {
     role: 'Administrator',
     joined: 'January 2024',
     phone: '+256 700 000 000',
-    email: 'vivian@gmail.com',
+    email: 'creatives@xtreative.com',
   });
 
   const handleImageChange = (e) => {
