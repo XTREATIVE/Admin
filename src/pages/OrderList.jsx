@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useContext } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   format,
   parseISO,
@@ -27,13 +26,13 @@ import { OrdersContext } from "../context/orderscontext";
 import { ClaimsContext } from "../context/claimscontext";
 
 export default function OrderList() {
-  const navigate = useNavigate();
   const { orders } = useContext(OrdersContext);
   const { claims } = useContext(ClaimsContext);
 
   // ——— Date selector state ———
   const today = useMemo(() => new Date(), []);
-  const [range, setRange] = useState("today");
+  // default to "all" so top cards show totals by default
+  const [range, setRange] = useState("all");
   const [customDate, setCustomDate] = useState(today);
   const [customRangeStart, setCustomRangeStart] = useState(today);
   const [customRangeEnd, setCustomRangeEnd] = useState(today);
@@ -44,11 +43,26 @@ export default function OrderList() {
   // ——— Claims modal ———
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // formatted label for header — always show today's date
-  const formattedDate = useMemo(
-    () => format(today, "do MMMM, yyyy"),
-    [today]
-  );
+  // formatted label for header (changes with range)
+  const formattedDate = useMemo(() => {
+    switch (range) {
+      case "today":
+        return format(today, "do MMMM, yyyy");
+      case "thisWeek":
+        return "This Week";
+      case "thisMonth":
+        return "This Month";
+      case "thisYear":
+        return "This Year";
+      case "custom":
+        return format(customDate, "do MMMM, yyyy");
+      case "customRange":
+        return `${format(customRangeStart, "dd/MM/yyyy")} — ${format(customRangeEnd, "dd/MM/yyyy")}`;
+      case "all":
+      default:
+        return "All Time";
+    }
+  }, [range, today, customDate, customRangeStart, customRangeEnd]);
 
   // helper to test if date is in selected range
   const inRange = (dateObj) => {
@@ -68,6 +82,8 @@ export default function OrderList() {
           start: customRangeStart,
           end: customRangeEnd,
         });
+      case "all":
+        return true;
       default:
         return false;
     }
@@ -77,7 +93,7 @@ export default function OrderList() {
   const filteredOrders = useMemo(
     () =>
       orders.filter((o) => {
-        const parsed = parseISO(o.created_at);
+        const parsed = parseISO(o.created_at || "");
         const dateObj = isNaN(parsed) ? new Date(o.created_at) : parsed;
         return inRange(dateObj);
       }),
@@ -181,6 +197,7 @@ export default function OrderList() {
                 <option value="thisYear">This Year</option>
                 <option value="custom">Custom Date</option>
                 <option value="customRange">Custom Range</option>
+                <option value="all">All Time</option>
               </select>
               {range === "custom" && (
                 <input
