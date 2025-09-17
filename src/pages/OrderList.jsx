@@ -26,100 +26,67 @@ import { OrdersContext } from "../context/orderscontext";
 import { ClaimsContext } from "../context/claimscontext";
 
 export default function OrderList() {
-  const { orders } = useContext(OrdersContext);
-  const { claims } = useContext(ClaimsContext);
+  const { orders = [] } = useContext(OrdersContext);
+  const { claims = [] } = useContext(ClaimsContext);
 
-  // ——— Date selector state ———
   const today = useMemo(() => new Date(), []);
-  // default to "all" so top cards show totals by default
   const [range, setRange] = useState("all");
   const [customDate, setCustomDate] = useState(today);
   const [customRangeStart, setCustomRangeStart] = useState(today);
   const [customRangeEnd, setCustomRangeEnd] = useState(today);
 
-  // ——— Return graph selector state ———
   const [returnRange, setReturnRange] = useState("thisMonth");
-
-  // ——— Claims modal ———
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // formatted label for header (changes with range)
   const formattedDate = useMemo(() => {
     switch (range) {
-      case "today":
-        return format(today, "do MMMM, yyyy");
-      case "thisWeek":
-        return "This Week";
-      case "thisMonth":
-        return "This Month";
-      case "thisYear":
-        return "This Year";
-      case "custom":
-        return format(customDate, "do MMMM, yyyy");
-      case "customRange":
-        return `${format(customRangeStart, "dd/MM/yyyy")} — ${format(customRangeEnd, "dd/MM/yyyy")}`;
-      case "all":
-      default:
-        return "All Time";
+      case "today": return format(today, "do MMMM, yyyy");
+      case "thisWeek": return "This Week";
+      case "thisMonth": return "This Month";
+      case "thisYear": return "This Year";
+      case "custom": return format(customDate, "do MMMM, yyyy");
+      case "customRange": return `${format(customRangeStart, "dd/MM/yyyy")} — ${format(customRangeEnd, "dd/MM/yyyy")}`;
+      case "all": 
+      default: return "All Time";
     }
   }, [range, today, customDate, customRangeStart, customRangeEnd]);
 
-  // helper to test if date is in selected range
   const inRange = (dateObj) => {
+    if (!dateObj) return false;
     switch (range) {
-      case "today":
-        return isSameDay(dateObj, today);
-      case "thisWeek":
-        return isSameWeek(dateObj, today, { weekStartsOn: 1 });
-      case "thisMonth":
-        return isSameMonth(dateObj, today);
-      case "thisYear":
-        return isSameYear(dateObj, today);
-      case "custom":
-        return isSameDay(dateObj, customDate);
-      case "customRange":
-        return isWithinInterval(dateObj, {
-          start: customRangeStart,
-          end: customRangeEnd,
-        });
-      case "all":
-        return true;
-      default:
-        return false;
+      case "today": return isSameDay(dateObj, today);
+      case "thisWeek": return isSameWeek(dateObj, today, { weekStartsOn: 1 });
+      case "thisMonth": return isSameMonth(dateObj, today);
+      case "thisYear": return isSameYear(dateObj, today);
+      case "custom": return isSameDay(dateObj, customDate);
+      case "customRange": return isWithinInterval(dateObj, { start: customRangeStart, end: customRangeEnd });
+      case "all": return true;
+      default: return false;
     }
   };
 
-  // filter orders by created_at according to range
+  const parseDateSafe = (str) => {
+    if (!str) return null;
+    const parsed = parseISO(str);
+    return isNaN(parsed) ? new Date(str) : parsed;
+  };
+
   const filteredOrders = useMemo(
-    () =>
-      orders.filter((o) => {
-        const parsed = parseISO(o.created_at || "");
-        const dateObj = isNaN(parsed) ? new Date(o.created_at) : parsed;
-        return inRange(dateObj);
-      }),
+    () => orders.filter(o => inRange(parseDateSafe(o.created_at))),
     [orders, range, today, customDate, customRangeStart, customRangeEnd]
   );
 
-  // filter claims by created_at according to range
   const filteredClaims = useMemo(
-    () =>
-      claims.filter((c) => {
-        const parsed = parseISO(c.created_at);
-        const dateObj = isNaN(parsed) ? new Date(c.created_at) : parsed;
-        return inRange(dateObj);
-      }),
+    () => claims.filter(c => inRange(parseDateSafe(c.created_at))),
     [claims, range, today, customDate, customRangeStart, customRangeEnd]
   );
 
-  // compute summary stats
-  const pendingOrders = filteredOrders.filter((o) => o.status.toLowerCase() === "pending").length;
-  const processingOrders = filteredOrders.filter((o) => o.status.toLowerCase() === "processing").length;
-  const shippedOrders = filteredOrders.filter((o) => o.status.toLowerCase() === "shipped").length;
-  const deliveredOrders = filteredOrders.filter((o) => o.status.toLowerCase() === "delivered").length;
-  const cancelledOrders = filteredOrders.filter((o) =>
-    ["cancelled", "canceled"].includes(o.status.toLowerCase())
-  ).length;
-  const totalSales = filteredOrders.reduce((sum, o) => sum + Number(o.total_price), 0);
+  const pendingOrders = filteredOrders.filter(o => o.status?.toLowerCase() === "pending").length;
+  const processingOrders = filteredOrders.filter(o => o.status?.toLowerCase() === "processing").length;
+  const shippedOrders = filteredOrders.filter(o => o.status?.toLowerCase() === "shipped").length;
+  const deliveredOrders = filteredOrders.filter(o => o.status?.toLowerCase() === "delivered").length;
+  const cancelledOrders = filteredOrders.filter(o => ["cancelled", "canceled"].includes(o.status?.toLowerCase())).length;
+  const totalSales = filteredOrders.reduce((sum, o) => sum + Number(o.total_price || 0), 0);
 
   const summaryData = [
     { title: "Total Orders", value: filteredOrders.length, icon: "📝" },
@@ -132,48 +99,41 @@ export default function OrderList() {
     { title: "Returns", value: filteredClaims.length, icon: "↩️" },
   ];
 
-  // Aggregate claims and delivered orders by date for return rate calculation
   const returnRateData = useMemo(() => {
-    // Aggregate claims by date
     const claimCounts = claims.reduce((acc, claim) => {
-      const date = format(parseISO(claim.created_at), "yyyy-MM-dd");
-      acc[date] = (acc[date] || 0) + 1;
+      const date = parseDateSafe(claim.created_at);
+      if (!date) return acc;
+      const key = format(date, "yyyy-MM-dd");
+      acc[key] = (acc[key] || 0) + 1;
       return acc;
     }, {});
 
-    // Aggregate delivered orders by date
     const deliveredOrderCounts = orders.reduce((acc, order) => {
-      if (order.status.toLowerCase() === "delivered") {
-        const date = format(parseISO(order.created_at), "yyyy-MM-dd");
-        acc[date] = (acc[date] || 0) + 1;
+      if (order.status?.toLowerCase() === "delivered") {
+        const date = parseDateSafe(order.created_at);
+        if (!date) return acc;
+        const key = format(date, "yyyy-MM-dd");
+        acc[key] = (acc[key] || 0) + 1;
       }
       return acc;
     }, {});
 
-    // Calculate return rate for each date
-    return Object.keys({ ...claimCounts, ...deliveredOrderCounts }).map((date) => {
-      const claimsOnDate = claimCounts[date] || 0;
-      const deliveredOrdersOnDate = deliveredOrderCounts[date] || 0;
-      const rate = deliveredOrdersOnDate > 0 ? (claimsOnDate / deliveredOrdersOnDate) * 100 : 0;
-      return {
+    return Object.keys({ ...claimCounts, ...deliveredOrderCounts })
+      .map(date => ({
         date,
-        rate: Number(rate.toFixed(2)), // Round to 2 decimal places
-      };
-    }).sort((a, b) => new Date(a.date) - new Date(b.date)); // Sort by date
+        rate: Number(((claimCounts[date] || 0) / (deliveredOrderCounts[date] || 1) * 100).toFixed(2)),
+      }))
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
   }, [claims, orders]);
 
-  // filter return rate data by returnRange
-  const filteredReturnRateData = returnRateData.filter((d) => {
-    const dt = parseISO(d.date);
+  const filteredReturnRateData = returnRateData.filter(d => {
+    const dt = parseDateSafe(d.date);
+    if (!dt) return false;
     switch (returnRange) {
-      case "today":
-        return format(dt, "yyyy-MM-dd") === format(today, "yyyy-MM-dd");
-      case "thisMonth":
-        return isSameMonth(dt, today);
-      case "thisYear":
-        return isSameYear(dt, today);
-      default:
-        return true;
+      case "today": return isSameDay(dt, today);
+      case "thisMonth": return isSameMonth(dt, today);
+      case "thisYear": return isSameYear(dt, today);
+      default: return true;
     }
   });
 
@@ -288,9 +248,7 @@ export default function OrderList() {
       </div>
 
       {/* Claims Modal */}
-      {isModalOpen && (
-        <ClaimsModal onClose={() => setIsModalOpen(false)} />
-      )}
+      {isModalOpen && <ClaimsModal onClose={() => setIsModalOpen(false)} />}
     </div>
   );
 }
