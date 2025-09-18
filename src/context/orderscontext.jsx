@@ -13,7 +13,9 @@ export const OrdersProvider = ({ children }) => {
       setLoading(true);
       setError(null);
       const token = localStorage.getItem("authToken");
-      if (!token) throw new Error("No auth token found. Please log in.");
+      if (!token) {
+        throw new Error("No auth token found. Please log in.");
+      }
 
       const res = await fetch("https://api-xtreative.onrender.com/orders/list/", {
         headers: {
@@ -27,15 +29,14 @@ export const OrdersProvider = ({ children }) => {
       const data = await res.json();
       setOrders(data);
 
-      // Map order_item.id → to_address
-      const addressMap = {};
-      data.forEach(order => {
-        (order.items || []).forEach(item => {
-          if (item && item.id != null) addressMap[item.id] = order.to_address;
+      // Map item IDs to to_address
+      const addressMap = data.reduce((map, order) => {
+        (order.items || []).forEach((item) => {
+          if (item && item.id != null) map[item.id] = order.to_address;
         });
-      });
+        return map;
+      }, {});
       setToAddressMap(addressMap);
-
     } catch (err) {
       setError(err.message || String(err));
     } finally {
@@ -43,10 +44,24 @@ export const OrdersProvider = ({ children }) => {
     }
   };
 
+  // Fetch only when authToken exists
   useEffect(() => {
-    fetchOrders();
-    const interval = setInterval(fetchOrders, 60000); // Refresh every 60s
-    return () => clearInterval(interval);
+    const handleTokenChange = () => {
+      const token = localStorage.getItem("authToken");
+      if (token) fetchOrders();
+    };
+
+    handleTokenChange(); // call on mount in case token exists
+    window.addEventListener("storage", handleTokenChange); // detect token changes from other tabs
+
+    const interval = setInterval(() => {
+      if (localStorage.getItem("authToken")) fetchOrders();
+    }, 60000); // polling every 60s
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("storage", handleTokenChange);
+    };
   }, []);
 
   return (

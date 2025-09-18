@@ -4,111 +4,115 @@ import { OrdersContext } from "./orderscontext";
 export const ClaimsContext = createContext();
 
 export const ClaimsProvider = ({ children }) => {
-  const { orders, loading: ordersLoading, error: ordersError, toAddressMap } = useContext(OrdersContext);
   const [claims, setClaims] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchClaims = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      const token = localStorage.getItem("authToken");
-      if (!token) throw new Error("No authentication token found. Please log in.");
-      if (ordersLoading) return; // Wait until orders load
-      if (ordersError) throw new Error(`Orders error: ${ordersError}`);
-
-      // Build item maps from orders
-      const maps = orders.reduce(
-        (acc, order) => {
-          (order.items || []).forEach(item => {
-            acc.itemMap[item.id] = item.product_name;
-            acc.subtotalMap[item.id] = item.subtotal;
-            acc.quantityMap[item.id] = item.quantity;
-            acc.productIdMap[item.id] = item.product;
-          });
-          return acc;
-        },
-        { itemMap: {}, subtotalMap: {}, quantityMap: {}, productIdMap: {} }
-      );
-
-      // Fetch product images
-      const productsRes = await fetch("https://api-xtreative.onrender.com/products/listing/", {
-        headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
-      });
-      if (!productsRes.ok) throw new Error("Failed to fetch products");
-      const productsData = await productsRes.json();
-      const imageMap = productsData.reduce((map, product) => {
-        map[product.id] = product.product_image_url;
-        return map;
-      }, {});
-
-      // Fetch customers
-      const customersRes = await fetch("https://api-xtreative.onrender.com/customers/list/", {
-        headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
-      });
-      if (!customersRes.ok) throw new Error("Failed to fetch customers");
-      const customersData = await customersRes.json();
-      const customerMap = customersData.reduce((map, customer) => {
-        map[customer.id] = customer.username;
-        return map;
-      }, {});
-
-      // Fetch claims
-      const claimsRes = await fetch("https://api-xtreative.onrender.com/returns/list/", {
-        headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
-      });
-      if (!claimsRes.ok) {
-        if (claimsRes.status === 401) {
-          localStorage.removeItem("authToken");
-          localStorage.removeItem("refreshToken");
-          throw new Error("Authentication failed. Please log in again.");
-        }
-        throw new Error("Failed to fetch claims");
-      }
-
-      const claimsData = await claimsRes.json();
-
-      const transformedClaims = claimsData.map(item => {
-        const deliveryAddress =
-          toAddressMap[item.order_item]?.trim() || "Pioneer Mall, Burton Street, Kampala, Uganda";
-
-        return {
-          name: customerMap[item.customer] || `Customer ${item.customer}`,
-          order_item: item.order_item,
-          product_name: maps.itemMap[item.order_item] || `Item ${item.order_item}`,
-          reason: item.reason,
-          time: new Date(item.created_at).toLocaleString(),
-          created_at: item.created_at,
-          status: item.status,
-          type: item.status.toLowerCase() === "approved" ? "refund" : "claim",
-          giftPrice: maps.subtotalMap[item.order_item] || "N/A",
-          quantity: maps.quantityMap[item.order_item] || "1",
-          image: imageMap[maps.productIdMap[item.order_item]] || null,
-          deliveryAddress,
-        };
-      });
-
-      setClaims(transformedClaims);
-
-    } catch (err) {
-      setError(err.message || String(err));
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const ordersContext = useContext(OrdersContext);
 
   useEffect(() => {
-    if (!ordersLoading && !ordersError) fetchClaims();
-  }, [ordersLoading, ordersError, orders]);
+    const fetchClaimsData = async () => {
+      try {
+        setIsLoading(true);
+        const token = localStorage.getItem("authToken");
+        if (!token) return; // wait for login
+
+        const { orders, loading: ordersLoading, error: ordersError, toAddressMap } = ordersContext;
+
+        if (ordersError) throw new Error(`Orders error: ${ordersError}`);
+        if (ordersLoading || !orders) return; // wait until orders are loaded
+
+        // Build maps from orders
+        const itemMap = {};
+        const subtotalMap = {};
+        const quantityMap = {};
+        const productIdMap = {};
+
+        orders.forEach((order) => {
+          (order.items || []).forEach((item) => {
+            if (!item) return;
+            itemMap[item.id] = item.product_name;
+            subtotalMap[item.id] = item.subtotal;
+            quantityMap[item.id] = item.quantity;
+            productIdMap[item.id] = item.product;
+          });
+        });
+
+        // Fetch products
+        const productsRes = await fetch("https://api-xtreative.onrender.com/products/listing/", {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (!productsRes.ok) throw new Error("Failed to fetch products");
+        const productsData = await productsRes.json();
+        const imageMap = {};
+        productsData.forEach((p) => (imageMap[p.id] = p.product_image_url));
+
+        // Fetch customers
+        const customersRes = await fetch("https://api-xtreative.onrender.com/customers/list/", {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (!customersRes.ok) throw new Error("Failed to fetch customers");
+        const customersData = await customersRes.json();
+        const customerMap = {};
+        customersData.forEach((c) => (customerMap[c.id] = c.username));
+
+        // Fetch claims
+        const claimsRes = await fetch("https://api-xtreative.onrender.com/returns/list/", {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (!claimsRes.ok) throw new Error("Failed to fetch claims");
+        const claimsData = await claimsRes.json();
+
+        // Transform claims
+        const transformedClaims = claimsData.map((item) => {
+          const deliveryAddress =
+            toAddressMap[item.order_item] && toAddressMap[item.order_item].trim() !== ""
+              ? toAddressMap[item.order_item]
+              : "Pioneer Mall, Burton Street, Kampala, Uganda";
+
+          return {
+            name: customerMap[item.customer] || `Customer ${item.customer}`,
+            order_item: item.order_item,
+            product_name: itemMap[item.order_item] || `Item ${item.order_item}`,
+            reason: item.reason,
+            time: new Date(item.created_at).toLocaleString(),
+            created_at: item.created_at,
+            status: item.status,
+            type: item.status.toLowerCase() === "approved" ? "refund" : "claim",
+            giftPrice: subtotalMap[item.order_item] || "N/A",
+            quantity: quantityMap[item.order_item] || 1,
+            image: imageMap[productIdMap[item.order_item]] || null,
+            deliveryAddress,
+          };
+        });
+
+        setClaims(transformedClaims);
+      } catch (err) {
+        setError(err.message || String(err));
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchClaimsData();
+  }, [ordersContext]); // re-run when ordersContext updates
 
   return (
-    <ClaimsContext.Provider value={{ claims, isLoading, error, refreshClaims: fetchClaims }}>
+    <ClaimsContext.Provider value={{ claims, isLoading, error }}>
       {children}
     </ClaimsContext.Provider>
   );
 };
+
 
 
 // import React, { createContext, useState, useEffect, useContext } from "react";
