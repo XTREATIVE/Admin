@@ -8,7 +8,7 @@ export const OrdersProvider = ({ children }) => {
   const [error, setError] = useState(null);
   const [toAddressMap, setToAddressMap] = useState({});
 
-  const fetchOrders = async () => {
+  const fetchOrders = async () => { <div className=""></div>
     try {
       setLoading(true);
       setError(null);
@@ -48,7 +48,15 @@ export const OrdersProvider = ({ children }) => {
   useEffect(() => {
     const handleTokenChange = () => {
       const token = localStorage.getItem("authToken");
-      if (token) fetchOrders();
+      if (token) {
+        fetchOrders();
+      } else {
+        // No token -> not loading (prevents infinite loading in consumers)
+        setLoading(false);
+        setOrders([]); // optional: ensure consumers see empty list
+        setToAddressMap({});
+        setError(null);
+      }
     };
 
     handleTokenChange(); // call on mount in case token exists

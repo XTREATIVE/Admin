@@ -15,12 +15,28 @@ export const ClaimsProvider = ({ children }) => {
       try {
         setIsLoading(true);
         const token = localStorage.getItem("authToken");
-        if (!token) return; // wait for login
+        if (!token) {
+          // No token -> not loading and no error (wait for login)
+          setClaims([]);
+          setError(null);
+          setIsLoading(false);
+          return;
+        }
 
-        const { orders, loading: ordersLoading, error: ordersError, toAddressMap } = ordersContext;
+        const { orders, loading: ordersLoading, error: ordersError, toAddressMap } = ordersContext || {};
+
+        if (!ordersContext) {
+          setError("OrdersContext not available");
+          setIsLoading(false);
+          return;
+        }
 
         if (ordersError) throw new Error(`Orders error: ${ordersError}`);
-        if (ordersLoading || !orders) return; // wait until orders are loaded
+        if (ordersLoading || !orders) {
+          // Keep claims loading while orders are still loading
+          setIsLoading(true);
+          return;
+        }
 
         // Build maps from orders
         const itemMap = {};
