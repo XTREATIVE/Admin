@@ -46,11 +46,11 @@ export const ClaimsProvider = ({ children }) => {
 
         orders.forEach((order) => {
           (order.items || []).forEach((item) => {
-            if (!item || item.id == null) return;
-            itemMap[item.id] = item.product_name || null;
-            subtotalMap[item.id] = item.subtotal || null;
-            quantityMap[item.id] = item.quantity || 1;
-            productIdMap[item.id] = item.product || null;
+            if (!item) return;
+            itemMap[item.id] = item.product_name;
+            subtotalMap[item.id] = item.subtotal;
+            quantityMap[item.id] = item.quantity;
+            productIdMap[item.id] = item.product;
           });
         });
 
@@ -85,18 +85,13 @@ export const ClaimsProvider = ({ children }) => {
             Authorization: `Bearer ${token}`,
           },
         });
-        if (!claimsRes.ok) {
-          if (claimsRes.status === 401) {
-            localStorage.removeItem("authToken");
-          }
-          throw new Error("Failed to fetch claims");
-        }
+        if (!claimsRes.ok) throw new Error("Failed to fetch claims");
         const claimsData = await claimsRes.json();
 
         // Transform claims
         const transformedClaims = claimsData.map((item) => {
           const deliveryAddress =
-            toAddressMap && toAddressMap[item.order_item] && toAddressMap[item.order_item].trim() !== ""
+            toAddressMap[item.order_item] && toAddressMap[item.order_item].trim() !== ""
               ? toAddressMap[item.order_item]
               : "Pioneer Mall, Burton Street, Kampala, Uganda";
 
@@ -104,12 +99,12 @@ export const ClaimsProvider = ({ children }) => {
             name: customerMap[item.customer] || `Customer ${item.customer}`,
             order_item: item.order_item,
             product_name: itemMap[item.order_item] || `Item ${item.order_item}`,
-            reason: item.reason || "",
-            time: item.created_at ? new Date(item.created_at).toLocaleString() : "",
+            reason: item.reason,
+            time: new Date(item.created_at).toLocaleString(),
             created_at: item.created_at,
-            status: item.status || "",
-            type: item.status ? (item.status.toLowerCase() === "approved" ? "refund" : "claim") : "claim",
-            giftPrice: subtotalMap[item.order_item] || null,
+            status: item.status,
+            type: item.status.toLowerCase() === "approved" ? "refund" : "claim",
+            giftPrice: subtotalMap[item.order_item] || "N/A",
             quantity: quantityMap[item.order_item] || 1,
             image: imageMap[productIdMap[item.order_item]] || null,
             deliveryAddress,
@@ -125,7 +120,7 @@ export const ClaimsProvider = ({ children }) => {
     };
 
     fetchClaimsData();
-  }, [ordersContext]);
+  }, [ordersContext]); // re-run when ordersContext updates
 
   return (
     <ClaimsContext.Provider value={{ claims, isLoading, error }}>
@@ -283,30 +278,30 @@ export const ClaimsProvider = ({ children }) => {
 //             name: customerMap[item.customer] || `Customer ${item.customer}`,
 //             order_item: item.order_item, // Keep order_item for ID reference
 //             product_name: itemMap[item.order_item] || `Item ${item.order_item}`, // Use product name from orders
+//             reason: item.reason, // Include reason
+//             time: new Date(item.created_at).toLocaleString(), // Format date
+//             created_at: item.created_at, // Include raw created_at for graph
+//             status: item.status, // Include status
+//             type: item.status.toLowerCase() === "approved" ? "refund" : "claim", // Keep for compatibility
 //             giftPrice: subtotalMap[item.order_item] || "N/A", // Use subtotal as giftPrice
 //             quantity: quantityMap[item.order_item] || "1", // Use quantity from orders
 //             image: imageMap[productIdMap[item.order_item]] || null, // Use product image URL
 //             deliveryAddress // Use to_address or fallback
-//           };type: item.status.toLowerCase() === "approved" ? "refund" : "claim", // Keep for compatibility
-//         }); giftPrice: subtotalMap[item.order_item] || "N/A", // Use subtotal as giftPrice
-//             quantity: quantityMap[item.order_item] || "1", // Use quantity from orders
-//         setClaims(transformedClaims);Map[item.order_item]] || null, // Use product image URL
-//       } catch (err) {ddress // Use to_address or fallback
+//           };
+//         });
+
+//         setClaims(transformedClaims);
+//       } catch (err) {
 //         setError(err.message);
 //       } finally {
 //         setIsLoading(false);
-//       } setClaims(transformedClaims);
-//     };} catch (err) {
-//         setError(err.message);
-//     fetchData();{
-//   }, [ordersContext]);alse);
 //       }
+//     };
+
+//     fetchData();
+//   }, [ordersContext]);
+
 //   return (
-//     <ClaimsContext.Provider value={{ claims, isLoading, error }}>
-//       {children}
-//     </ClaimsContext.Provider>
-//   );
-// };return (
 //     <ClaimsContext.Provider value={{ claims, isLoading, error }}>
 //       {children}
 //     </ClaimsContext.Provider>

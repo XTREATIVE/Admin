@@ -8,18 +8,13 @@ export const OrdersProvider = ({ children }) => {
   const [error, setError] = useState(null);
   const [toAddressMap, setToAddressMap] = useState({});
 
-  const fetchOrders = async () => {
+  const fetchOrders = async () => { <div className=""></div>
     try {
       setLoading(true);
       setError(null);
       const token = localStorage.getItem("authToken");
       if (!token) {
-        // no token -> don't throw; stop loading so consumers don't stay stuck
-        setOrders([]);
-        setToAddressMap({});
-        setError(null);
-        setLoading(false);
-        return;
+        throw new Error("No auth token found. Please log in.");
       }
 
       const res = await fetch("https://api-xtreative.onrender.com/orders/list/", {
@@ -29,13 +24,7 @@ export const OrdersProvider = ({ children }) => {
         },
       });
 
-      if (!res.ok) {
-        if (res.status === 401) {
-          // optional: clear tokens on unauthorized
-          localStorage.removeItem("authToken");
-        }
-        throw new Error(`Server responded ${res.status}`);
-      }
+      if (!res.ok) throw new Error(`Server responded ${res.status}`);
 
       const data = await res.json();
       setOrders(data);
