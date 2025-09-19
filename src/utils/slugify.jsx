@@ -5,7 +5,6 @@ export function slugify(text) {
       .toLowerCase()
       .trim()
       .replace(/\s+/g, '-')       // spaces → hyphens
-      .replace(/[^\w\-]+/g, '')   // remove non‑word chars
-      .replace(/\-\-+/g, '-');    // collapse multiple hyphens
+      .replace(/[^\w-]+/g, '')    // remove non‑word chars (hyphen kept)
+      .replace(/-{2,}/g, '-');    // collapse multiple hyphens
   }
-  

@@ -1,4 +1,6 @@
-import React, { useState, useMemo, useContext } from "react";
+// src/pages/OrderList.jsx
+import React, { useState, useMemo, useContext, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   format,
   parseISO,
@@ -26,8 +28,17 @@ import { OrdersContext } from "../context/orderscontext";
 import { ClaimsContext } from "../context/claimscontext";
 
 export default function OrderList() {
-  const { orders, loading: ordersLoading, error: ordersError } = useContext(OrdersContext);
-  const { claims, isLoading: claimsLoading, error: claimsError } = useContext(ClaimsContext);
+  const navigate = useNavigate();
+  const { orders, loading: ordersLoading, error: ordersError, hasInitialized: ordersInitialized } = useContext(OrdersContext);
+  const { claims, isLoading: claimsLoading, error: claimsError, hasInitialized: claimsInitialized } = useContext(ClaimsContext);
+
+  // ——— Authentication check ———
+  useEffect(() => {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      navigate("/login", { replace: true });
+    }
+  }, [navigate]);
 
   // ——— Date selector state ———
   const today = useMemo(() => new Date(), []);
@@ -70,43 +81,81 @@ export default function OrderList() {
     }
   };
 
-  // ——— Early return while loading or error ———
-  if (ordersLoading || claimsLoading) {
+  // ——— Authentication state handling ———
+  const isInitializing = (!ordersInitialized || !claimsInitialized) && !ordersError && !claimsError;
+  const isLoadingData = (ordersLoading || claimsLoading) && (ordersInitialized && claimsInitialized);
+
+  // ——— Early return for loading states ———
+  if (isInitializing) {
     return (
-      <div className="h-screen flex items-center justify-center font-poppins text-gray-600">
-        Loading data...
+      <div className="h-screen flex items-center justify-center font-poppins">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-gray-600">Initializing application...</p>
+        </div>
       </div>
     );
   }
 
   if (ordersError || claimsError) {
+    const errorMessage = ordersError || claimsError;
+    
+    // If it's an auth error, don't show the error page
+    if (errorMessage.includes("Session expired") || errorMessage.includes("Please log in")) {
+      return null; // Let the auth redirect handle this
+    }
+
     return (
-      <div className="h-screen flex items-center justify-center font-poppins text-red-500">
-        {ordersError || claimsError}
+      <div className="h-screen flex items-center justify-center font-poppins">
+        <div className="text-center">
+          <div className="text-red-500 mb-4">
+            <svg className="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-gray-800 mb-2">Error Loading Data</h2>
+          <p className="text-gray-600 mb-4">{errorMessage}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition-colors"
+          >
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
 
   // ——— Filter orders & claims ———
   const filteredOrders = orders.filter((o) => {
-    const parsed = parseISO(o.created_at || "");
-    const dateObj = isNaN(parsed) ? new Date(o.created_at) : parsed;
-    return inRange(dateObj);
+    if (!o || !o.created_at) return false;
+    try {
+      const parsed = parseISO(o.created_at);
+      const dateObj = isNaN(parsed) ? new Date(o.created_at) : parsed;
+      return !isNaN(dateObj) && inRange(dateObj);
+    } catch {
+      return false;
+    }
   });
 
   const filteredClaims = claims.filter((c) => {
-    const parsed = parseISO(c.created_at);
-    const dateObj = isNaN(parsed) ? new Date(c.created_at) : parsed;
-    return inRange(dateObj);
+    if (!c || !c.created_at) return false;
+    try {
+      const parsed = parseISO(c.created_at);
+      const dateObj = isNaN(parsed) ? new Date(c.created_at) : parsed;
+      return !isNaN(dateObj) && inRange(dateObj);
+    } catch {
+      return false;
+    }
   });
 
   // ——— Compute summary stats ———
-  const pendingOrders = filteredOrders.filter((o) => o.status.toLowerCase() === "pending").length;
-  const processingOrders = filteredOrders.filter((o) => o.status.toLowerCase() === "processing").length;
-  const shippedOrders = filteredOrders.filter((o) => o.status.toLowerCase() === "shipped").length;
-  const deliveredOrders = filteredOrders.filter((o) => o.status.toLowerCase() === "delivered").length;
-  const cancelledOrders = filteredOrders.filter((o) => ["cancelled","canceled"].includes(o.status.toLowerCase())).length;
-  const totalSales = filteredOrders.reduce((sum, o) => sum + Number(o.total_price), 0);
+  const pendingOrders = filteredOrders.filter((o) => o?.status?.toLowerCase() === "pending").length;
+  const processingOrders = filteredOrders.filter((o) => o?.status?.toLowerCase() === "processing").length;
+  const shippedOrders = filteredOrders.filter((o) => o?.status?.toLowerCase() === "shipped").length;
+  const deliveredOrders = filteredOrders.filter((o) => o?.status?.toLowerCase() === "delivered").length;
+  const cancelledOrders = filteredOrders.filter((o) => ["cancelled","canceled"].includes(o?.status?.toLowerCase() || "")).length;
+  const totalSales = filteredOrders.reduce((sum, o) => sum + (Number(o?.total_price) || 0), 0);
 
   const summaryData = [
     { title: "Total Orders", value: filteredOrders.length, icon: "📝" },
@@ -121,19 +170,26 @@ export default function OrderList() {
 
   // ——— Return Rate Data ———
   const returnRateData = filteredOrders.map((order) => {
-    const deliveredCount = order.status.toLowerCase() === "delivered" ? 1 : 0;
-    const claimsCount = filteredClaims.filter(c => c.order_item === order.id).length;
+    if (!order) return null;
+    const deliveredCount = order.status?.toLowerCase() === "delivered" ? 1 : 0;
+    const claimsCount = filteredClaims.filter(c => c?.order_item === order.id).length;
     const rate = deliveredCount > 0 ? (claimsCount / deliveredCount) * 100 : 0;
     return { date: order.created_at, rate: Number(rate.toFixed(2)) };
-  });
+  }).filter(Boolean);
 
   const filteredReturnRateData = returnRateData.filter((d) => {
-    const dt = parseISO(d.date);
-    switch (returnRange) {
-      case "today": return isSameDay(dt, today);
-      case "thisMonth": return isSameMonth(dt, today);
-      case "thisYear": return isSameYear(dt, today);
-      default: return true;
+    if (!d?.date) return false;
+    try {
+      const dt = parseISO(d.date);
+      if (isNaN(dt)) return false;
+      switch (returnRange) {
+        case "today": return isSameDay(dt, today);
+        case "thisMonth": return isSameMonth(dt, today);
+        case "thisYear": return isSameYear(dt, today);
+        default: return true;
+      }
+    } catch {
+      return false;
     }
   });
 
@@ -144,6 +200,16 @@ export default function OrderList() {
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
         <div className="flex-1 p-5 bg-gray-100 ml-[80px]">
+          {/* Loading indicator for data refresh */}
+          {isLoadingData && (
+            <div className="fixed top-20 right-5 bg-blue-100 border border-blue-300 rounded-lg p-3 shadow-lg z-50">
+              <div className="flex items-center">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                <span className="text-blue-700 text-sm">Refreshing data...</span>
+              </div>
+            </div>
+          )}
+
           {/* Date Controls */}
           <div className="w-full rounded p-4 flex items-center justify-between -mt-5">
             <div className="flex items-center space-x-2 text-[10px]">
