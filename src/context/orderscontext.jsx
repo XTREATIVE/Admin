@@ -13,8 +13,13 @@ export const OrdersProvider = ({ children }) => {
       setLoading(true);
       setError(null);
       const token = localStorage.getItem("authToken");
+
+      // If no token yet, don't treat as an error — wait for login.
       if (!token) {
-        throw new Error("No auth token found. Please log in.");
+        setOrders([]);
+        setToAddressMap({});
+        setLoading(false);
+        return;
       }
 
       const res = await fetch("https://api-xtreative.onrender.com/orders/list/", {
@@ -24,7 +29,20 @@ export const OrdersProvider = ({ children }) => {
         },
       });
 
-      if (!res.ok) throw new Error(`Server responded ${res.status}`);
+      // Handle auth failure explicitly
+      if (!res.ok) {
+        if (res.status === 401) {
+          // Clear invalid tokens and surface friendly message
+          localStorage.removeItem("authToken");
+          localStorage.removeItem("refreshToken");
+          setOrders([]);
+          setToAddressMap({});
+          setError("Authentication failed. Please log in.");
+          setLoading(false);
+          return;
+        }
+        throw new Error(`Server responded ${res.status}`);
+      }
 
       const data = await res.json();
       setOrders(data);
