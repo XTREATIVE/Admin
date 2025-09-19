@@ -42,10 +42,8 @@ const LoginScreen = () => {
         setLoginError("");
         setLoginSuccess(true);
 
-        // Redirect after a brief success message
-        setTimeout(() => {
-          navigate("/admin-dashboard");
-        }, 2000);
+        // Redirect immediately after saving tokens
+        navigate("/admin-dashboard");
       } else {
         setLoginError(
           data.message ||
@@ -318,8 +316,8 @@ const LoginScreen = () => {
 
                 <button
                   type="submit"
-                    className="login-button"
-                    disabled={isSubmitting}
+                  className="login-button"
+                  disabled={isSubmitting}
                 >
                   {isSubmitting ? "Signing In..." : "Sign In"}
                 </button>
