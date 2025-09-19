@@ -39,6 +39,9 @@ const LoginScreen = () => {
           localStorage.setItem("refreshToken", data.refresh);
         }
 
+        // Notify same-tab listeners that auth changed so contexts can refetch immediately
+        window.dispatchEvent(new Event("authChanged"));
+
         setLoginError("");
         setLoginSuccess(true);
 

@@ -79,6 +79,7 @@ export const OrdersProvider = ({ children }) => {
 
     handleTokenChange(); // call on mount in case token exists
     window.addEventListener("storage", handleTokenChange); // detect token changes from other tabs
+    window.addEventListener("authChanged", handleTokenChange); // detect same-tab login events
 
     const interval = setInterval(() => {
       if (localStorage.getItem("authToken")) fetchOrders();
@@ -87,6 +88,7 @@ export const OrdersProvider = ({ children }) => {
     return () => {
       clearInterval(interval);
       window.removeEventListener("storage", handleTokenChange);
+      window.removeEventListener("authChanged", handleTokenChange);
     };
   }, []);
 
