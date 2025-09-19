@@ -17,7 +17,7 @@ export const LoansProvider = ({ children }) => {
         const token = localStorage.getItem('authToken');
 
         // Fetch loans
-        const loansRes = await fetch('https://api-xtreative.onrender.com/loan_app/loans/list/', {
+        const loansRes = await fetch('https://api-xtreative.onrender.com/loans/list/', {
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
