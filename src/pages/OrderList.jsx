@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useContext } from "react";
+// src/pages/OrderList.jsx
+import { useState, useMemo, useContext } from "react";
 import {
   format,
   parseISO,
@@ -7,6 +8,7 @@ import {
   isSameMonth,
   isSameYear,
   isWithinInterval,
+  isValid,
 } from "date-fns";
 import Sidebar from "../components/sidebar";
 import Header from "../components/header";
@@ -26,8 +28,12 @@ import { OrdersContext } from "../context/orderscontext";
 import { ClaimsContext } from "../context/claimscontext";
 
 export default function OrderList() {
-  const { orders, loading: ordersLoading, error: ordersError } = useContext(OrdersContext);
-  const { claims, isLoading: claimsLoading, error: claimsError } = useContext(ClaimsContext);
+  // safe reads from contexts, provide fallbacks so page renders even while data loads
+  const ordersContext = useContext(OrdersContext) || {};
+  const claimsContext = useContext(ClaimsContext) || {};
+
+  const { orders: ctxOrders = [], loading: ordersLoading = false, error: ordersError = null } = ordersContext;
+  const { claims: ctxClaims = [], isLoading: claimsLoading = false, error: claimsError = null } = claimsContext;
 
   // ——— Date selector state ———
   const today = useMemo(() => new Date(), []);
@@ -45,68 +51,95 @@ export default function OrderList() {
   // formatted label for header
   const formattedDate = useMemo(() => {
     switch (range) {
-      case "today": return format(today, "do MMMM, yyyy");
-      case "thisWeek": return "This Week";
-      case "thisMonth": return "This Month";
-      case "thisYear": return "This Year";
-      case "custom": return format(customDate, "do MMMM, yyyy");
-      case "customRange": return `${format(customRangeStart, "dd/MM/yyyy")} — ${format(customRangeEnd, "dd/MM/yyyy")}`;
+      case "today":
+        return format(today, "do MMMM, yyyy");
+      case "thisWeek":
+        return "This Week";
+      case "thisMonth":
+        return "This Month";
+      case "thisYear":
+        return "This Year";
+      case "custom":
+        return format(customDate, "do MMMM, yyyy");
+      case "customRange":
+        return `${format(customRangeStart, "dd/MM/yyyy")} — ${format(customRangeEnd, "dd/MM/yyyy")}`;
       case "all":
-      default: return "All Time";
+      default:
+        return "All Time";
     }
   }, [range, today, customDate, customRangeStart, customRangeEnd]);
 
+  // helper: robust date parse (returns JS Date or null)
+  const safeParseDate = (maybeDate) => {
+    if (!maybeDate) return null;
+    // if it's already a Date
+    if (maybeDate instanceof Date && isValid(maybeDate)) return maybeDate;
+    // try parseISO then fallback to new Date
+    try {
+      const parsed = parseISO(maybeDate);
+      if (isValid(parsed)) return parsed;
+    } catch {
+      // ignore parse errors, fall back to Date constructor below
+    }
+    const fallback = new Date(maybeDate);
+    return isValid(fallback) ? fallback : null;
+  };
+
   // helper to test if date is in selected range
   const inRange = (dateObj) => {
+    if (!dateObj) return false;
     switch (range) {
-      case "today": return isSameDay(dateObj, today);
-      case "thisWeek": return isSameWeek(dateObj, today, { weekStartsOn: 1 });
-      case "thisMonth": return isSameMonth(dateObj, today);
-      case "thisYear": return isSameYear(dateObj, today);
-      case "custom": return isSameDay(dateObj, customDate);
-      case "customRange": return isWithinInterval(dateObj, { start: customRangeStart, end: customRangeEnd });
-      case "all": return true;
-      default: return false;
+      case "today":
+        return isSameDay(dateObj, today);
+      case "thisWeek":
+        return isSameWeek(dateObj, today, { weekStartsOn: 1 });
+      case "thisMonth":
+        return isSameMonth(dateObj, today);
+      case "thisYear":
+        return isSameYear(dateObj, today);
+      case "custom":
+        return isSameDay(dateObj, customDate);
+      case "customRange":
+        // guard against invalid intervals
+        if (!customRangeStart || !customRangeEnd) return false;
+        return isWithinInterval(dateObj, { start: customRangeStart, end: customRangeEnd });
+      case "all":
+      default:
+        return true;
     }
   };
 
-  // ——— Early return while loading or error ———
-  if (ordersLoading || claimsLoading) {
-    return (
-      <div className="h-screen flex items-center justify-center font-poppins text-gray-600">
-        Loading data...
-      </div>
-    );
-  }
-
-  if (ordersError || claimsError) {
-    return (
-      <div className="h-screen flex items-center justify-center font-poppins text-red-500">
-        {ordersError || claimsError}
-      </div>
-    );
-  }
+  // ——— Do not block rendering when loading. Use empty arrays while loading so components render immediately.
+  const orders = Array.isArray(ctxOrders) ? ctxOrders : [];
+  const claims = Array.isArray(ctxClaims) ? ctxClaims : [];
 
   // ——— Filter orders & claims ———
   const filteredOrders = orders.filter((o) => {
-    const parsed = parseISO(o.created_at || "");
-    const dateObj = isNaN(parsed) ? new Date(o.created_at) : parsed;
-    return inRange(dateObj);
+    // guard: ensure created_at or createdAt or date field is used
+    const raw = o.created_at ?? o.createdAt ?? o.date ?? null;
+    const dateObj = safeParseDate(raw);
+    // if date is missing, keep in 'all' but exclude for date-specific ranges
+    return dateObj ? inRange(dateObj) : range === "all";
   });
 
   const filteredClaims = claims.filter((c) => {
-    const parsed = parseISO(c.created_at);
-    const dateObj = isNaN(parsed) ? new Date(c.created_at) : parsed;
-    return inRange(dateObj);
+    const raw = c.created_at ?? c.createdAt ?? c.date ?? null;
+    const dateObj = safeParseDate(raw);
+    return dateObj ? inRange(dateObj) : range === "all";
   });
 
   // ——— Compute summary stats ———
-  const pendingOrders = filteredOrders.filter((o) => o.status.toLowerCase() === "pending").length;
-  const processingOrders = filteredOrders.filter((o) => o.status.toLowerCase() === "processing").length;
-  const shippedOrders = filteredOrders.filter((o) => o.status.toLowerCase() === "shipped").length;
-  const deliveredOrders = filteredOrders.filter((o) => o.status.toLowerCase() === "delivered").length;
-  const cancelledOrders = filteredOrders.filter((o) => ["cancelled","canceled"].includes(o.status.toLowerCase())).length;
-  const totalSales = filteredOrders.reduce((sum, o) => sum + Number(o.total_price), 0);
+  const safeLower = (s = "") => (typeof s === "string" ? s.toLowerCase() : "");
+  const pendingOrders = filteredOrders.filter((o) => safeLower(o.status) === "pending").length;
+  const processingOrders = filteredOrders.filter((o) => safeLower(o.status) === "processing").length;
+  const shippedOrders = filteredOrders.filter((o) => safeLower(o.status) === "shipped").length;
+  const deliveredOrders = filteredOrders.filter((o) => safeLower(o.status) === "delivered").length;
+  const cancelledOrders = filteredOrders.filter((o) => ["cancelled", "canceled"].includes(safeLower(o.status))).length;
+
+  const totalSales = filteredOrders.reduce((sum, o) => {
+    const num = Number(o.total_price ?? o.total ?? 0);
+    return sum + (isNaN(num) ? 0 : num);
+  }, 0);
 
   const summaryData = [
     { title: "Total Orders", value: filteredOrders.length, icon: "📝" },
@@ -121,19 +154,31 @@ export default function OrderList() {
 
   // ——— Return Rate Data ———
   const returnRateData = filteredOrders.map((order) => {
-    const deliveredCount = order.status.toLowerCase() === "delivered" ? 1 : 0;
-    const claimsCount = filteredClaims.filter(c => c.order_item === order.id).length;
+    const deliveredCount = safeLower(order.status) === "delivered" ? 1 : 0;
+    // claims might reference order id via order_item or orderId
+    const claimsCount = filteredClaims.filter((c) => {
+      // compare numeric or string ids safely
+      const orderId = order.id ?? order._id ?? order.order_id;
+      const claimRef = c.order_item ?? c.orderId ?? c.order_id;
+      if (orderId == null || claimRef == null) return false;
+      return String(orderId) === String(claimRef);
+    }).length;
     const rate = deliveredCount > 0 ? (claimsCount / deliveredCount) * 100 : 0;
-    return { date: order.created_at, rate: Number(rate.toFixed(2)) };
+    return { date: order.created_at ?? order.createdAt ?? order.date ?? "", rate: Number(rate.toFixed(2)) };
   });
 
   const filteredReturnRateData = returnRateData.filter((d) => {
-    const dt = parseISO(d.date);
+    const dt = safeParseDate(d.date);
+    if (!dt) return false;
     switch (returnRange) {
-      case "today": return isSameDay(dt, today);
-      case "thisMonth": return isSameMonth(dt, today);
-      case "thisYear": return isSameYear(dt, today);
-      default: return true;
+      case "today":
+        return isSameDay(dt, today);
+      case "thisMonth":
+        return isSameMonth(dt, today);
+      case "thisYear":
+        return isSameYear(dt, today);
+      default:
+        return true;
     }
   });
 
@@ -144,6 +189,18 @@ export default function OrderList() {
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
         <div className="flex-1 p-5 bg-gray-100 ml-[80px]">
+          {/* In-page loading / error strip */}
+          <div className="mb-3">
+            { (ordersLoading || claimsLoading) && (
+              <div className="text-xs text-gray-600">Loading data — showing what's available...</div>
+            )}
+            { (ordersError || claimsError) && (
+              <div className="text-xs text-red-600">
+                {ordersError || claimsError}
+              </div>
+            )}
+          </div>
+
           {/* Date Controls */}
           <div className="w-full rounded p-4 flex items-center justify-between -mt-5">
             <div className="flex items-center space-x-2 text-[10px]">
@@ -160,6 +217,7 @@ export default function OrderList() {
                 <option value="customRange">Custom Range</option>
                 <option value="all">All Time</option>
               </select>
+
               {range === "custom" && (
                 <input
                   type="date"
@@ -168,6 +226,7 @@ export default function OrderList() {
                   onChange={(e) => setCustomDate(new Date(e.target.value))}
                 />
               )}
+
               {range === "customRange" && (
                 <>
                   <input
@@ -186,6 +245,7 @@ export default function OrderList() {
                 </>
               )}
             </div>
+
             <div className="text-[12px] text-gray-700 font-medium">{formattedDate}</div>
           </div>
 
@@ -219,6 +279,7 @@ export default function OrderList() {
                     <option value="thisYear">This Year</option>
                   </select>
                 </div>
+
                 <ResponsiveContainer width="100%" height={120}>
                   <LineChart data={filteredReturnRateData} margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" />
@@ -229,6 +290,7 @@ export default function OrderList() {
                   </LineChart>
                 </ResponsiveContainer>
               </div>
+
               <RecentClaims onViewAll={() => setIsModalOpen(true)} />
             </div>
 
@@ -236,6 +298,8 @@ export default function OrderList() {
             <div className="w-2/3">
               <div className="p-4 bg-white rounded-lg shadow h-full">
                 <h3 className="text-[11px] font-semibold text-gray-700 mb-2">Order List</h3>
+
+                {/* The OrderTable receives filteredOrders (possibly empty) so it renders immediately */}
                 <OrderTable orders={filteredOrders} />
               </div>
             </div>
