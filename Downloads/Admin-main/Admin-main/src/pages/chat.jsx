@@ -3,13 +3,13 @@ import Sidebar from '../components/sidebar';
 import Header from '../components/header';
 import ChatSidebar from '../components/chatsidebar';
 import ChatMainWindow from '../components/chatmainwindow';
-import { dummyNotifications, initialMessages } from '../data/chatadata';
+import { dummyNotifications } from '../data/chatadata';
 import { UserContext } from '../context/usercontext';
 
 export default function ChatPage() {
   const { users, loadingUsers, error } = useContext(UserContext);
   const [selected, setSelected] = useState(null);
-  const [messages, setMessages] = useState(initialMessages);
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [replyTo, setReplyTo] = useState(null);
   const [hoveredMessage, setHoveredMessage] = useState(null);
@@ -18,126 +18,159 @@ export default function ChatPage() {
   const fileInputRef = useRef();
   const videoInputRef = useRef();
 
-  // Build contacts: only customers (case-insensitive), map to sidebar shape
+  // Fetch notifications
+  useEffect(() => {
+    fetch('/chatsapp/notifications')
+      .then(res => res.json())
+      .then(data => console.log('Notifications fetched:', data))
+      .catch(err => console.error('Error fetching notifications:', err));
+  }, []);
+
+  // Build contacts
   const contacts = useMemo(() => {
     if (loadingUsers || error) return [];
     return users
-      .filter(u => u.role && u.role.toLowerCase() === 'customer')
-      .map(u => ({
-        id: u.id,
-        name: u.username,
-        // Find most recent message to/from that user
-        ...(() => {
-          const convo = [...messages].reverse().find(
-            m => m.from === u.id || m.to === u.id
-          );
-          return {
-            lastMessage: convo?.text || '',
-            time: convo?.time || '',
-          };
-        })(),
-        typing: false,
-      }));
+      .filter(u => u.role?.toLowerCase() === 'customer')
+      .map(u => {
+        const convo = [...messages].reverse().find(
+          m => m.from === u.id || m.to === u.id
+        );
+        return {
+          id: u.id,
+          name: u.username,
+          lastMessage: convo?.text || '',
+          time: convo?.time || '',
+          typing: false,
+        };
+      });
   }, [users, loadingUsers, error, messages]);
 
-  // Default to first customer once we have contacts
+  // Default to first customer
   useEffect(() => {
     if (!loadingUsers && !error && contacts.length > 0 && selected === null) {
       setSelected(contacts[0].id);
     }
   }, [contacts, loadingUsers, error, selected]);
 
-  // The currently selected contact object
+  // Fetch messages for selected contact (customer-to-admin)
+  useEffect(() => {
+    if (selected) {
+      fetch(`/chatsapp/messages/customer-to-admin/?customerId=${selected}`)
+        .then(res => {
+          if (!res.ok) throw new Error('Failed to fetch messages');
+          return res.json();
+        })
+        .then(data => setMessages(data))
+        .catch(err => console.error('Error fetching messages:', err));
+    }
+  }, [selected]);
+
+  // Start a new conversation
+  const startConversation = (contactId) => {
+    fetch('/api/conversations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: contactId }),
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to start conversation');
+        return res.json();
+      })
+      .then(data => {
+        setSelected(contactId);
+        console.log('Conversation started:', data);
+        return fetch('/chatsapp/messages/admin-to-customer/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            conversationId: data.id,
+            recipientId: contactId,
+            message: 'Hello! How can I help you today?',
+          }),
+        });
+      })
+      .then(res => res.json())
+      .then(messageData => {
+        setMessages(prev => [...prev, messageData]);
+      })
+      .catch(err => console.error('Error starting conversation:', err));
+  };
+
   const current = contacts.find(c => c.id === selected) || null;
 
-  // Handlers
+  // Send text message
   const handleSend = () => {
-    if (input.trim() === '') return;
+    if (!input.trim()) return;
+
     const newMessage = {
       id: Date.now(),
-      from: 'me',
+      from: 'admin',
       to: selected,
       text: input.trim(),
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       read: false,
       ...(replyTo && { replyTo: replyTo.id }),
     };
-    setMessages(prev => [...prev, newMessage]);
+
+    fetch('/chatsapp/messages/admin-to-customer/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newMessage),
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to send message');
+        return res.json();
+      })
+      .then(data => setMessages(prev => [...prev, data]))
+      .catch(err => console.error('Error sending message:', err));
+
     setInput('');
     setReplyTo(null);
   };
 
+  // Attach file
   const handleAttach = e => {
     const files = Array.from(e.target.files);
-    if (files.length === 0) return;
+    if (!files.length) return;
 
-    const imageFiles = files.filter(file => file.type.startsWith('image/'));
-    const otherFiles = files.filter(file => !file.type.startsWith('image/'));
-
-    if (imageFiles.length > 0) {
-      Promise.all(
-        imageFiles.map(file =>
-          new Promise(resolve => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.readAsDataURL(file);
-          })
-        )
-      ).then(imageURLs => {
-        const newMessage = {
-          id: Date.now(),
-          from: 'me',
-          to: selected,
-          images: imageURLs,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          read: false,
-          ...(replyTo && { replyTo: replyTo.id }),
-        };
-        setMessages(prev => [...prev, newMessage]);
-      });
-    }
-
-    otherFiles.forEach(file => {
+    files.forEach(file => {
       const reader = new FileReader();
       reader.onload = () => {
-        const newMessage = {
+        const msg = {
           id: Date.now(),
-          from: 'me',
+          from: 'admin',
           to: selected,
-          attachments: [{ name: file.name, data: reader.result }],
+          ...(file.type.startsWith('image/') ? { images: [reader.result] } : { attachments: [{ name: file.name, data: reader.result }] }),
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          read: false,
-          ...(replyTo && { replyTo: replyTo.id }),
         };
-        setMessages(prev => [...prev, newMessage]);
+        setMessages(prev => [...prev, msg]);
       };
       reader.readAsDataURL(file);
     });
-
     fileInputRef.current.value = '';
   };
 
+  // Attach video
   const handleAttachVideo = e => {
     const file = e.target.files[0];
     if (!file || !file.type.startsWith('video/')) return;
 
     const reader = new FileReader();
     reader.onload = () => {
-      const newMessage = {
+      const msg = {
         id: Date.now(),
-        from: 'me',
+        from: 'admin',
         to: selected,
         video: reader.result,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        read: false,
-        ...(replyTo && { replyTo: replyTo.id }),
       };
-      setMessages(prev => [...prev, newMessage]);
+      setMessages(prev => [...prev, msg]);
     };
     reader.readAsDataURL(file);
     videoInputRef.current.value = '';
   };
 
+  // Message actions
   const handleAction = (action, message) => {
     setMenuOpenFor(null);
     switch (action) {
@@ -145,15 +178,13 @@ export default function ChatPage() {
         setReplyTo(message);
         break;
       case 'Delete':
-        setMessages(prev =>
-          prev.map(m => (m.id === message.id ? { ...m, deleted: true } : m))
-        );
+        setMessages(prev => prev.map(m => m.id === message.id ? { ...m, deleted: true } : m));
         break;
       case 'Copy':
-        navigator.clipboard.writeText(message.text || '').then(() => alert('Copied!'));
+        navigator.clipboard.writeText(message.text || '');
         break;
       case 'Forward':
-        alert('Forward action not implemented yet.');
+        alert('Forward action not implemented.');
         break;
       default:
         break;
@@ -172,13 +203,12 @@ export default function ChatPage() {
           contacts={contacts}
           selected={selected}
           setSelected={setSelected}
+          startConversation={startConversation}
         />
         {current && (
           <ChatMainWindow
             current={current}
-            messages={messages.filter(
-              m => m.to === selected || m.from === selected
-            )}
+            messages={messages.filter(m => m.to === selected || m.from === selected)}
             setMessages={setMessages}
             input={input}
             setInput={setInput}
