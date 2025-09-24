@@ -1,9 +1,11 @@
 // src/context/orderscontext.jsx
 import React, { createContext, useState, useEffect, useCallback } from "react";
+import { useAuth } from "./AuthContext";
 
 export const OrdersContext = createContext();
 
 export const OrdersProvider = ({ children }) => {
+  const { isAuthenticated, authenticatedFetch, isLoading: authLoading } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -11,51 +13,29 @@ export const OrdersProvider = ({ children }) => {
   const [hasInitialized, setHasInitialized] = useState(false);
 
   const fetchOrders = useCallback(async (showLoading = true) => {
+    // Don't fetch if not authenticated
+    if (!isAuthenticated || authLoading) {
+      setOrders([]);
+      setToAddressMap({});
+      setError(null);
+      setLoading(false);
+      setHasInitialized(true);
+      return;
+    }
+
     try {
       if (showLoading) {
         setLoading(true);
       }
       setError(null);
+
+      const response = await authenticatedFetch("https://api-xtreative.onrender.com/orders/list/");
       
-      const token = localStorage.getItem("authToken");
-
-      // If no token, reset state and don't show error
-      if (!token) {
-        setOrders([]);
-        setToAddressMap({});
-        setError(null);
-        setLoading(false);
-        return;
+      if (!response.ok) {
+        throw new Error(`Failed to fetch orders: ${response.status} ${response.statusText}`);
       }
 
-      const res = await fetch("https://api-xtreative.onrender.com/orders/list/", {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!res.ok) {
-        if (res.status === 401) {
-          // Clear invalid tokens
-          localStorage.removeItem("authToken");
-          localStorage.removeItem("refreshToken");
-          
-          // Dispatch logout event
-          window.dispatchEvent(new CustomEvent("authChanged", { 
-            detail: { type: "logout" } 
-          }));
-          
-          setOrders([]);
-          setToAddressMap({});
-          setError("Session expired. Please log in again.");
-          setLoading(false);
-          return;
-        }
-        throw new Error(`Failed to fetch orders: ${res.status} ${res.statusText}`);
-      }
-
-      const data = await res.json();
+      const data = await response.json();
       setOrders(Array.isArray(data) ? data : []);
 
       // Map item IDs to to_address
@@ -76,19 +56,34 @@ export const OrdersProvider = ({ children }) => {
     } catch (err) {
       console.error("Orders fetch error:", err);
       setError(err.message || "Failed to load orders");
+      setOrders([]);
+      setToAddressMap({});
     } finally {
       setLoading(false);
       setHasInitialized(true);
     }
-  }, []);
+  }, [isAuthenticated, authLoading, authenticatedFetch]);
 
   useEffect(() => {
+    // Initialize when auth state is ready
+    if (!authLoading) {
+      if (isAuthenticated) {
+        fetchOrders(true);
+      } else {
+        // Not authenticated, set initialized state
+        setOrders([]);
+        setToAddressMap({});
+        setError(null);
+        setLoading(false);
+        setHasInitialized(true);
+      }
+    }
+
+    // Listen for auth changes
     const handleAuthChange = (event) => {
       if (event.detail?.type === "login") {
-        // User just logged in, fetch orders
         fetchOrders(true);
       } else if (event.detail?.type === "logout") {
-        // User logged out, reset state
         setOrders([]);
         setToAddressMap({});
         setError(null);
@@ -97,37 +92,11 @@ export const OrdersProvider = ({ children }) => {
       }
     };
 
-    const handleStorageChange = () => {
-      const token = localStorage.getItem("authToken");
-      if (token && !hasInitialized) {
-        // Token exists and we haven't initialized yet
-        fetchOrders(true);
-      } else if (!token && hasInitialized) {
-        // Token removed, reset state
-        setOrders([]);
-        setToAddressMap({});
-        setError(null);
-        setLoading(false);
-      }
-    };
-
-    // Initial load check
-    const token = localStorage.getItem("authToken");
-    if (token) {
-      fetchOrders(true);
-    } else {
-      setLoading(false);
-      setHasInitialized(true);
-    }
-
-    // Set up event listeners
     window.addEventListener("authChanged", handleAuthChange);
-    window.addEventListener("storage", handleStorageChange);
 
     // Polling interval for data refresh (only when authenticated)
     const interval = setInterval(() => {
-      const currentToken = localStorage.getItem("authToken");
-      if (currentToken && hasInitialized) {
+      if (isAuthenticated && hasInitialized && !authLoading) {
         fetchOrders(false); // Silent refresh
       }
     }, 60000); // Poll every 60 seconds
@@ -135,9 +104,8 @@ export const OrdersProvider = ({ children }) => {
     return () => {
       clearInterval(interval);
       window.removeEventListener("authChanged", handleAuthChange);
-      window.removeEventListener("storage", handleStorageChange);
     };
-  }, [fetchOrders, hasInitialized]);
+  }, [isAuthenticated, authLoading, fetchOrders, hasInitialized]);
 
   const contextValue = {
     orders,

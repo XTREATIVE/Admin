@@ -1,6 +1,6 @@
 // src/pages/OrderList.jsx
-import React, { useState, useMemo, useContext, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useMemo, useContext } from "react";
+import { useAuth } from "../context/AuthContext";
 import {
   format,
   parseISO,
@@ -28,17 +28,9 @@ import { OrdersContext } from "../context/orderscontext";
 import { ClaimsContext } from "../context/claimscontext";
 
 export default function OrderList() {
-  const navigate = useNavigate();
+  const { isLoading: authLoading } = useAuth();
   const { orders, loading: ordersLoading, error: ordersError, hasInitialized: ordersInitialized } = useContext(OrdersContext);
   const { claims, isLoading: claimsLoading, error: claimsError, hasInitialized: claimsInitialized } = useContext(ClaimsContext);
-
-  // ——— Authentication check ———
-  useEffect(() => {
-    const token = localStorage.getItem("authToken");
-    if (!token) {
-      navigate("/login", { replace: true });
-    }
-  }, [navigate]);
 
   // ——— Date selector state ———
   const today = useMemo(() => new Date(), []);
@@ -81,8 +73,8 @@ export default function OrderList() {
     }
   };
 
-  // ——— Authentication state handling ———
-  const isInitializing = (!ordersInitialized || !claimsInitialized) && !ordersError && !claimsError;
+  // ——— Loading and error states ———
+  const isInitializing = authLoading || (!ordersInitialized || !claimsInitialized);
   const isLoadingData = (ordersLoading || claimsLoading) && (ordersInitialized && claimsInitialized);
 
   // ——— Early return for loading states ———
@@ -91,7 +83,7 @@ export default function OrderList() {
       <div className="h-screen flex items-center justify-center font-poppins">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
-          <p className="text-gray-600">Initializing application...</p>
+          <p className="text-gray-600">Loading orders data...</p>
         </div>
       </div>
     );
@@ -100,11 +92,6 @@ export default function OrderList() {
   if (ordersError || claimsError) {
     const errorMessage = ordersError || claimsError;
     
-    // If it's an auth error, don't show the error page
-    if (errorMessage.includes("Session expired") || errorMessage.includes("Please log in")) {
-      return null; // Let the auth redirect handle this
-    }
-
     return (
       <div className="h-screen flex items-center justify-center font-poppins">
         <div className="text-center">
