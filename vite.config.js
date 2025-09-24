@@ -5,19 +5,16 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
 
-  // this lets Vite’s dev server accept external hosts (if you’re using `vite` or `vite dev`)
   server: {
-    host: true,              // listen on all addresses (0.0.0.0)
-    // allowedHosts: ['your-custom-host.com'] // (optional) more fine‑grained control
+    host: true,   // so dev server listens on all addresses (useful if testing externally)
   },
 
-  // this is what `vite preview` uses — whitelist your Render URL here
   preview: {
-    host: '0.0.0.0',         // bind to all interfaces
-    port: 4173,              // or whatever port you prefer
+    host: '0.0.0.0',
+    port: 4173,
     allowedHosts: [
-      'admin-xtreative-wb.onrender.com',
-      // 'another-domain-you-might-use.com'
+      'admin-xtreative.vercel.app',
+      'admin-xtreative-wb.onrender.com'
     ]
   },
 
@@ -30,7 +27,6 @@ export default defineConfig({
           }
         }
       }
-    },
-    // chunkSizeWarningLimit: 600, // if you want to bump up warnings
+    }
   }
 })
