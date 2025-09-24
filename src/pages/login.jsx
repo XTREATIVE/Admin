@@ -1,27 +1,18 @@
 // src/components/LoginScreen.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Formik } from "formik";
 import * as Yup from "yup";
 import { IoEyeOffOutline, IoEyeOutline } from "react-icons/io5";
-import { useAuth } from "../context/AuthContext";
 import logo from "../assets/logo.png";
 
 const API_URL = "https://api-xtreative.onrender.com/accounts/admin/login/";
 
 const LoginScreen = () => {
   const navigate = useNavigate();
-  const { login, isAuthenticated, isLoading: authLoading } = useAuth();
   const [loginError, setLoginError] = useState("");
   const [loginSuccess, setLoginSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-
-  // Check if user is already authenticated
-  useEffect(() => {
-    if (!authLoading && isAuthenticated) {
-      navigate("/admin-dashboard", { replace: true });
-    }
-  }, [isAuthenticated, authLoading, navigate]);
 
   const validationSchema = Yup.object().shape({
     email: Yup.string().email("Invalid email").required("Email is required"),
@@ -32,9 +23,6 @@ const LoginScreen = () => {
 
   const handleLogin = async (values, { setSubmitting }) => {
     try {
-      setLoginError("");
-      setLoginSuccess(false);
-
       const response = await fetch(API_URL, {
         method: "POST",
         headers: {
@@ -42,47 +30,38 @@ const LoginScreen = () => {
         },
         body: JSON.stringify(values),
       });
-      
       const data = await response.json();
 
       if (response.ok && data.access) {
-        login(data.access, data.refresh);
+        // Persist tokens
+        localStorage.setItem("authToken", data.access);
+        if (data.refresh) {
+          localStorage.setItem("refreshToken", data.refresh);
+        }
+
+        setLoginError("");
         setLoginSuccess(true);
 
-        // Small delay to show success message, then redirect
+        // Redirect after a brief success message
         setTimeout(() => {
-          navigate("/admin-dashboard", { replace: true });
-        }, 1000);
+          navigate("/admin-dashboard");
+        }, 2000);
       } else {
         setLoginError(
           data.message ||
             data.detail ||
             "Invalid credentials. Please try again."
         );
+        setLoginSuccess(false);
       }
     } catch (error) {
       console.error("Login error:", error);
-      if (error.message === 'Failed to fetch') {
-        setLoginError("Network error. Please check your internet connection and try again.");
-      } else {
-        setLoginError("Something went wrong. Please try again later.");
-      }
+      setLoginError("Something went wrong. Please try again later.");
+      setLoginSuccess(false);
     } finally {
       setSubmitting(false);
     }
   };
-
-  // Show loading while checking auth state
-  if (authLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen font-poppins">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="login-screen font-poppins">
@@ -339,8 +318,8 @@ const LoginScreen = () => {
 
                 <button
                   type="submit"
-                  className="login-button"
-                  disabled={isSubmitting}
+                    className="login-button"
+                    disabled={isSubmitting}
                 >
                   {isSubmitting ? "Signing In..." : "Sign In"}
                 </button>
