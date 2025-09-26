@@ -1,7 +1,7 @@
 // src/components/FinancePayouts.js
 import React, { useState, useContext } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { PayoutsContext } from '../context/PayoutsContext';
+import { PayoutsContext } from '../context/payoutscontext';
 import PayoutManageModal from './PayoutManageModal';
 
 const ITEMS_PER_PAGE = 20;
