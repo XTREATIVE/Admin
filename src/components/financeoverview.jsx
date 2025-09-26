@@ -157,7 +157,7 @@ const FinanceOverview = () => {
       if (!token) return;
 
       const response = await axios.get(
-        'https://api-xtreative.onrender.com/products/listing/',
+        'https://api-xtreative.onrender.com/products/stock/',
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -419,7 +419,7 @@ const FinanceOverview = () => {
             <div>
               <p className="text-gray-500 text-[12px]">Inventory Value</p>
               <p className="text-sm font-semibold">
-                {dataLoading ? 'Loading...' : `UGX ${inventoryValue.toLocaleString()}`}
+                {dataLoading ? 'Loading...' : ` ${inventoryValue.toLocaleString()}`}
               </p>
             </div>
           </div>
