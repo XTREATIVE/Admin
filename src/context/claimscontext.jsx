@@ -1,223 +1,175 @@
-// src/context/claimscontext.jsx
-import React, { createContext, useState, useEffect, useContext, useCallback } from "react";
+import React, { createContext, useState, useEffect, useContext } from "react";
 import { OrdersContext } from "./orderscontext";
 
+// Create Claims Context
 export const ClaimsContext = createContext();
 
+// Claims Provider Component
 export const ClaimsProvider = ({ children }) => {
   const [claims, setClaims] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [hasInitialized, setHasInitialized] = useState(false);
-
   const ordersContext = useContext(OrdersContext);
 
-  const fetchClaimsData = useCallback(async (showLoading = true) => {
-    try {
-      if (showLoading) {
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
         setIsLoading(true);
-      }
-      setError(null);
+        const authToken = localStorage.getItem("authToken"); // Retrieve token from localStorage
 
-      const token = localStorage.getItem("authToken");
-      if (!token) {
-        // No token -> reset state, no error
-        setClaims([]);
-        setError(null);
-        setIsLoading(false);
-        setHasInitialized(true);
-        return;
-      }
+        if (!authToken) {
+          throw new Error("No authentication token found. Please log in.");
+        }
 
-      if (!ordersContext) {
-        setError("Orders data not available");
-        setIsLoading(false);
-        return;
-      }
+        // Check if OrdersContext is available
+        if (!ordersContext) {
+          throw new Error("OrdersContext is not available. Ensure ClaimsProvider is wrapped in OrdersProvider.");
+        }
 
-      const { orders, loading: ordersLoading, error: ordersError, toAddressMap, hasInitialized: ordersInitialized } = ordersContext;
+        const { orders, loading: ordersLoading, error: ordersError, toAddressMap } = ordersContext;
 
-      // Wait for orders to be initialized
-      if (!ordersInitialized) {
-        setIsLoading(true);
-        return;
-      }
+        // Log toAddressMap for debugging
+        console.log("toAddressMap:", toAddressMap);
 
-      if (ordersError) {
-        setError(`Orders error: ${ordersError}`);
-        setIsLoading(false);
-        return;
-      }
+        // Check for orders error
+        if (ordersError) {
+          throw new Error(`Orders error: ${ordersError}`);
+        }
 
-      if (ordersLoading && !orders?.length) {
-        // Still loading orders and no cached data
-        setIsLoading(true);
-        return;
-      }
+        // Wait for orders to be loaded
+        if (ordersLoading) {
+          return; // Delay fetching until orders are loaded
+        }
 
-      // Build maps from orders (handle empty orders gracefully)
-      const itemMap = {};
-      const subtotalMap = {};
-      const quantityMap = {};
-      const productIdMap = {};
+        // Create maps for item ID to product name, subtotal, quantity, and product ID
+        const itemMap = orders.reduce((map, order) => {
+          order.items.forEach((item) => {
+            map[item.id] = item.product_name;
+          });
+          return map;
+        }, {});
 
-      if (Array.isArray(orders)) {
-        orders.forEach((order) => {
-          if (order && Array.isArray(order.items)) {
-            order.items.forEach((item) => {
-              if (!item || item.id == null) return;
-              itemMap[item.id] = item.product_name || `Item ${item.id}`;
-              subtotalMap[item.id] = item.subtotal || 0;
-              quantityMap[item.id] = item.quantity || 1;
-              productIdMap[item.id] = item.product;
-            });
-          }
-        });
-      }
+        const subtotalMap = orders.reduce((map, order) => {
+          order.items.forEach((item) => {
+            map[item.id] = item.subtotal;
+          });
+          return map;
+        }, {});
 
-      // Parallel fetch requests
-      const [productsRes, customersRes, claimsRes] = await Promise.all([
-        fetch("https://api-xtreative.onrender.com/products/listing/", {
+        const quantityMap = orders.reduce((map, order) => {
+          order.items.forEach((item) => {
+            map[item.id] = item.quantity;
+          });
+          return map;
+        }, {});
+
+        const productIdMap = orders.reduce((map, order) => {
+          order.items.forEach((item) => {
+            map[item.id] = item.product;
+          });
+          return map;
+        }, {});
+
+        // Fetch products to get image URLs
+        const productsResponse = await fetch("https://api-xtreative.onrender.com/products/listing/", {
+          method: "GET",
           headers: {
+            "Authorization": `Bearer ${authToken}`,
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
           },
-        }),
-        fetch("https://api-xtreative.onrender.com/customers/list/", {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }),
-        fetch("https://api-xtreative.onrender.com/returns/list/", {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        })
-      ]);
-
-      // Check for auth errors
-      if (productsRes.status === 401 || customersRes.status === 401 || claimsRes.status === 401) {
-        localStorage.removeItem("authToken");
-        localStorage.removeItem("refreshToken");
-        window.dispatchEvent(new CustomEvent("authChanged", { 
-          detail: { type: "logout" } 
-        }));
-        setClaims([]);
-        setError("Session expired. Please log in again.");
-        setIsLoading(false);
-        return;
-      }
-
-      if (!productsRes.ok) throw new Error(`Failed to fetch products: ${productsRes.status}`);
-      if (!customersRes.ok) throw new Error(`Failed to fetch customers: ${customersRes.status}`);
-      if (!claimsRes.ok) throw new Error(`Failed to fetch claims: ${claimsRes.status}`);
-
-      const [productsData, customersData, claimsData] = await Promise.all([
-        productsRes.json(),
-        customersRes.json(),
-        claimsRes.json()
-      ]);
-
-      // Build maps
-      const imageMap = {};
-      if (Array.isArray(productsData)) {
-        productsData.forEach((p) => {
-          if (p && p.id) {
-            imageMap[p.id] = p.product_image_url || null;
-          }
         });
-      }
 
-      const customerMap = {};
-      if (Array.isArray(customersData)) {
-        customersData.forEach((c) => {
-          if (c && c.id) {
-            customerMap[c.id] = c.username || `Customer ${c.id}`;
-          }
+        if (!productsResponse.ok) {
+          throw new Error("Failed to fetch products");
+        }
+
+        const productsData = await productsResponse.json();
+        // Create a map of product ID to image URL
+        const imageMap = productsData.reduce((map, product) => {
+          map[product.id] = product.product_image_url;
+          return map;
+        }, {});
+
+        // Fetch customers
+        const customersResponse = await fetch("https://api-xtreative.onrender.com/customers/list/", {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${authToken}`,
+            "Content-Type": "application/json",
+          },
         });
-      }
 
-      // Transform claims
-      const transformedClaims = Array.isArray(claimsData) ? claimsData.map((item) => {
-        if (!item) return null;
+        if (!customersResponse.ok) {
+          throw new Error("Failed to fetch customers");
+        }
 
-        const deliveryAddress =
-          toAddressMap?.[item.order_item] && toAddressMap[item.order_item].trim() !== ""
+        const customersData = await customersResponse.json();
+        // Create a map of customer ID to username
+        const customerMap = customersData.reduce((map, customer) => {
+          map[customer.id] = customer.username;
+          return map;
+        }, {});
+
+        // Fetch claims
+        const claimsResponse = await fetch("https://api-xtreative.onrender.com/returns/list/", {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${authToken}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!claimsResponse.ok) {
+          if (claimsResponse.status === 401) {
+            // Clear tokens on 401 Unauthorized
+            localStorage.removeItem("authToken");
+            localStorage.removeItem("refreshToken");
+            throw new Error("Authentication failed. Please log in again.");
+          }
+          throw new Error("Failed to fetch claims");
+        }
+
+        const claimsData = await claimsResponse.json();
+
+        // Transform API data to match component's expected format
+        const transformedClaims = claimsData.map((item) => {
+          // Log order_item and corresponding to_address for debugging
+          console.log(`order_item: ${item.order_item}, to_address: ${toAddressMap[item.order_item]}`);
+          
+          // Use to_address or fallback to default address
+          const deliveryAddress = toAddressMap[item.order_item] && toAddressMap[item.order_item].trim() !== ""
             ? toAddressMap[item.order_item]
             : "Pioneer Mall, Burton Street, Kampala, Uganda";
 
-        return {
-          name: customerMap[item.customer] || `Customer ${item.customer}`,
-          order_item: item.order_item,
-          product_name: itemMap[item.order_item] || `Item ${item.order_item}`,
-          reason: item.reason || "No reason provided",
-          time: item.created_at ? new Date(item.created_at).toLocaleString() : "Unknown time",
-          created_at: item.created_at,
-          status: item.status || "pending",
-          type: (item.status || "").toLowerCase() === "approved" ? "refund" : "claim",
-          giftPrice: subtotalMap[item.order_item] || "N/A",
-          quantity: quantityMap[item.order_item] || 1,
-          image: imageMap[productIdMap[item.order_item]] || null,
-          deliveryAddress,
-        };
-      }).filter(Boolean) : []; // Filter out null items
+          return {
+            name: customerMap[item.customer] || `Customer ${item.customer}`,
+            order_item: item.order_item, // Keep order_item for ID reference
+            product_name: itemMap[item.order_item] || `Item ${item.order_item}`, // Use product name from orders
+            reason: item.reason, // Include reason
+            time: new Date(item.created_at).toLocaleString(), // Format date
+            created_at: item.created_at, // Include raw created_at for graph
+            status: item.status, // Include status
+            type: item.status.toLowerCase() === "approved" ? "refund" : "claim", // Keep for compatibility
+            giftPrice: subtotalMap[item.order_item] || "N/A", // Use subtotal as giftPrice
+            quantity: quantityMap[item.order_item] || "1", // Use quantity from orders
+            image: imageMap[productIdMap[item.order_item]] || null, // Use product image URL
+            deliveryAddress // Use to_address or fallback
+          };
+        });
 
-      setClaims(transformedClaims);
-    } catch (err) {
-      console.error("Claims fetch error:", err);
-      setError(err.message || "Failed to load claims");
-    } finally {
-      setIsLoading(false);
-      setHasInitialized(true);
-    }
-  }, [ordersContext]);
-
-  useEffect(() => {
-    const handleAuthChange = (event) => {
-      if (event.detail?.type === "login") {
-        // User just logged in, wait a bit for orders to load first
-        setTimeout(() => {
-          fetchClaimsData(true);
-        }, 500);
-      } else if (event.detail?.type === "logout") {
-        // User logged out, reset state
-        setClaims([]);
-        setError(null);
+        setClaims(transformedClaims);
+      } catch (err) {
+        setError(err.message);
+      } finally {
         setIsLoading(false);
-        setHasInitialized(true);
       }
     };
 
-    window.addEventListener("authChanged", handleAuthChange);
-
-    return () => {
-      window.removeEventListener("authChanged", handleAuthChange);
-    };
-  }, [fetchClaimsData]);
-
-  // Fetch claims when orders context changes
-  useEffect(() => {
-    const token = localStorage.getItem("authToken");
-    if (token && ordersContext?.hasInitialized) {
-      fetchClaimsData(!hasInitialized);
-    } else if (!token) {
-      setIsLoading(false);
-      setHasInitialized(true);
-    }
-  }, [ordersContext, fetchClaimsData, hasInitialized]);
-
-  const contextValue = {
-    claims,
-    isLoading,
-    error,
-    refreshClaims: () => fetchClaimsData(true),
-    hasInitialized
-  };
+    fetchData();
+  }, [ordersContext]);
 
   return (
-    <ClaimsContext.Provider value={contextValue}>
+    <ClaimsContext.Provider value={{ claims, isLoading, error }}>
       {children}
     </ClaimsContext.Provider>
   );

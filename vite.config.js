@@ -18,6 +18,7 @@ export default defineConfig({
     allowedHosts: [
       'admin-xtreative-wb.onrender.com',
       // 'another-domain-you-might-use.com'
+      'admin-xtreative.vercel.app'
     ]
   },
 

@@ -1,5 +1,5 @@
 // src/components/LoginScreen.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Formik } from "formik";
 import * as Yup from "yup";
@@ -13,15 +13,6 @@ const LoginScreen = () => {
   const [loginError, setLoginError] = useState("");
   const [loginSuccess, setLoginSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-
-  // Check if user is already authenticated
-  useEffect(() => {
-    const token = localStorage.getItem("authToken");
-    if (token) {
-      // If token exists, redirect to dashboard
-      navigate("/admin-dashboard", { replace: true });
-    }
-  }, [navigate]);
 
   const validationSchema = Yup.object().shape({
     email: Yup.string().email("Invalid email").required("Email is required"),
@@ -51,15 +42,10 @@ const LoginScreen = () => {
         setLoginError("");
         setLoginSuccess(true);
 
-        // Dispatch custom event to notify other components
-        window.dispatchEvent(new CustomEvent("authChanged", { 
-          detail: { type: "login", token: data.access } 
-        }));
-
-        // Small delay to show success message, then redirect
+        // Redirect after a brief success message
         setTimeout(() => {
-          navigate("/admin-dashboard", { replace: true });
-        }, 1000);
+          navigate("/admin-dashboard");
+        }, 2000);
       } else {
         setLoginError(
           data.message ||
@@ -332,8 +318,8 @@ const LoginScreen = () => {
 
                 <button
                   type="submit"
-                  className="login-button"
-                  disabled={isSubmitting}
+                    className="login-button"
+                    disabled={isSubmitting}
                 >
                   {isSubmitting ? "Signing In..." : "Sign In"}
                 </button>
