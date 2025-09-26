@@ -38,7 +38,7 @@ const AllNotifications = () => {
     const fetchAllNotifications = async () => {
       setLoading(true);
       const allNotifications = await fetchNotifications(
-        "https://api-xtreative.onrender.com/notifications/get/"
+        "https://api-xtreative.onrender.com/notifications/all/"
       );
       const formattedNotifications = allNotifications.map((notif) => ({
         ...notif,
