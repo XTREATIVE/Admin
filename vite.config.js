@@ -5,19 +5,17 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
 
-  // this lets Vite’s dev server accept external hosts (if you’re using `vite` or `vite dev`)
+  // dev server settings
   server: {
-    host: true,              // listen on all addresses (0.0.0.0)
-    // allowedHosts: ['your-custom-host.com'] // (optional) more fine‑grained control
+    host: true,
   },
 
-  // this is what `vite preview` uses — whitelist your Render URL here
+  // preview build settings
   preview: {
-    host: '0.0.0.0',         // bind to all interfaces
-    port: 4173,              // or whatever port you prefer
+    host: '0.0.0.0',
+    port: 4173,
     allowedHosts: [
       'admin-xtreative-wb.onrender.com',
-      // 'another-domain-you-might-use.com'
       'admin-xtreative.vercel.app'
     ]
   },
@@ -31,7 +29,17 @@ export default defineConfig({
           }
         }
       }
-    },
-    // chunkSizeWarningLimit: 600, // if you want to bump up warnings
+    }
+  },
+
+  // ✅ Fix for your error
+  optimizeDeps: {
+    exclude: [
+      'recharts',
+      'framer-motion',
+      'react-bootstrap-icons',
+      '@mui/material',
+      'react-icons'
+    ]
   }
 })

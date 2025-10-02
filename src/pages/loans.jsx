@@ -3,7 +3,7 @@ import React from 'react';
 import Sidebar from '../components/sidebar';
 import Header from '../components/header';
 // Swap out FinanceOverview for LoanOverview
-import LoanOverview from '../components/loansoverview';
+import loansoverview from '../components/loansoverview';
 
 const Loans = () => {
   return (
