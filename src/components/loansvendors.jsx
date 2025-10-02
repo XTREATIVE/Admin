@@ -1,3 +1,4 @@
+// src/components/loansvendors.jsx
 import React, { useState, useContext } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { LoansContext } from '../context/loanscontext';
@@ -42,12 +43,9 @@ const LoanRepayments = () => {
         console.log('Loans for Loan Applications:', allLoans);
         return allLoans.map(app => {
           // Map guarantor vendor IDs to usernames, join with newline
-          const guarantorUsernames = Array.isArray(app.guarantors) && app.guarantors.length > 0
-            ? app.guarantors
-                .map(guarantorId => {
-                  const vendor = Array.isArray(vendors) ? vendors.find(v => v.id === guarantorId) : null;
-                  return vendor ? vendor.username : 'Unknown';
-                })
+          const guarantorUsernames = Array.isArray(app.guarantor_details) && app.guarantor_details.length > 0
+            ? app.guarantor_details
+                .map(guarantorDetail => guarantorDetail.username)
                 .join('\n')
             : '-';
 

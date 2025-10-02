@@ -16,8 +16,8 @@ export const LoansProvider = ({ children }) => {
       try {
         const token = localStorage.getItem('authToken');
 
-        // Fetch loans
-        const loansRes = await fetch('https://api-xtreative.onrender.com/loans/list/', {
+        // Fetch loans from correct endpoint (per Swagger)
+        const loansRes = await fetch('https://api-xtreative.onrender.com/loan_app/loans/list/', {
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
@@ -25,7 +25,7 @@ export const LoansProvider = ({ children }) => {
         });
         if (!loansRes.ok) throw new Error(`Loans API Error ${loansRes.status}: ${loansRes.statusText}`);
         const loansData = await loansRes.json();
-        setLoans(loansData);
+        setLoans(Array.isArray(loansData) ? loansData : []);  // Ensure array
 
         // Fetch vendors
         const vendorsRes = await fetch('https://api-xtreative.onrender.com/vendors/list/', {
@@ -36,36 +36,39 @@ export const LoansProvider = ({ children }) => {
         });
         if (!vendorsRes.ok) throw new Error(`Vendors API Error ${vendorsRes.status}: ${vendorsRes.statusText}`);
         const vendorsData = await vendorsRes.json();
-        setVendors(vendorsData);
+        setVendors(Array.isArray(vendorsData) ? vendorsData : []);  // Ensure array
       } catch (err) {
+        console.error('Fetch error:', err);  // Log for debugging
         setError(err.message);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
+    if (localStorage.getItem('authToken')) {  // Only fetch if token exists
+      fetchData();
+    }
   }, []);
 
-  // Function to update loan status
-  const updateLoanStatus = async (loanId, newStatus, rejectionReason = null) => {
+  // Function to approve loan (fixed endpoint)
+  const approveLoan = async (loanId) => {
     setLoading(true);
     setError(null);
     try {
       const token = localStorage.getItem('authToken');
-      const payload = { status: newStatus };
-      if (rejectionReason) payload.rejection_reason = rejectionReason;
-
-      const response = await fetch(`https://api-xtreative.onrender.com/loans/${loanId}/update/`, {
-        method: 'PATCH',
+      const response = await fetch(`https://api-xtreative.onrender.com/loan_app/${loanId}/approve/`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({}),
       });
 
-      if (!response.ok) throw new Error(`Update API Error ${response.status}: ${response.statusText}`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Approve API Error ${response.status}: ${response.statusText}`);
+      }
       const updatedLoan = await response.json();
 
       // Update loans state
@@ -75,6 +78,43 @@ export const LoansProvider = ({ children }) => {
 
       return updatedLoan;
     } catch (err) {
+      console.error('Approve error:', err);  // Log for debugging
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Function to reject loan (fixed endpoint)
+  const rejectLoan = async (loanId, rejectionReason) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`https://api-xtreative.onrender.com/loan_app/${loanId}/reject/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ rejection_reason: rejectionReason }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Reject API Error ${response.status}: ${response.statusText}`);
+      }
+      const updatedLoan = await response.json();
+
+      // Update loans state
+      setLoans(prevLoans =>
+        prevLoans.map(loan => (loan.id === loanId ? { ...loan, ...updatedLoan } : loan))
+      );
+
+      return updatedLoan;
+    } catch (err) {
+      console.error('Reject error:', err);  // Log for debugging
       setError(err.message);
       throw err;
     } finally {
@@ -84,7 +124,7 @@ export const LoansProvider = ({ children }) => {
 
   // Derive repaymentBlocks
   const repaymentBlocks = loans
-    .filter(l => ['Active', 'Approved', 'Upcoming', 'Overdue'].includes(l.status))
+    .filter(l => ['Active', 'Approved'].includes(l.status))
     .map(l => {
       const due = l.next_payment_date ? dayjs(l.next_payment_date) : null;
       const daysUntil = due ? due.diff(dayjs(), 'day') : null;
@@ -94,7 +134,7 @@ export const LoansProvider = ({ children }) => {
         loanId: l.id,
         dueDate: due?.format('YYYY-MM-DD') || '-',
         daysUntilDue: daysUntil,
-        amountDue: l.monthly_payment,
+        amountDue: l.monthly_payment || l.weekly_payment || 0,
         amountPaid: '-',
         status: daysUntil > 0 ? 'Upcoming' : daysUntil === 0 ? 'Due Today' : 'Overdue',
         adminAction: 'Manage',
@@ -103,19 +143,19 @@ export const LoansProvider = ({ children }) => {
 
   // Derive repaymentHistory
   const repaymentHistory = loans
-    .filter(l => l.status === 'Paid')
+    .filter(l => l.status === 'Completed')
     .map(l => ({
       id: l.id,
       vendor: { name: l.vendor_username },
       loanId: l.id,
       paidDate: l.updated_at.split('T')[0],
-      amountPaid: l.monthly_payment,
+      amountPaid: l.monthly_payment || l.weekly_payment || 0,
       paymentMethod: l.payment_frequency,
       status: 'Paid',
     }));
 
   return (
-    <LoansContext.Provider value={{ loans, vendors, loading, error, repaymentBlocks, repaymentHistory, updateLoanStatus }}>
+    <LoansContext.Provider value={{ loans, vendors, loading, error, repaymentBlocks, repaymentHistory, approveLoan, rejectLoan }}>
       {children}
     </LoansContext.Provider>
   );

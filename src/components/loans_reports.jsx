@@ -35,12 +35,12 @@ const COLUMN_CONFIG = {
   applications: [
     { header: "Application ID", accessor: (row) => row.id },
     { header: "Vendor Name", accessor: (row) => row.vendor_username },
-    { header: "Wallet Balance", accessor: (row) => formatUGX(row.vendor_balance) },
+    { header: "Wallet Balance", accessor: (row) => formatUGX(row.current_balance) },
     {
       header: "Guarantor",
       accessor: (row, vendors) =>
-        (row.guarantors || [])
-          .map((id) => vendors.find((v) => v.id === id)?.username)
+        (row.guarantor_details || [])
+          .map((g) => g.username)
           .join(", "),
     },
     { header: "Status", accessor: (row) => row.status },
@@ -83,7 +83,7 @@ const COLUMN_CONFIG = {
   ],
 };
 
-export default function LoanReport({ isGeneratingPDF, searchTerm, onTabChange }) {
+const LoanReport = ({ isGeneratingPDF, searchTerm, onTabChange }) => {
   const { loans, repaymentBlocks, repaymentHistory, vendors, loading, error } =
     useContext(LoansContext);
   const [activeTab, setActiveTab] = useState("applications");
@@ -104,7 +104,7 @@ export default function LoanReport({ isGeneratingPDF, searchTerm, onTabChange })
     const term = searchTerm.toLowerCase();
     return loans.filter(
       (loan) =>
-        loan.id.toLowerCase().includes(term) ||
+        loan.id.toString().includes(term) ||
         loan.vendor_username.toLowerCase().includes(term) ||
         loan.purpose.toLowerCase().includes(term) ||
         loan.status.toLowerCase().includes(term) ||
@@ -117,9 +117,9 @@ export default function LoanReport({ isGeneratingPDF, searchTerm, onTabChange })
     const term = searchTerm.toLowerCase();
     return repaymentBlocks.filter(
       (block) =>
-        block.id.toLowerCase().includes(term) ||
+        block.id.toString().includes(term) ||
         block.vendor_username.toLowerCase().includes(term) ||
-        (block.loanId || block.applicationId)?.toLowerCase().includes(term)
+        (block.loanId || block.applicationId)?.toString().includes(term)
     );
   }, [repaymentBlocks, searchTerm]);
 
@@ -128,9 +128,9 @@ export default function LoanReport({ isGeneratingPDF, searchTerm, onTabChange })
     const term = searchTerm.toLowerCase();
     return repaymentHistory.filter(
       (history) =>
-        history.id.toLowerCase().includes(term) ||
+        history.id.toString().includes(term) ||
         history.vendor_username.toLowerCase().includes(term) ||
-        (history.loanId || history.applicationId)?.toLowerCase().includes(term)
+        (history.loanId || history.applicationId)?.toString().includes(term)
     );
   }, [repaymentHistory, searchTerm]);
 
@@ -139,23 +139,23 @@ export default function LoanReport({ isGeneratingPDF, searchTerm, onTabChange })
     const overdue = filteredRepaymentBlocks.filter((r) => r.status === "Overdue");
     return {
       outstandingBalance: filteredLoans.reduce(
-        (sum, l) => sum + (l.amount - (l.repaidAmount || 0)),
+        (sum, l) => sum + (parseFloat(l.current_balance) || 0),
         0
       ),
       activeLoans: filteredLoans.filter((l) => l.status === "Active").length,
-      principalDisbursed: filteredLoans.reduce((sum, l) => sum + l.amount, 0),
+      principalDisbursed: filteredLoans.reduce((sum, l) => sum + (parseFloat(l.amount) || 0), 0),
       interestEarned: filteredRepaymentHistory.reduce(
-        (sum, r) => sum + (r.interest || 0),
+        (sum, r) => sum + (parseFloat(r.interest) || 0),
         0
       ),
       totalRepayable: filteredLoans.reduce(
-        (sum, l) => sum + (l.totalRepayable || 0),
+        (sum, l) => sum + (parseFloat(l.total_repayable) || 0),
         0
       ),
-      totalRepaid: filteredRepaymentHistory.reduce((sum, r) => sum + r.amountPaid, 0),
+      totalRepaid: filteredRepaymentHistory.reduce((sum, r) => sum + parseFloat(r.amountPaid || 0), 0),
       pendingApprovals: filteredLoans.filter((l) => l.status === "Pending").length,
       overdueLoans: overdue.length,
-      overdueAmount: overdue.reduce((sum, r) => sum + (r.amountDue || 0), 0),
+      overdueAmount: overdue.reduce((sum, r) => sum + (parseFloat(r.amountDue) || 0), 0),
     };
   }, [filteredLoans, filteredRepaymentBlocks, filteredRepaymentHistory]);
 
@@ -173,7 +173,7 @@ export default function LoanReport({ isGeneratingPDF, searchTerm, onTabChange })
   const getRanking = (items, field) => {
     const map = {};
     items.forEach((item) => {
-      map[item.vendor_username] = (map[item.vendor_username] || 0) + (item[field] || 0);
+      map[item.vendor_username] = (map[item.vendor_username] || 0) + (parseFloat(item[field]) || 0);
     });
     return Object.entries(map)
       .map(([vendor, amt]) => ({ vendor, amt }))
@@ -243,7 +243,7 @@ export default function LoanReport({ isGeneratingPDF, searchTerm, onTabChange })
           {TABS.map((tab) => (
             <div
               key={tab.key}
-              onClick={() => handleTabChange(tab.key)} // Use handleTabChange to notify parent
+              onClick={() => handleTabChange(tab.key)}
               className={`flex-1 text-center py-2 cursor-pointer text-[11px] ${
                 activeTab === tab.key
                   ? "bg-white border-t border-l border-r text-gray-800"
@@ -322,4 +322,6 @@ export default function LoanReport({ isGeneratingPDF, searchTerm, onTabChange })
       {isModalOpen && <LoansModal loan={selectedLoan} onClose={() => setIsModalOpen(false)} />}
     </div>
   );
-}
+};
+
+export default LoanReport;
