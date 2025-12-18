@@ -1,31 +1,35 @@
 import React, { createContext, useState, useEffect } from "react";
+import { authFetch } from "../api"; // adjust path if your folder structure is different
 
 export const UserContext = createContext();
 
 export const UserProvider = ({ children }) => {
   const [users, setUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
-  const [error, setError] = useState(null);
+  const [usersError, setUsersError] = useState(null);
+
   const [sendingMessage, setSendingMessage] = useState(false);
   const [sendMessageError, setSendMessageError] = useState(null);
 
+  // Load all users for admin dashboard + chat
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const token = localStorage.getItem("authToken");
-        if (!token) throw new Error("No auth token found. Please log in.");
-        const res = await fetch("https://api-xtreative.onrender.com/users/list/", {
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }
-        });
-        if (!res.ok) throw new Error(`Error fetching users: ${res.statusText}`);
-        const data = await res.json();
+        setLoadingUsers(true);
+        setUsersError(null);
+
+        // GET /users/list/
+        const data = await authFetch("/users/list/");
+        // Backend returns a list of users: [{ id, username, email, role, status, is_active, date_joined }, ...]
         setUsers(data);
       } catch (err) {
-        setError(err.message);
+        console.error("Error fetching users:", err);
+        setUsersError(err.message || "Failed to load users");
       } finally {
         setLoadingUsers(false);
       }
     };
+
     fetchUsers();
   }, []);
 
@@ -38,45 +42,43 @@ export const UserProvider = ({ children }) => {
   const sendMessage = async (content, toUserId) => {
     setSendingMessage(true);
     setSendMessageError(null);
+
     try {
-      const token = localStorage.getItem("authToken");
       // 1) Create conversation as admin
-      const convRes = await fetch(
-        `https://api-xtreative.onrender.com/chatsapp/conversations/admin-user/`,
+      const convData = await authFetch(
+        "/chatsapp/conversations/admin-user/",
         {
           method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify({ user_id: toUserId }),
         }
       );
-      if (!convRes.ok) throw new Error(`Error creating conversation: ${convRes.statusText}`);
-      const convData = await convRes.json();
       const convId = convData.id;
 
       // 2) Send message to conversation
-      const msgRes = await fetch(
-        `https://api-xtreative.onrender.com/chatsapp/conversations/${convId}/messages/create/`,
+      const msgData = await authFetch(
+        `/chatsapp/conversations/${convId}/messages/create/`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify({ content }),
         }
       );
-      if (!msgRes.ok) throw new Error(`Error sending message: ${msgRes.statusText}`);
-      const msgData = await msgRes.json();
 
-      // Map API response into our message shape
+      // Map API response into our message shape (what your UI expects)
       return {
         id: msgData.id,
-        from: 'me',
+        from: "me",
         to: toUserId,
         text: msgData.content,
-        time: new Date(msgData.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        time: new Date(msgData.timestamp).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
         read: msgData.is_read,
         timestamp: msgData.timestamp,
       };
     } catch (err) {
-      setSendMessageError(err.message);
+      console.error("Error sending message:", err);
+      setSendMessageError(err.message || "Failed to send message");
       throw err;
     } finally {
       setSendingMessage(false);
@@ -95,7 +97,7 @@ export const UserProvider = ({ children }) => {
         users,
         getUsernameById,
         loadingUsers,
-        error,
+        error: usersError,
         sendMessage,
         sendingMessage,
         sendMessageError,
