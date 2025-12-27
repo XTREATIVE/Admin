@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useContext } from "react";
+import React, { useState, useMemo, useContext, useEffect } from "react";
 import {
   format,
   parseISO,
@@ -21,71 +21,138 @@ import {
 import {
   TrendingUp,
   DollarSign,
-  ShoppingCart,
-  Users,
   Activity,
   UserCheck,
   Wallet,
-  Package,
   CreditCard,
   MessageCircle,
+  ChevronDown,
 } from "lucide-react";
 import Sidebar from "../components/sidebar";
 import Header from "../components/header";
 import RecentTransactions from "../components/transactions";
 import { UserContext } from "../context/usercontext";
 
+// Default fallback data
+const defaultMonthlyRevenueData = [
+  { date: "2025-01", revenue: 4000 },
+  { date: "2025-02", revenue: 3000 },
+  { date: "2025-03", revenue: 5000 },
+  { date: "2025-04", revenue: 7000 },
+  { date: "2025-05", revenue: 6000 },
+  { date: "2025-06", revenue: 8000 },
+  { date: "2025-07", revenue: 6500 },
+  { date: "2025-08", revenue: 7200 },
+  { date: "2025-09", revenue: 7800 },
+  { date: "2025-10", revenue: 8200 },
+  { date: "2025-11", revenue: 9000 },
+  { date: "2025-12", revenue: 9500 },
+];
+const defaultMonthlySalesData = [
+  { date: "2025-01", salesVolume: 10000 },
+  { date: "2025-02", salesVolume: 8000 },
+  { date: "2025-03", salesVolume: 12000 },
+  { date: "2025-04", salesVolume: 18000 },
+  { date: "2025-05", salesVolume: 13000 },
+  { date: "2025-06", salesVolume: 17000 },
+  { date: "2025-07", salesVolume: 16000 },
+  { date: "2025-08", salesVolume: 18000 },
+  { date: "2025-09", salesVolume: 19000 },
+  { date: "2025-10", salesVolume: 20000 },
+  { date: "2025-11", salesVolume: 21000 },
+  { date: "2025-12", salesVolume: 22000 },
+];
+
 const AdminDashboard = ({
   transactions = [],
   pendingPayouts = [],
   loans = [],
-  revenueData = [],
-  salesData = [],
+  revenueData: propRevenueData,
+  salesData: propSalesData,
 }) => {
   const today = useMemo(() => new Date(), []);
-  const [selectedMonth, setSelectedMonth] = useState("All");
   const [range, setRange] = useState("today");
-  const [customDate] = useState(format(today, "yyyy-MM-dd"));
+  const [customDate, setCustomDate] = useState(format(today, "yyyy-MM-dd"));
 
-  // Pull users from context
-  const { users, loadingUsers, error: errorUsers } = useContext(UserContext);
+  // API-fetched states
+  const [revenueData, setRevenueData] = useState(defaultMonthlyRevenueData);
+  const [salesData, setSalesData] = useState(defaultMonthlySalesData);
+  const [totalVendors, setTotalVendors] = useState(0);
+  const [totalCustomers, setTotalCustomers] = useState(0);
+  const [totalSalesAmount, setTotalSalesAmount] = useState(0);
+  const [totalOrders, setTotalOrders] = useState(0);
+  const [loading, setLoading] = useState(true);
 
-  const allRevenue = revenueData;
-  const allSales = salesData;
+  // From UserContext - for new registrations
+  const { users = [], loadingUsers } = useContext(UserContext);
 
-  // ---- Range helpers ----
+  const API_BASE_URL = "https://api-xtreative.onrender.com/";
+
+  // Fetch all dashboard stats on mount
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        const revenueRes = await fetch(`${API_BASE_URL}/admin/revenue/monthly`);
+        const revenueJson = await revenueRes.json();
+        setRevenueData(revenueJson.data || defaultMonthlyRevenueData);
+
+        const salesRes = await fetch(`${API_BASE_URL}/admin/sales/monthly`);
+        const salesJson = await salesRes.json();
+        setSalesData(salesJson.data || defaultMonthlySalesData);
+
+        const vendorsRes = await fetch(`${API_BASE_URL}/admin/stats/vendors`);
+        const vendorsJson = await vendorsRes.json();
+        setTotalVendors(vendorsJson.count || 0);
+
+        const customersRes = await fetch(`${API_BASE_URL}/admin/stats/customers`);
+        const customersJson = await customersRes.json();
+        setTotalCustomers(customersJson.count || 0);
+
+        const totalSalesRes = await fetch(`${API_BASE_URL}/admin/stats/total-sales`);
+        const totalSalesJson = await totalSalesRes.json();
+        setTotalSalesAmount(totalSalesJson.amount || 0);
+
+        const ordersRes = await fetch(`${API_BASE_URL}/admin/stats/orders`);
+        const ordersJson = await ordersRes.json();
+        setTotalOrders(ordersJson.count || 0);
+      } catch (err) {
+        console.error("Error fetching dashboard data:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDashboardData();
+  }, []);
+
+  const allRevenue = propRevenueData || revenueData;
+  const allSales = propSalesData || salesData;
 
   const parseDateSafe = (value) => {
     if (!value) return null;
-    const d =
-      value instanceof Date
-        ? value
-        : typeof value === "string"
-        ? new Date(value)
-        : null;
-    if (!d || isNaN(d.getTime())) return null;
-    return d;
+    const d = value instanceof Date ? value : new Date(value);
+    return isNaN(d.getTime()) ? null : d;
   };
 
   const inRange = (date) => {
     if (!date) return false;
+    const parsed = parseDateSafe(date);
+    if (!parsed) return false;
     switch (range) {
       case "today":
-        return isSameDay(date, today);
+        return isSameDay(parsed, today);
       case "thisWeek":
-        return isSameWeek(date, today);
+        return isSameWeek(parsed, today);
       case "thisMonth":
-        return isSameMonth(date, today);
+        return isSameMonth(parsed, today);
       case "thisYear":
-        return isSameYear(date, today);
+        return isSameYear(parsed, today);
       case "custom":
-        return isSameDay(date, parseISO(customDate));
+        return isSameDay(parsed, parseISO(customDate));
       default:
         return false;
     }
   };
-
-  // ---- Date label at top ----
 
   const formattedDate = useMemo(() => {
     switch (range) {
@@ -102,462 +169,263 @@ const AdminDashboard = ({
       default:
         return "today";
     }
-  }, [range, customDate, today]);
+  }, [range, customDate]);
 
-  // ---- Filtered data by range (daily stats) ----
+  const filteredTransactions = useMemo(
+    () => transactions.filter((t) => inRange(t.created_at || t.timestamp || t.date)),
+    [transactions, range, customDate]
+  );
 
-  const filteredTransactions = useMemo(() => {
-    return transactions.filter((t) => {
-      const ts = t.created_at || t.timestamp || t.date;
-      const d = parseDateSafe(ts);
-      return inRange(d);
-    });
-  }, [transactions, range, customDate]);
+  const filteredLoans = useMemo(
+    () => loans.filter((l) => inRange(l.created_at || l.applied_at || l.date)),
+    [loans, range, customDate]
+  );
 
-  const filteredLoans = useMemo(() => {
-    return loans.filter((l) => {
-      const ts = l.created_at || l.applied_at || l.date;
-      const d = parseDateSafe(ts);
-      return inRange(d);
-    });
-  }, [loans, range, customDate]);
+  const filteredPendingPayouts = useMemo(
+    () => pendingPayouts.filter((p) => inRange(p.settlement_date || p.created_at || p.date)),
+    [pendingPayouts, range, customDate]
+  );
 
-  const filteredPendingPayouts = useMemo(() => {
-    return pendingPayouts.filter((p) => {
-      const ts = p.settlement_date || p.created_at || p.timestamp || p.date;
-      const d = parseDateSafe(ts);
-      return inRange(d);
-    });
-  }, [pendingPayouts, range, customDate]);
+  const totalRevenueThisPeriod = useMemo(
+    () => filteredTransactions.reduce((sum, t) => sum + Number(t.amount || 0), 0),
+    [filteredTransactions]
+  );
 
-  // ---- New vendors (daily/range) ----
+  const loanApplicationsCount = filteredLoans.length;
+  const pendingPayoutsCount = filteredPendingPayouts.length;
 
   const newVendors = useMemo(() => {
-    if (loadingUsers || errorUsers) return 0;
-    return users.filter((u) => {
-      if (u.role !== "Vendor") return false;
-      const d = parseDateSafe(u.date_joined);
-      return inRange(d);
-    }).length;
-  }, [users, loadingUsers, errorUsers, range, customDate]);
+    if (loadingUsers || !users.length) return 0;
+    return users.filter((u) => u.role === "Vendor" && inRange(u.date_joined)).length;
+  }, [users, loadingUsers, range, customDate, today]);
 
-  // ---- Cards: totals for selected range ----
+  const newCustomers = useMemo(() => {
+    if (loadingUsers || !users.length) return 0;
+    return users.filter((u) => u.role === "Customer" && inRange(u.date_joined)).length;
+  }, [users, loadingUsers, range, customDate, today]);
 
-  const totalRevenue = useMemo(() => {
-    return filteredTransactions.reduce(
-      (sum, t) => sum + Number(t.amount || 0),
-      0
-    );
-  }, [filteredTransactions]);
-
-  const totalSales = useMemo(() => filteredTransactions.length, [
-    filteredTransactions,
-  ]);
-
-  const loanApplicationsCount = useMemo(
-    () => filteredLoans.length,
-    [filteredLoans]
-  );
-
-  const loanRequestsCount = useMemo(
-    () =>
-      filteredLoans.filter((l) =>
-        ["Pending", "Pending Payout", "Active"].includes(
-          (l.status || "").toString()
-        )
-      ).length,
-    [filteredLoans]
-  );
-
-  const pendingPayoutsCount = useMemo(
-    () => filteredPendingPayouts.length,
-    [filteredPendingPayouts]
-  );
-
-  // ---- Monthly chart data (already aggregated in container) ----
-
-  const generateDailyData = (yearMonth, key) => {
-    const [year, month] = yearMonth.split("-").map(Number);
-    const daysInMonth = new Date(year, month, 0).getDate();
-    const daily = [];
-    for (let day = 1; day <= daysInMonth; day++) {
-      const monthlyVal =
-        key === "revenue"
-          ? allRevenue.find((d) => d.date === yearMonth)?.revenue || 0
-          : allSales.find((d) => d.date === yearMonth)?.salesVolume || 0;
-      const value = Math.round(
-        (monthlyVal / daysInMonth) * (0.8 + Math.random() * 0.4)
-      );
-      daily.push({
-        date: `${yearMonth}-${String(day).padStart(2, "0")}`,
-        [key]: value,
-      });
-    }
-    return daily;
-  };
-
-  const revenueChartData = useMemo(() => {
-    return selectedMonth === "All"
-      ? allRevenue
-      : generateDailyData(selectedMonth, "revenue");
-  }, [selectedMonth, allRevenue]);
-
-  const salesChartData = useMemo(() => {
-    return selectedMonth === "All"
-      ? allSales
-      : generateDailyData(selectedMonth, "salesVolume");
-  }, [selectedMonth, allSales]);
-
-  const formatXAxis = (tick) => {
-    if (selectedMonth === "All") {
-      const monthMap = {
-        "01": "Jan",
-        "02": "Feb",
-        "03": "Mar",
-        "04": "Apr",
-        "05": "May",
-        "06": "Jun",
-        "07": "Jul",
-        "08": "Aug",
-        "09": "Sep",
-        "10": "Oct",
-        "11": "Nov",
-        "12": "Dec",
-      };
-      const month = tick.split("-")[1];
-      return monthMap[month] || tick;
-    }
-    return tick.split("-")[2]; // day of month
-  };
-
-  // ---- Cards & quick stats ----
-
-  const stats = [
+  // Updated cards – removed "Total Vendors" and "Total Customers"
+  const dashboardCards = [
     {
-      title: "Total Sales",
-      value: `UGX ${totalSales.toLocaleString()}`,
-      change: "+12.5%",
-      icon: DollarSign,
-      iconBg: "bg-gradient-to-br from-violet-100 to-purple-100",
-      iconColor: "text-violet-600",
-    },
-    {
-      title: "Orders",
-      value: totalSales.toString(),
-      change: "+8.2%",
-      icon: ShoppingCart,
-      iconBg: "bg-gradient-to-br from-blue-100 to-cyan-100",
-      iconColor: "text-blue-600",
+      title: "New Vendors",
+      value: newVendors.toLocaleString(),
+      icon: TrendingUp,
+      gradient: "from-indigo-500 to-blue-500",
+      iconBg: "from-indigo-100 to-blue-100",
+      iconColor: "text-indigo-600",
+      change: "+12%",
+      subtitle: "this period",
     },
     {
       title: "New Customers",
-      value: newVendors.toString(),
-      change: "+23.1%",
-      icon: Users,
-      iconBg: "bg-gradient-to-br from-emerald-100 to-green-100",
-      iconColor: "text-emerald-600",
+      value: newCustomers.toLocaleString(),
+      icon: TrendingUp,
+      gradient: "from-pink-500 to-rose-500",
+      iconBg: "from-pink-100 to-rose-100",
+      iconColor: "text-pink-600",
+      change: "+18%",
+      subtitle: "this period",
     },
     {
-      title: "Total Earnings",
-      value: `UGX ${totalRevenue.toLocaleString()}`,
-      change: "+15.3%",
+      title: "Total Sales",
+      value: `UGX ${totalSalesAmount.toLocaleString()}`,
+      icon: DollarSign,
+      gradient: "from-violet-500 to-purple-500",
+      iconBg: "from-violet-100 to-purple-100",
+      iconColor: "text-violet-600",
+      change: "+12.5%",
+    },
+    {
+      title: "Earnings This Period",
+      value: `UGX ${totalRevenueThisPeriod.toLocaleString()}`,
       icon: Activity,
-      iconBg: "bg-gradient-to-br from-orange-100 to-amber-100",
+      gradient: "from-orange-500 to-amber-500",
+      iconBg: "from-orange-100 to-amber-100",
       iconColor: "text-orange-600",
-    },
-  ];
-
-  const quickStats = [
-    {
-      label: "New Vendors",
-      value: newVendors.toString(),
-      icon: UserCheck,
-      color: "from-blue-500 to-cyan-500",
+      change: "+15.3%",
     },
     {
-      label: "Loan Applications",
-      value: loanApplicationsCount.toString(),
-      icon: CreditCard,
-      color: "from-purple-500 to-pink-500",
-    },
-    {
-      label: "Pending Payouts",
+      title: "Pending Payouts",
       value: pendingPayoutsCount.toString(),
       icon: Wallet,
-      color: "from-orange-500 to-red-500",
+      gradient: "from-red-500 to-pink-500",
+      iconBg: "from-red-100 to-pink-100",
+      iconColor: "text-red-600",
+      change: null,
     },
     {
-      label: "Upcoming Payout",
-      value: loanRequestsCount.toString(),
-      icon: Package,
-      color: "from-green-500 to-emerald-500",
+      title: "Loan Applications",
+      value: loanApplicationsCount.toString(),
+      icon: CreditCard,
+      gradient: "from-purple-500 to-indigo-500",
+      iconBg: "from-purple-100 to-indigo-100",
+      iconColor: "text-purple-600",
+      change: null,
     },
   ];
 
+  // Dummy notifications
   const dummyNotifications = [
     { title: "New vendor registered", time: "5 mins ago" },
     { title: "Customer placed an order", time: "10 mins ago" },
     { title: "New loan application", time: "30 mins ago" },
   ];
 
-  // ---- UI (same as before, now fed by real data) ----
+  if (loading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gray-50">
+        <p className="text-xl font-medium text-gray-700">Loading dashboard data...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="h-screen font-poppins flex flex-col">
+    <div className="h-screen font-poppins flex flex-col bg-gray-50">
       <Header
         notifications={dummyNotifications}
         currentDate={formattedDate}
         range={range}
         onRangeChange={setRange}
       />
-
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
-
         <main className="flex-1 overflow-y-auto bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 ml-[80px]">
           <div className="p-8">
-            {/* Welcome Section */}
-            <div className="mb-8">
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent mb-2">
-                Welcome back, Admin! 👋
-              </h1>
-              <p className="text-gray-500">
-                Here&apos;s what&apos;s happening with your platform for{" "}
-                {formattedDate}.
-              </p>
+            {/* Header Section */}
+            <div className="mb-8 flex justify-between items-start">
+              <div>
+                <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent mb-2">
+                  Welcome back, Admin! 👋
+                </h1>
+                <p className="text-gray-600">Here's what's happening with your platform for {formattedDate}.</p>
+              </div>
+              <div className="relative">
+                <select
+                  value={range}
+                  onChange={(e) => setRange(e.target.value)}
+                  className="appearance-none bg-white border-2 border-blue-500 rounded-lg px-6 py-3 pr-10 text-gray-700 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-lg hover:shadow-xl transition-all"
+                >
+                  <option value="today">Today</option>
+                  <option value="thisWeek">This Week</option>
+                  <option value="thisMonth">This Month</option>
+                  <option value="thisYear">This Year</option>
+                  <option value="custom">Custom Date</option>
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-blue-500 pointer-events-none" />
+              </div>
             </div>
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              {stats.map((stat, idx) => {
-                const Icon = stat.icon;
+            {/* Custom Date Picker */}
+            {range === "custom" && (
+              <div className="mb-6 flex justify-end">
+                <input
+                  type="date"
+                  value={customDate}
+                  onChange={(e) => setCustomDate(e.target.value)}
+                  className="border-2 border-blue-500 rounded-lg px-4 py-2 text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-lg"
+                />
+              </div>
+            )}
+
+            {/* 6 Fancy Cards Grid – looks great on all screens */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-10">
+              {dashboardCards.map((card, idx) => {
+                const Icon = card.icon;
                 return (
                   <div key={idx} className="relative group">
-                    <div className="absolute inset-0 bg-gradient-to-r from-purple-400 to-pink-400 rounded-2xl blur opacity-25 group-hover:opacity-40 transition-opacity"></div>
-                    <div className="relative bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 p-6 border border-gray-100">
-                      <div className="flex justify-between items-start mb-4">
-                        <div className={`p-3 rounded-xl ${stat.iconBg}`}>
-                          <Icon className={`w-7 h-7 ${stat.iconColor}`} />
+                    <div
+                      className={`absolute inset-0 bg-gradient-to-r ${card.gradient} rounded-2xl blur-lg opacity-30 group-hover:opacity-50 transition-all duration-500`}
+                    ></div>
+                    <div className="relative bg-white/90 backdrop-blur rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-500 p-8 border border-gray-200/50">
+                      <div className="flex items-start justify-between mb-6">
+                        <div className={`p-4 rounded-2xl bg-gradient-to-br ${card.iconBg} shadow-md`}>
+                          <Icon className={`w-10 h-10 ${card.iconColor}`} />
                         </div>
-                        <div className="flex items-center space-x-1 px-3 py-1 bg-green-50 rounded-full">
-                          <TrendingUp className="w-4 h-4 text-green-600" />
-                          <span className="text-sm font-bold text-green-600">
-                            {stat.change}
-                          </span>
-                        </div>
+                        {card.change && (
+                          <div className="flex items-center gap-2 px-4 py-2 bg-green-50 rounded-full shadow-sm">
+                            <TrendingUp className="w-5 h-5 text-green-600" />
+                            <span className="text-base font-bold text-green-600">{card.change}</span>
+                          </div>
+                        )}
                       </div>
-                      <h3 className="text-gray-500 text-sm font-medium mb-2">
-                        {stat.title}
-                      </h3>
-                      <p className="text-3xl font-bold text-gray-900">
-                        {stat.value}
-                      </p>
-                      <p className="text-xs text-gray-400 mt-3">
-                        for {formattedDate}
-                      </p>
+                      <h3 className="text-gray-600 text-base font-semibold mb-3">{card.title}</h3>
+                      <p className="text-4xl font-extrabold text-gray-900 mb-2">{card.value}</p>
+                      {card.subtitle && (
+                        <p className="text-sm text-gray-500">{card.subtitle}</p>
+                      )}
+                      {card.title.includes("Earnings") && (
+                        <p className="text-sm text-gray-500 mt-2">for {formattedDate}</p>
+                      )}
                     </div>
                   </div>
                 );
               })}
             </div>
 
-            {/* Charts Section - Side by Side */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-              {/* Monthly Sales Volume Chart */}
-              <div className="relative group">
-                <div className="absolute inset-0 bg-gradient-to-r from-orange-400 to-red-400 rounded-2xl blur opacity-20 group-hover:opacity-30 transition-opacity"></div>
-                <div className="relative bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 p-6 border border-gray-100">
-                  <div className="flex justify-between items-center mb-6">
-                    <div>
-                      <h2 className="text-2xl font-bold text-gray-900">
-                        {selectedMonth === "All"
-                          ? "Monthly Sales Volume"
-                          : "Daily Sales Volume"}
-                      </h2>
-                      <p className="text-gray-500 text-sm mt-1">
-                        Track your sales performance
-                      </p>
-                    </div>
-                    <select
-                      value={selectedMonth}
-                      onChange={(e) => setSelectedMonth(e.target.value)}
-                      className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl font-semibold focus:outline-none shadow-lg text-sm cursor-pointer"
-                    >
-                      <option value="All">All Months</option>
-                      {allSales.map((d) => (
-                        <option key={d.date} value={d.date}>
-                          {d.date}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <ResponsiveContainer width="100%" height={320}>
-                    <BarChart data={salesChartData}>
-                      <defs>
-                        <linearGradient id="colorBar" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#f97316" />
-                          <stop offset="100%" stopColor="#ef4444" />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                      <XAxis
-                        dataKey="date"
-                        tickFormatter={formatXAxis}
-                        stroke="#9ca3af"
-                        style={{ fontSize: "12px" }}
-                      />
-                      <YAxis stroke="#9ca3af" style={{ fontSize: "12px" }} />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "#fff",
-                          border: "none",
-                          borderRadius: "12px",
-                          boxShadow: "0 10px 40px rgba(0,0,0,0.1)",
-                        }}
-                        formatter={(value) =>
-                          `UGX ${Number(value).toLocaleString()}`
-                        }
-                      />
-                      <Bar
-                        dataKey="salesVolume"
-                        fill="url(#colorBar)"
-                        radius={[12, 12, 0, 0]}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+            {/* Charts Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
+              {/* Sales Volume Chart */}
+              <div className="bg-white/90 backdrop-blur rounded-2xl shadow-xl p-8 border border-gray-200/50">
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Monthly Sales Volume</h2>
+                <p className="text-gray-500 text-sm mb-6">Track your sales performance</p>
+                <ResponsiveContainer width="100%" height={320}>
+                  <BarChart data={allSales}>
+                    <defs>
+                      <linearGradient id="colorBar" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#f97316" />
+                        <stop offset="100%" stopColor="#ef4444" />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="date" tickFormatter={(tick) => tick.split("-")[1]} stroke="#9ca3af" />
+                    <YAxis stroke="#9ca3af" />
+                    <Tooltip formatter={(v) => `UGX ${Number(v).toLocaleString()}`} />
+                    <Bar dataKey="salesVolume" fill="url(#colorBar)" radius={[12, 12, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
 
-              {/* Monthly Revenue Chart */}
-              <div className="relative group">
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-400 rounded-2xl blur opacity-20 group-hover:opacity-30 transition-opacity"></div>
-                <div className="relative bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 p-6 border border-gray-100">
-                  <div className="flex justify-between items-center mb-6">
-                    <div>
-                      <h2 className="text-2xl font-bold text-gray-900">
-                        {selectedMonth === "All"
-                          ? "Monthly Revenue"
-                          : "Daily Revenue"}
-                      </h2>
-                      <p className="text-gray-500 text-sm mt-1">
-                        Revenue performance
-                      </p>
-                    </div>
-                    <select
-                      value={selectedMonth}
-                      onChange={(e) => setSelectedMonth(e.target.value)}
-                      className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl font-semibold focus:outline-none shadow-lg text-sm cursor-pointer"
-                    >
-                      <option value="All">All Months</option>
-                      {allRevenue.map((d) => (
-                        <option key={d.date} value={d.date}>
-                          {d.date}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <ResponsiveContainer width="100%" height={320}>
-                    <AreaChart data={revenueChartData}>
-                      <defs>
-                        <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                          <stop
-                            offset="5%"
-                            stopColor="#3b82f6"
-                            stopOpacity={0.4}
-                          />
-                          <stop
-                            offset="95%"
-                            stopColor="#3b82f6"
-                            stopOpacity={0}
-                          />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                      <XAxis
-                        dataKey="date"
-                        tickFormatter={formatXAxis}
-                        stroke="#9ca3af"
-                        style={{ fontSize: "12px" }}
-                      />
-                      <YAxis stroke="#9ca3af" style={{ fontSize: "12px" }} />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "#fff",
-                          border: "none",
-                          borderRadius: "12px",
-                          boxShadow: "0 10px 40px rgba(0,0,0,0.1)",
-                        }}
-                        formatter={(value) =>
-                          `UGX ${Number(value).toLocaleString()}`
-                        }
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="revenue"
-                        stroke="#3b82f6"
-                        strokeWidth={3}
-                        fillOpacity={1}
-                        fill="url(#colorRevenue)"
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
+              {/* Revenue Chart */}
+              <div className="bg-white/90 backdrop-blur rounded-2xl shadow-xl p-8 border border-gray-200/50">
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Monthly Revenue</h2>
+                <p className="text-gray-500 text-sm mb-6">Revenue performance overview</p>
+                <ResponsiveContainer width="100%" height={320}>
+                  <AreaChart data={allRevenue}>
+                    <defs>
+                      <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="date" tickFormatter={(tick) => tick.split("-")[1]} stroke="#9ca3af" />
+                    <YAxis stroke="#9ca3af" />
+                    <Tooltip formatter={(v) => `UGX ${Number(v).toLocaleString()}`} />
+                    <Area
+                      type="monotone"
+                      dataKey="revenue"
+                      stroke="#3b82f6"
+                      strokeWidth={3}
+                      fillOpacity={1}
+                      fill="url(#colorRevenue)"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
               </div>
             </div>
 
-            {/* Bottom Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Quick Stats - 2x2 Grid */}
-              <div className="lg:col-span-2 grid grid-cols-2 gap-6">
-                {quickStats.map((stat, idx) => {
-                  const Icon = stat.icon;
-                  return (
-                    <div key={idx} className="relative group">
-                      <div
-                        className={`absolute inset-0 bg-gradient-to-r ${stat.color} rounded-2xl blur opacity-20 group-hover:opacity-30 transition-opacity`}
-                      ></div>
-                      <div className="relative bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 p-6 border border-gray-100">
-                        <div
-                          className={`w-12 h-12 rounded-xl bg-gradient-to-r ${stat.color} flex items-center justify-center mb-4`}
-                        >
-                          <Icon className="w-6 h-6 text-white" />
-                        </div>
-                        <p className="text-gray-500 text-sm font-medium mb-2">
-                          {stat.label}
-                        </p>
-                        <p className="text-4xl font-bold text-gray-900">
-                          {stat.value}
-                        </p>
-                        <p className="text-xs text-gray-400 mt-2">
-                          for {formattedDate}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
+            {/* Recent Activity */}
+            <div className="bg-white/90 backdrop-blur rounded-2xl shadow-xl p-8 border border-gray-200/50">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">Recent Activity</h2>
               </div>
-
-              {/* Recent Transactions */}
-              <div className="relative group">
-                <div className="absolute inset-0 bg-gradient-to-r from-purple-400 to-pink-400 rounded-2xl blur opacity-20 group-hover:opacity-30 transition-opacity"></div>
-                <div className="relative bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 p-6 border border-gray-100">
-                  <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-xl font-bold text-gray-900">
-                      Recent Activity
-                    </h2>
-                    <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-                      <Activity className="w-5 h-5 text-gray-600" />
-                    </div>
-                  </div>
-                  <div className="max-h-96 overflow-y-auto">
-                    <RecentTransactions />
-                  </div>
-                </div>
+              <div className="max-h-96 overflow-y-auto">
+                <RecentTransactions />
               </div>
             </div>
           </div>
 
-          {/* Chat Icon */}
+          {/* Floating Chat Button */}
           <div className="fixed bottom-8 right-8 z-50">
             <button className="w-16 h-16 bg-gradient-to-br from-orange-500 to-red-500 rounded-full shadow-2xl hover:shadow-orange-500/50 hover:scale-110 transition-all duration-300 flex items-center justify-center group">
               <MessageCircle className="w-7 h-7 text-white group-hover:rotate-12 transition-transform" />

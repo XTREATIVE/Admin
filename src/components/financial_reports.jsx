@@ -184,7 +184,7 @@ export default function FinancialReports({ isGeneratingPDF, searchTerm, onTabCha
               <div className="border rounded bg-white p-4 flex items-center">
                 <Archive size={20} className="mr-2" />
                 <div>
-                  <p className="text-[11px] text-gray-500">Refunds</p>
+                  <p className="text-[11px] text-gray-500">Refund</p>
                   <p className="font-semibold">
                     UGX {summary.refunds.toLocaleString()}
                   </p>
