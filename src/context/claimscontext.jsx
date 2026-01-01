@@ -10,6 +10,7 @@ export const ClaimsProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const ordersContext = useContext(OrdersContext);
+  const API_BASE_URL = "https://api-xtreative.onrender.com";
 
   useEffect(() => {
     const fetchData = async () => {
@@ -142,6 +143,7 @@ export const ClaimsProvider = ({ children }) => {
             : "Pioneer Mall, Burton Street, Kampala, Uganda";
 
           return {
+            id: item.id, // Use the return id for approve/reject
             name: customerMap[item.customer] || `Customer ${item.customer}`,
             order_item: item.order_item, // Keep order_item for ID reference
             product_name: itemMap[item.order_item] || `Item ${item.order_item}`, // Use product name from orders
@@ -168,8 +170,56 @@ export const ClaimsProvider = ({ children }) => {
     fetchData();
   }, [ordersContext]);
 
+  // Approve claim function
+  const approveClaim = async (claimId) => {
+    try {
+      const authToken = localStorage.getItem("authToken");
+      if (!authToken) throw new Error("No auth token");
+
+      const response = await fetch(`https://api-xtreative.onrender.com/returns/approve/${claimId}/`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${authToken}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) throw new Error("Failed to approve claim");
+
+      // Update the claim status locally
+      setClaims(prev => prev.map(c => c.id === claimId ? { ...c, status: "approved" } : c));
+    } catch (err) {
+      console.error("Error approving claim:", err);
+      throw err;
+    }
+  };
+
+  // Reject claim function
+  const rejectClaim = async (claimId) => {
+    try {
+      const authToken = localStorage.getItem("authToken");
+      if (!authToken) throw new Error("No auth token");
+
+      const response = await fetch(`https://api-xtreative.onrender.com/returns/api/returns/${claimId}/reject/`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${authToken}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) throw new Error("Failed to reject claim");
+
+      // Update the claim status locally
+      setClaims(prev => prev.map(c => c.id === claimId ? { ...c, status: "rejected" } : c));
+    } catch (err) {
+      console.error("Error rejecting claim:", err);
+      throw err;
+    }
+  };
+
   return (
-    <ClaimsContext.Provider value={{ claims, isLoading, error }}>
+    <ClaimsContext.Provider value={{ claims, isLoading, error, approveClaim, rejectClaim }}>
       {children}
     </ClaimsContext.Provider>
   );

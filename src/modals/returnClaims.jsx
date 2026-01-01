@@ -137,7 +137,7 @@ const ClaimItem = ({ claim }) => {
               </p>
             </div>
             {/* Approve/Reject Buttons for Requested Status */}
-            {claim.status.toLowerCase() === "requested" && (
+            {(claim.status.toLowerCase() === "requested" || claim.status.toLowerCase() === "pending") && (
               <div className="mt-4 flex space-x-4">
                 <button
                   onClick={handleApprove}

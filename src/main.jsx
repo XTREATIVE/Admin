@@ -17,30 +17,33 @@ import { LoansProvider } from './context/loanscontext';
 import { ClaimsProvider } from './context/claimscontext';
 import { PayoutsProvider } from './context/payoutscontext'
 import { CurrencyProvider } from './context/currencycontext'
+import { DateProvider } from './context/datecontext'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <CurrencyProvider>
-      <UserProvider>
-        <ProductProvider>
-          <AllProductsProvider>
-            <OrdersProvider>
-              <ClaimsProvider>
-                <LoansProvider>
-                  <PayoutsProvider>
-                    <PaymentProvider>
-                      <BrowserRouter>
-                        <App />
-                      </BrowserRouter>
-                      <ToastContainer position="bottom-right" autoClose={3000} />
-                    </PaymentProvider>
-                  </PayoutsProvider>
-                </LoansProvider>
-              </ClaimsProvider>
-            </OrdersProvider>
-          </AllProductsProvider>
-        </ProductProvider>
-      </UserProvider>
+      <DateProvider>
+        <UserProvider>
+          <ProductProvider>
+            <AllProductsProvider>
+              <OrdersProvider>
+                <ClaimsProvider>
+                  <LoansProvider>
+                    <PayoutsProvider>
+                      <PaymentProvider>
+                        <BrowserRouter>
+                          <App />
+                        </BrowserRouter>
+                        <ToastContainer position="bottom-right" autoClose={3000} />
+                      </PaymentProvider>
+                    </PayoutsProvider>
+                  </LoansProvider>
+                </ClaimsProvider>
+              </OrdersProvider>
+            </AllProductsProvider>
+          </ProductProvider>
+        </UserProvider>
+      </DateProvider>
     </CurrencyProvider>
   </React.StrictMode>
 );

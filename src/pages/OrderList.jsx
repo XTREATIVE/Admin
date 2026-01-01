@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useContext } from "react";
+import React, { useState, useMemo, useContext, useEffect } from "react";
 import {
   format,
   parseISO,
@@ -24,17 +24,101 @@ import {
 } from "recharts";
 import { OrdersContext } from "../context/orderscontext";
 import { ClaimsContext } from "../context/claimscontext";
+import { DateContext } from "../context/datecontext";
 
 export default function OrderList() {
-  const { orders } = useContext(OrdersContext);
-  const { claims } = useContext(ClaimsContext);
+   const { orders: contextOrders, loading: ordersLoading } = useContext(OrdersContext);
+   const { claims: contextClaims, isLoading: claimsLoading } = useContext(ClaimsContext);
+   const { range, setRange, customDate, setCustomDate, customRangeStart, setCustomRangeStart, customRangeEnd, setCustomRangeEnd, inRange, today } = useContext(DateContext);
 
-  // ——— Date selector state ———
-  const today = useMemo(() => new Date(), []);
-  const [range, setRange] = useState("today");
-  const [customDate, setCustomDate] = useState(today);
-  const [customRangeStart, setCustomRangeStart] = useState(today);
-  const [customRangeEnd, setCustomRangeEnd] = useState(today);
+   const [orders, setOrders] = useState([]);
+   const [claims, setClaims] = useState([]);
+   const [localLoading, setLocalLoading] = useState(false);
+
+  // NEW: State for all-time totals (like AdminDashboard)
+  const [totalOrders, setTotalOrders] = useState(0);
+  const [totalSalesAmount, setTotalSalesAmount] = useState(0);
+
+  const API_BASE_URL = "https://api-xtreative.onrender.com";
+
+  // Helper function to get auth token
+  const getAuthToken = () => {
+    return localStorage.getItem('authToken') || localStorage.getItem('token');
+  };
+
+  // Helper function for API calls with authentication
+  const fetchWithAuth = async (url) => {
+    const token = getAuthToken();
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(url, { headers });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  };
+
+  // Fetch data directly if context is empty
+  const fetchDataIfNeeded = async () => {
+    // Use context data if available
+    if (contextOrders && contextOrders.length > 0) {
+      setOrders(contextOrders);
+    }
+    if (contextClaims && contextClaims.length > 0) {
+      setClaims(contextClaims);
+    }
+
+    // If context is still loading or empty, fetch directly
+    if ((ordersLoading || !contextOrders || contextOrders.length === 0) ||
+        (claimsLoading || !contextClaims || contextClaims.length === 0)) {
+      setLocalLoading(true);
+      try {
+        const [ordersData, claimsData] = await Promise.all([
+          fetchWithAuth(`${API_BASE_URL}/orders/list/`),
+          fetchWithAuth(`${API_BASE_URL}/returns/list/`)
+        ]);
+
+        const ordersResult = Array.isArray(ordersData) ? ordersData : (ordersData?.results || []);
+        const claimsResult = Array.isArray(claimsData) ? claimsData : (claimsData?.results || []);
+
+        setOrders(ordersResult);
+        setClaims(claimsResult);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        // Fallback to context data
+        setOrders(contextOrders || []);
+        setClaims(contextClaims || []);
+      } finally {
+        setLocalLoading(false);
+      }
+    }
+  };
+
+  useEffect(() => {
+    fetchDataIfNeeded();
+  }, [contextOrders, contextClaims, ordersLoading, claimsLoading]);
+
+  // NEW: Calculate all-time totals from ALL orders (like AdminDashboard)
+  useEffect(() => {
+    if (orders.length > 0) {
+      setTotalOrders(orders.length);
+      const totalSales = orders.reduce((sum, order) => 
+        sum + (Number(order.total_price) || 0), 0
+      );
+      setTotalSalesAmount(totalSales);
+    } else {
+      setTotalOrders(0);
+      setTotalSalesAmount(0);
+    }
+  }, [orders]);
 
   // ——— Return graph selector state ———
   const [returnRange, setReturnRange] = useState("thisMonth");
@@ -47,29 +131,6 @@ export default function OrderList() {
     () => format(today, "do MMMM, yyyy"),
     [today]
   );
-
-  // helper to test if date is in selected range
-  const inRange = (dateObj) => {
-    switch (range) {
-      case "today":
-        return isSameDay(dateObj, today);
-      case "thisWeek":
-        return isSameWeek(dateObj, today, { weekStartsOn: 1 });
-      case "thisMonth":
-        return isSameMonth(dateObj, today);
-      case "thisYear":
-        return isSameYear(dateObj, today);
-      case "custom":
-        return isSameDay(dateObj, customDate);
-      case "customRange":
-        return isWithinInterval(dateObj, {
-          start: customRangeStart,
-          end: customRangeEnd,
-        });
-      default:
-        return false;
-    }
-  };
 
   // filter orders by created_at according to range
   const filteredOrders = useMemo(
@@ -93,7 +154,7 @@ export default function OrderList() {
     [claims, range, today, customDate, customRangeStart, customRangeEnd]
   );
 
-  // compute summary stats
+  // compute summary stats for FILTERED period
   const pendingOrders = filteredOrders.filter((o) => o.status.toLowerCase() === "pending").length;
   const processingOrders = filteredOrders.filter((o) => o.status.toLowerCase() === "processing").length;
   const shippedOrders = filteredOrders.filter((o) => o.status.toLowerCase() === "shipped").length;
@@ -101,17 +162,59 @@ export default function OrderList() {
   const cancelledOrders = filteredOrders.filter((o) =>
     ["cancelled", "canceled"].includes(o.status.toLowerCase())
   ).length;
-  const totalSales = filteredOrders.reduce((sum, o) => sum + Number(o.total_price), 0);
+  
+  // Calculate sales for FILTERED period
+  const totalSalesThisPeriod = useMemo(
+    () => filteredOrders.reduce((sum, o) => sum + Number(o.total_price || 0), 0),
+    [filteredOrders]
+  );
 
+  // UPDATED: Enhanced summary data with both all-time and period stats
   const summaryData = [
-    { title: "Total Orders", value: filteredOrders.length, icon: "📝" },
-    { title: "Pending Orders", value: pendingOrders, icon: "⏳" },
-    { title: "Processing", value: processingOrders, icon: "🔄" },
-    { title: "Shipped", value: shippedOrders, icon: "🚚" },
-    { title: "Delivered", value: deliveredOrders, icon: "✅" },
-    { title: "Cancelled", value: cancelledOrders, icon: "❌" },
-    { title: "Total Sales", value: `UGX ${totalSales.toLocaleString()}`, icon: "💰" },
-    { title: "Returns", value: filteredClaims.length, icon: "↩️" },
+    { 
+      title: "Total Orders (All Time)", 
+      value: totalOrders.toLocaleString(), 
+      icon: "📝",
+      periodLabel: "This Period",
+      periodValue: filteredOrders.length.toLocaleString()
+    },
+    { 
+      title: "Total Sales (All Time)", 
+      value: `UGX ${totalSalesAmount.toLocaleString()}`, 
+      icon: "💰",
+      periodLabel: "This Period",
+      periodValue: `UGX ${totalSalesThisPeriod.toLocaleString()}`
+    },
+    { 
+      title: "Pending Orders", 
+      value: pendingOrders, 
+      icon: "⏳" 
+    },
+    { 
+      title: "Processing", 
+      value: processingOrders, 
+      icon: "🔄" 
+    },
+    { 
+      title: "Shipped", 
+      value: shippedOrders, 
+      icon: "🚚" 
+    },
+    { 
+      title: "Delivered", 
+      value: deliveredOrders, 
+      icon: "✅" 
+    },
+    { 
+      title: "Cancelled", 
+      value: cancelledOrders, 
+      icon: "❌" 
+    },
+    { 
+      title: "Returns", 
+      value: filteredClaims.length, 
+      icon: "↩️" 
+    },
   ];
 
   // Aggregate claims and delivered orders by date for return rate calculation
@@ -209,13 +312,21 @@ export default function OrderList() {
             <div className="text-[12px] text-gray-700 font-medium">{formattedDate}</div>
           </div>
 
-          {/* Summary Cards */}
+          {/* UPDATED: Summary Cards with period breakdown */}
           <div className="grid grid-cols-4 gap-4 mb-5">
             {summaryData.map((item, idx) => (
               <div key={idx} className="flex items-center justify-between p-4 bg-white rounded-lg shadow hover:shadow-lg transition">
-                <div className="flex flex-col">
+                <div className="flex flex-col w-full">
                   <h3 className="text-[11px] font-semibold text-gray-700">{item.title}</h3>
                   <p className="text-xs text-gray-500 mt-1">{item.value}</p>
+                  
+                  {/* NEW: Show period breakdown for all-time totals */}
+                  {item.periodLabel && item.periodValue && (
+                    <div className="mt-2 pt-2 border-t border-gray-200">
+                      <p className="text-[9px] text-gray-400">{item.periodLabel}:</p>
+                      <p className="text-[10px] font-semibold text-blue-600">{item.periodValue}</p>
+                    </div>
+                  )}
                 </div>
                 <div className="text-lg">{item.icon}</div>
               </div>
