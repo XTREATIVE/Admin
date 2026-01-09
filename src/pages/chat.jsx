@@ -14,16 +14,38 @@ export default function ChatPage() {
   const [replyTo, setReplyTo] = useState(null);
   const [hoveredMessage, setHoveredMessage] = useState(null);
   const [menuOpenFor, setMenuOpenFor] = useState(null);
+  const [refreshInterval, setRefreshInterval] = useState(null);
+  const [lastFetchedTime, setLastFetchedTime] = useState(null);
 
   const fileInputRef = useRef();
   const videoInputRef = useRef();
 
   // Fetch notifications
   useEffect(() => {
-    fetch('/chatsapp/notifications')
-      .then(res => res.json())
-      .then(data => console.log('Notifications fetched:', data))
-      .catch(err => console.error('Error fetching notifications:', err));
+    const fetchNotifications = async () => {
+      try {
+        const token = localStorage.getItem("authToken");
+        if (!token) {
+          console.error('No auth token found');
+          return;
+        }
+        
+        const res = await fetch('https://api-xtreative.onrender.com/chatsapp/notifications', {
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        const data = await res.json();
+        console.log('Notifications fetched:', data);
+      } catch (err) {
+        console.error('Error fetching notifications:', err);
+      }
+    };
+    
+    fetchNotifications();
   }, []);
 
   // Build contacts
@@ -52,121 +74,386 @@ export default function ChatPage() {
     }
   }, [contacts, loadingUsers, error, selected]);
 
-  // Fetch messages for selected contact (customer-to-admin)
-  useEffect(() => {
-    if (selected) {
-      fetch(`/chatsapp/messages/customer-to-admin/?customerId=${selected}`)
-        .then(res => {
-          if (!res.ok) throw new Error('Failed to fetch messages');
-          return res.json();
-        })
-        .then(data => setMessages(data))
-        .catch(err => console.error('Error fetching messages:', err));
+  // Fetch messages for selected contact from database
+  const fetchMessages = async (forceRefresh = false) => {
+    if (!selected) return;
+    
+    try {
+      const token = localStorage.getItem("authToken");
+      if (!token) throw new Error("No auth token found");
+      
+      // Fetch all messages for the conversation between admin and customer
+      const convRes = await fetch(`https://api-xtreative.onrender.com/chatsapp/conversations/admin-user/?user_id=${selected}`, {
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!convRes.ok) throw new Error('Failed to fetch conversation');
+      const convData = await convRes.json();
+      
+      if (convData && convData.id) {
+        // Fetch messages for this conversation
+        const msgRes = await fetch(`https://api-xtreative.onrender.com/chatsapp/conversations/${convData.id}/messages/`, {
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (!msgRes.ok) throw new Error('Failed to fetch messages');
+        const messagesData = await msgRes.json();
+        
+        // Map API response to our message format
+        const formattedMessages = Array.isArray(messagesData) ? messagesData.map(msg => ({
+          id: msg.id,
+          from: msg.sender_type === 'admin' ? 'admin' : 'customer',
+          to: selected,
+          text: msg.content,
+          time: new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          read: msg.is_read,
+          timestamp: msg.timestamp
+        })) : [];
+        
+        // Only update if we have new messages or forcing refresh
+        if (forceRefresh || formattedMessages.length !== messages.length ||
+            (formattedMessages.length > 0 && messages.length > 0 &&
+             formattedMessages[formattedMessages.length - 1].id !== messages[messages.length - 1].id)) {
+          setMessages(formattedMessages);
+          setLastFetchedTime(new Date());
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching messages:', err);
     }
+  };
+
+  useEffect(() => {
+    fetchMessages(true); // Force refresh when selected changes
+    
+    // Set up periodic refresh every 3 seconds for better real-time experience
+    const interval = setInterval(() => fetchMessages(false), 3000);
+    setRefreshInterval(interval);
+    
+    // Handle page visibility changes
+    const handleVisibilityChange = () => {
+      if (!document.hidden && selected) {
+        fetchMessages(true); // Force refresh when page becomes visible
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      if (interval) clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [selected]);
 
   // Start a new conversation
-  const startConversation = (contactId) => {
-    fetch('/api/conversations', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: contactId }),
-    })
-      .then(res => {
-        if (!res.ok) throw new Error('Failed to start conversation');
-        return res.json();
-      })
-      .then(data => {
-        setSelected(contactId);
-        console.log('Conversation started:', data);
-        return fetch('/chatsapp/messages/admin-to-customer/', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            conversationId: data.id,
-            recipientId: contactId,
-            message: 'Hello! How can I help you today?',
-          }),
-        });
-      })
-      .then(res => res.json())
-      .then(messageData => {
-        setMessages(prev => [...prev, messageData]);
-      })
-      .catch(err => console.error('Error starting conversation:', err));
+  const startConversation = async (contactId) => {
+    try {
+      const token = localStorage.getItem("authToken");
+      if (!token) throw new Error("No auth token found");
+      
+      // Create conversation
+      const convRes = await fetch('https://api-xtreative.onrender.com/chatsapp/conversations/admin-user/', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ user_id: contactId }),
+      });
+      
+      if (!convRes.ok) throw new Error('Failed to start conversation');
+      const convData = await convRes.json();
+      
+      setSelected(contactId);
+      console.log('Conversation started:', convData);
+      
+      // Send initial message
+      const msgRes = await fetch(`https://api-xtreative.onrender.com/chatsapp/conversations/${convData.id}/messages/create/`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          content: 'Hello! How can I help you today?',
+        }),
+      });
+      
+      if (!msgRes.ok) throw new Error('Failed to send initial message');
+      const msgData = await msgRes.json();
+
+      // Format the response
+      const formattedMessage = {
+        id: msgData.id,
+        from: 'admin',
+        to: contactId,
+        text: msgData.content,
+        time: new Date(msgData.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        read: msgData.is_read,
+        timestamp: msgData.timestamp
+      };
+      
+      setMessages(prev => [...prev, formattedMessage]);
+      
+      // Fetch the complete conversation to ensure we have all messages
+      fetchMessages(true);
+    } catch (err) {
+      console.error('Error starting conversation:', err);
+    }
   };
 
   const current = contacts.find(c => c.id === selected) || null;
 
   // Send text message
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!input.trim()) return;
 
-    const newMessage = {
+    const tempMessage = {
       id: Date.now(),
       from: 'admin',
       to: selected,
       text: input.trim(),
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       read: false,
-      ...(replyTo && { replyTo: replyTo.id }),
+      pending: true,
+      timestamp: new Date().toISOString()
     };
 
-    fetch('/chatsapp/messages/admin-to-customer/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newMessage),
-    })
-      .then(res => {
-        if (!res.ok) throw new Error('Failed to send message');
-        return res.json();
-      })
-      .then(data => setMessages(prev => [...prev, data]))
-      .catch(err => console.error('Error sending message:', err));
-
+    // Optimistically add message to local state
+    setMessages(prev => [...prev, tempMessage]);
     setInput('');
     setReplyTo(null);
+
+    try {
+      const token = localStorage.getItem("authToken");
+      if (!token) throw new Error("No auth token found");
+      
+      // Get conversation ID
+      const convRes = await fetch(`https://api-xtreative.onrender.com/chatsapp/conversations/admin-user/?user_id=${selected}`, {
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!convRes.ok) throw new Error('Failed to get conversation');
+      const convData = await convRes.json();
+      
+      if (!convData || !convData.id) {
+        throw new Error('No conversation found');
+      }
+      
+      // Send message to the conversation
+      const res = await fetch(`https://api-xtreative.onrender.com/chatsapp/conversations/${convData.id}/messages/create/`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ content: tempMessage.text }),
+      });
+      
+      if (!res.ok) throw new Error('Failed to send message');
+      const msgData = await res.json();
+
+      // Update the temporary message with the real data
+      setMessages(prev => prev.map(m =>
+        m.id === tempMessage.id
+          ? {
+              id: msgData.id,
+              from: 'admin',
+              to: selected,
+              text: msgData.content,
+              time: new Date(msgData.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              read: msgData.is_read,
+              timestamp: msgData.timestamp,
+              pending: false
+            }
+          : m
+      ));
+
+      // Fetch the complete conversation to ensure we have all messages
+      fetchMessages(true);
+    } catch (err) {
+      console.error('Error sending message:', err);
+      // Remove the temporary message on error
+      setMessages(prev => prev.filter(m => m.id !== tempMessage.id));
+    }
   };
 
   // Attach file
-  const handleAttach = e => {
+  const handleAttach = async e => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
 
-    files.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const msg = {
-          id: Date.now(),
-          from: 'admin',
-          to: selected,
-          ...(file.type.startsWith('image/') ? { images: [reader.result] } : { attachments: [{ name: file.name, data: reader.result }] }),
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        };
-        setMessages(prev => [...prev, msg]);
+    for (const file of files) {
+      const tempMessage = {
+        id: Date.now() + Math.random(),
+        from: 'admin',
+        to: selected,
+        text: file.name,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        read: false,
+        pending: true,
+        timestamp: new Date().toISOString(),
+        ...(file.type.startsWith('image/') ? { images: [URL.createObjectURL(file)] } : { attachments: [{ name: file.name, data: URL.createObjectURL(file) }] })
       };
-      reader.readAsDataURL(file);
-    });
+
+      // Optimistically add message to local state
+      setMessages(prev => [...prev, tempMessage]);
+
+      try {
+        const token = localStorage.getItem("authToken");
+        if (!token) throw new Error("No auth token found");
+        
+        // Get conversation ID
+        const convRes = await fetch(`https://api-xtreative.onrender.com/chatsapp/conversations/admin-user/?user_id=${selected}`, {
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (!convRes.ok) throw new Error('Failed to get conversation');
+        const convData = await convRes.json();
+        
+        if (!convData || !convData.id) {
+          throw new Error('No conversation found');
+        }
+
+        // Create form data for file upload
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('content', file.name); // Optional: add a message with the file
+
+        // Send file to the conversation
+        const res = await fetch(`https://api-xtreative.onrender.com/chatsapp/conversations/${convData.id}/messages/create/`, {
+          method: 'POST',
+          headers: { 
+            'Authorization': `Bearer ${token}`
+          },
+          body: formData,
+          // Don't set Content-Type header for FormData
+        });
+
+        if (!res.ok) throw new Error('Failed to send file');
+        const msgData = await res.json();
+
+        // Update the temporary message with the real data
+        setMessages(prev => prev.map(m =>
+          m.id === tempMessage.id
+            ? {
+                id: msgData.id,
+                from: 'admin',
+                to: selected,
+                text: msgData.content || file.name,
+                time: new Date(msgData.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                read: msgData.is_read,
+                timestamp: msgData.timestamp,
+                pending: false,
+                ...(file.type.startsWith('image/') ? { images: [msgData.file_url || msgData.content] } : { attachments: [{ name: file.name, data: msgData.file_url || msgData.content }] })
+              }
+            : m
+        ));
+
+        // Fetch the complete conversation to ensure we have all messages
+        fetchMessages(true);
+      } catch (err) {
+        console.error('Error sending file:', err);
+        // Remove the temporary message on error
+        setMessages(prev => prev.filter(m => m.id !== tempMessage.id));
+      }
+    }
     fileInputRef.current.value = '';
   };
 
   // Attach video
-  const handleAttachVideo = e => {
+  const handleAttachVideo = async e => {
     const file = e.target.files[0];
     if (!file || !file.type.startsWith('video/')) return;
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const msg = {
-        id: Date.now(),
-        from: 'admin',
-        to: selected,
-        video: reader.result,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
-      setMessages(prev => [...prev, msg]);
+    const tempMessage = {
+      id: Date.now() + Math.random(),
+      from: 'admin',
+      to: selected,
+      text: 'Video message',
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      read: false,
+      pending: true,
+      timestamp: new Date().toISOString(),
+      video: URL.createObjectURL(file)
     };
-    reader.readAsDataURL(file);
+
+    // Optimistically add message to local state
+    setMessages(prev => [...prev, tempMessage]);
+
+    try {
+      const token = localStorage.getItem("authToken");
+      if (!token) throw new Error("No auth token found");
+      
+      // Get conversation ID
+      const convRes = await fetch(`https://api-xtreative.onrender.com/chatsapp/conversations/admin-user/?user_id=${selected}`, {
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!convRes.ok) throw new Error('Failed to get conversation');
+      const convData = await convRes.json();
+      
+      if (!convData || !convData.id) {
+        throw new Error('No conversation found');
+      }
+
+      // Create form data for video upload
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('content', 'Video message'); // Optional: add a message with the video
+
+      // Send video to the conversation
+      const res = await fetch(`https://api-xtreative.onrender.com/chatsapp/conversations/${convData.id}/messages/create/`, {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData,
+      });
+
+      if (!res.ok) throw new Error('Failed to send video');
+      const msgData = await res.json();
+
+      // Update the temporary message with the real data
+      setMessages(prev => prev.map(m =>
+        m.id === tempMessage.id
+          ? {
+              id: msgData.id,
+              from: 'admin',
+              to: selected,
+              text: msgData.content || 'Video message',
+              time: new Date(msgData.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              read: msgData.is_read,
+              timestamp: msgData.timestamp,
+              pending: false,
+              video: msgData.file_url || msgData.content
+            }
+          : m
+      ));
+
+      // Fetch the complete conversation to ensure we have all messages
+      fetchMessages(true);
+    } catch (err) {
+      console.error('Error sending video:', err);
+      // Remove the temporary message on error
+      setMessages(prev => prev.filter(m => m.id !== tempMessage.id));
+    }
+    
     videoInputRef.current.value = '';
   };
 

@@ -17,10 +17,12 @@ export const UserProvider = ({ children }) => {
         const res = await fetch("https://api-xtreative.onrender.com/users/list/", {
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }
         });
-        if (!res.ok) throw new Error(`Error fetching users: ${res.statusText}`);
+        if (!res.ok) throw new Error(`Error fetching users: ${res.status} ${res.statusText}`);
         const data = await res.json();
         setUsers(data);
+        console.log('Users fetched successfully:', data.length);
       } catch (err) {
+        console.error("Error fetching users:", err);
         setError(err.message);
       } finally {
         setLoadingUsers(false);
@@ -40,20 +42,49 @@ export const UserProvider = ({ children }) => {
     setSendMessageError(null);
     try {
       const token = localStorage.getItem("authToken");
-      // 1) Create conversation as admin
-      const convRes = await fetch(
-        `https://api-xtreative.onrender.com/chatsapp/conversations/admin-user/`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ user_id: toUserId }),
+      if (!token) throw new Error("No auth token found. Please log in.");
+      
+      console.log('Sending message to user:', toUserId, 'Content:', content);
+      
+      // 1) Get existing conversation or create new one
+      let convId;
+      try {
+        const convRes = await fetch(
+          `https://api-xtreative.onrender.com/chatsapp/conversations/admin-user/?user_id=${toUserId}`,
+          {
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }
+          }
+        );
+        if (convRes.ok) {
+          const convData = await convRes.json();
+          if (convData && convData.id) {
+            convId = convData.id;
+            console.log('Found existing conversation:', convId);
+          }
         }
-      );
-      if (!convRes.ok) throw new Error(`Error creating conversation: ${convRes.statusText}`);
-      const convData = await convRes.json();
-      const convId = convData.id;
+      } catch (err) {
+        console.log('No existing conversation found, will create new one');
+      }
+
+      // If no existing conversation, create new one
+      if (!convId) {
+        console.log('Creating new conversation for user:', toUserId);
+        const createConvRes = await fetch(
+          `https://api-xtreative.onrender.com/chatsapp/conversations/admin-user/`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ user_id: toUserId }),
+          }
+        );
+        if (!createConvRes.ok) throw new Error(`Error creating conversation: ${createConvRes.statusText}`);
+        const convData = await createConvRes.json();
+        convId = convData.id;
+        console.log('Created new conversation:', convId);
+      }
 
       // 2) Send message to conversation
+      console.log('Sending message to conversation:', convId);
       const msgRes = await fetch(
         `https://api-xtreative.onrender.com/chatsapp/conversations/${convId}/messages/create/`,
         {
@@ -64,6 +95,7 @@ export const UserProvider = ({ children }) => {
       );
       if (!msgRes.ok) throw new Error(`Error sending message: ${msgRes.statusText}`);
       const msgData = await msgRes.json();
+      console.log('Message sent successfully:', msgData);
 
       // Map API response into our message shape
       return {
@@ -76,6 +108,7 @@ export const UserProvider = ({ children }) => {
         timestamp: msgData.timestamp,
       };
     } catch (err) {
+      console.error('Error sending message:', err);
       setSendMessageError(err.message);
       throw err;
     } finally {

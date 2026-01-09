@@ -110,6 +110,8 @@ export default function ChatMainWindow({
   // Unified send handler integrating context
   const doSend = async () => {
     if (input.trim() === '') return;
+    
+    console.log('doSend called with input:', input.trim());
 
     // 1) Optimistic local append w/ pending flag
     const tempId = Date.now();
@@ -129,7 +131,9 @@ export default function ChatMainWindow({
 
     // 2) Persist via context
     try {
+      console.log('Calling sendMessage with content:', input.trim(), 'to user:', current.id);
       const saved = await sendMessage(optimistic.text, current.id);
+      console.log('Message saved successfully:', saved);
       // 3) Replace temp with real response (clear pending)
       setMessages(prev =>
         prev.map(m =>
@@ -140,7 +144,14 @@ export default function ChatMainWindow({
       );
     } catch (err) {
       console.error('Send failed', err);
-      // Optionally: mark error state on that message
+      // Mark error state on that message
+      setMessages(prev =>
+        prev.map(m =>
+          m.id === tempId
+            ? { ...m, error: true, pending: false }
+            : m
+        )
+      );
     }
   };
 
@@ -180,6 +191,19 @@ export default function ChatMainWindow({
                   <div className="flex items-center space-x-1 mt-1 text-xs text-gray-500">
                     <span>{m.time}</span>
                     {isSent && (m.read ? <BiCheckDouble /> : <BiCheck />)}
+                  </div>
+                </div>
+              );
+            }
+
+            if (m.error) {
+              return (
+                <div key={m.id} className={`relative flex flex-col ${isSent ? 'items-end' : 'items-start'}`}>
+                  <div className="relative p-3 max-w-xs rounded-xl bg-red-100 text-red-600 text-[11px]">
+                    ❌ Failed to send
+                  </div>
+                  <div className="flex items-center space-x-1 mt-1 text-xs text-gray-500">
+                    <span>{m.time}</span>
                   </div>
                 </div>
               );

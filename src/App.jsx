@@ -21,6 +21,8 @@ import Loans from "./pages/loans.jsx";
 import Profile from "./pages/profile.jsx"; 
 import Chat from "./pages/chat.jsx";
 import Reset_Password from "./pages/reset_password.jsx";
+import { UserProvider } from "./context/usercontext";
+import ChatTestPage from "./pages/chatTestPage.jsx";
 
 // Custom ProtectedRoute component
 const ProtectedRoute = ({ children }) => {
@@ -41,7 +43,7 @@ function App() {
   useSingleStepNavigationLimit(); // Keep this if it serves a specific purpose
 
   return (
-    <>
+    <UserProvider>
       <Routes>
         {/* Public routes */}
         <Route path="/" element={<LoginScreen />} />
@@ -153,6 +155,14 @@ function App() {
           }
         />
         <Route
+          path="/chat-test"
+          element={
+            <ProtectedRoute>
+              <ChatTestPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/reports"
           element={
             <ProtectedRoute>
@@ -178,7 +188,7 @@ function App() {
         />
       </Routes>
       <ToastContainer position="bottom-right" autoClose={3000} />
-    </>
+    </UserProvider>
   );
 }
 

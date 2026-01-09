@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useContext, useEffect } from "react";
+import { Link } from "react-router-dom";
 import {
   format,
   parseISO,
@@ -559,9 +560,9 @@ const AdminDashboard = () => {
 
           {/* Floating Chat Button */}
           <div className="fixed bottom-8 right-8 z-50">
-            <button className="w-16 h-16 bg-gradient-to-br from-orange-500 to-red-500 rounded-full shadow-2xl hover:shadow-orange-500/50 hover:scale-110 transition-all duration-300 flex items-center justify-center group">
+            <Link to="/chat" className="w-16 h-16 bg-gradient-to-br from-orange-500 to-red-500 rounded-full shadow-2xl hover:shadow-orange-500/50 hover:scale-110 transition-all duration-300 flex items-center justify-center group">
               <MessageCircle className="w-7 h-7 text-white group-hover:rotate-12 transition-transform" />
-            </button>
+            </Link>
           </div>
         </main>
       </div>

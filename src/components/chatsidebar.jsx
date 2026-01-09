@@ -22,13 +22,27 @@ export default function ChatSidebar({ contacts, selected, setSelected }) {
     return fuse.search(searchQuery).map(result => result.item);
   }, [searchQuery, fuse, contacts]);
 
-  // Only show contacts that have conversation history
-  // You can adjust the condition (lastMessage or messages array) as needed
+  // Fetch conversation history for each contact to show last message
   const conversationContacts = useMemo(() => {
-    return filteredContacts.filter(c => 
-      Boolean(c.lastMessage) 
-      || (Array.isArray(c.messages) && c.messages.length > 0)
-    );
+    return filteredContacts.map(c => {
+      // Find the latest message from the messages array or use lastMessage
+      let latestMessage = c.lastMessage;
+      let latestTime = c.time;
+      
+      // If we have messages array, find the most recent one
+      if (Array.isArray(c.messages) && c.messages.length > 0) {
+        const sortedMessages = c.messages.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        const latestMsg = sortedMessages[0];
+        latestMessage = latestMsg.text || latestMsg.content;
+        latestTime = new Date(latestMsg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+      
+      return {
+        ...c,
+        lastMessage: latestMessage,
+        time: latestTime
+      };
+    }).filter(c => Boolean(c.lastMessage)); // Only show contacts with messages
   }, [filteredContacts]);
 
   return (
