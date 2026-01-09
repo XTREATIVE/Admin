@@ -1,4 +1,9 @@
+<<<<<<< HEAD
 import React, { useState, useMemo, useContext, useEffect } from "react";
+=======
+// OrderTable.js
+import React, { useState, useMemo, useContext } from "react";
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
 import { Link } from "react-router-dom";
 import { FaEye, FaCar } from "react-icons/fa";
 import { UserContext } from "../context/usercontext";
@@ -16,6 +21,10 @@ const getOrderStatusClasses = (status) => {
     case "shipped":
       return "bg-green-100 text-green-800";
     case "sent to warehouse":
+<<<<<<< HEAD
+=======
+      // gradient from yellow (left) to green (right)
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
       return "bg-gray-100 text-yellow-700";
     case "completed":
       return "bg-emerald-100 text-emerald-800";
@@ -36,10 +45,17 @@ const capitalize = (str) =>
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
     .join(" ");
 
+<<<<<<< HEAD
 // Compute time since creation (using fixed current date: September 22, 2025)
 const getDuration = (isoDateString) => {
   const then = new Date(isoDateString).getTime();
   const now = new Date("2025-09-22").getTime(); // Fixed current date
+=======
+// Compute time since creation
+const getDuration = (isoDateString) => {
+  const then = new Date(isoDateString).getTime();
+  const now = Date.now();
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
   const diffMs = now - then;
 
   const msPerDay = 1000 * 60 * 60 * 24;
@@ -52,12 +68,19 @@ const getDuration = (isoDateString) => {
   return "Just now";
 };
 
+<<<<<<< HEAD
 // Base API endpoint pattern
 const API_STATUS_ENDPOINT = "https://api-xtreative.onrender.com/orders/{order_id}/status/";
 
 const OrderTable = () => {
   const { orders, loading, error, refreshOrders } = useContext(OrdersContext);
   const { getUsernameById, loading: loadingUsers, error: userError } = useContext(UserContext);
+=======
+const OrderTable = () => {
+  const { orders, loading, error } = useContext(OrdersContext);
+  const { getUsernameById, loading: loadingUsers, error: userError } =
+    useContext(UserContext);
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
 
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 15;
@@ -69,6 +92,7 @@ const OrderTable = () => {
     return orders.slice(start, start + pageSize);
   }, [orders, currentPage]);
 
+<<<<<<< HEAD
   // Synchronize status with API
   useEffect(() => {
     const syncStatuses = async () => {
@@ -106,6 +130,8 @@ const OrderTable = () => {
     syncStatuses();
   }, [orders, refreshOrders]);
 
+=======
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
   if (loading || loadingUsers)
     return (
       <div className="text-center p-4 text-gray-600 text-[11px]">
@@ -146,6 +172,10 @@ const OrderTable = () => {
       const rawStatus = order.status.toLowerCase();
       const statusClasses = getOrderStatusClasses(order.status);
 
+<<<<<<< HEAD
+=======
+      // If sent to warehouse, show car + text; else capitalize
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
       const statusContent =
         rawStatus === "sent to warehouse" ? (
           <>
@@ -233,4 +263,8 @@ const OrderTable = () => {
   );
 };
 
+<<<<<<< HEAD
 export default OrderTable;
+=======
+export default OrderTable;
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06

@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import React, { useState, useMemo, useContext, useEffect } from "react";
+=======
+import React, { useState, useMemo, useContext } from "react";
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
 import {
   format,
   parseISO,
@@ -24,6 +28,7 @@ import {
 } from "recharts";
 import { OrdersContext } from "../context/orderscontext";
 import { ClaimsContext } from "../context/claimscontext";
+<<<<<<< HEAD
 import { DateContext } from "../context/datecontext";
 
 export default function OrderList() {
@@ -119,6 +124,21 @@ export default function OrderList() {
       setTotalSalesAmount(0);
     }
   }, [orders]);
+=======
+import { useNavigate } from "react-router-dom";
+
+export default function OrderList() {
+  const navigate = useNavigate();
+  const { orders } = useContext(OrdersContext);
+  const { claims } = useContext(ClaimsContext);
+
+  // ——— Date selector state ———
+  const today = useMemo(() => new Date(), []);
+  const [range, setRange] = useState("today");
+  const [customDate, setCustomDate] = useState(today);
+  const [customRangeStart, setCustomRangeStart] = useState(today);
+  const [customRangeEnd, setCustomRangeEnd] = useState(today);
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
 
   // ——— Return graph selector state ———
   const [returnRange, setReturnRange] = useState("thisMonth");
@@ -132,6 +152,32 @@ export default function OrderList() {
     [today]
   );
 
+<<<<<<< HEAD
+=======
+  // helper to test if date is in selected range
+  const inRange = (dateObj) => {
+    switch (range) {
+      case "today":
+        return isSameDay(dateObj, today);
+      case "thisWeek":
+        return isSameWeek(dateObj, today, { weekStartsOn: 1 });
+      case "thisMonth":
+        return isSameMonth(dateObj, today);
+      case "thisYear":
+        return isSameYear(dateObj, today);
+      case "custom":
+        return isSameDay(dateObj, customDate);
+      case "customRange":
+        return isWithinInterval(dateObj, {
+          start: customRangeStart,
+          end: customRangeEnd,
+        });
+      default:
+        return false;
+    }
+  };
+
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
   // filter orders by created_at according to range
   const filteredOrders = useMemo(
     () =>
@@ -154,7 +200,11 @@ export default function OrderList() {
     [claims, range, today, customDate, customRangeStart, customRangeEnd]
   );
 
+<<<<<<< HEAD
   // compute summary stats for FILTERED period
+=======
+  // compute summary stats
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
   const pendingOrders = filteredOrders.filter((o) => o.status.toLowerCase() === "pending").length;
   const processingOrders = filteredOrders.filter((o) => o.status.toLowerCase() === "processing").length;
   const shippedOrders = filteredOrders.filter((o) => o.status.toLowerCase() === "shipped").length;
@@ -162,6 +212,7 @@ export default function OrderList() {
   const cancelledOrders = filteredOrders.filter((o) =>
     ["cancelled", "canceled"].includes(o.status.toLowerCase())
   ).length;
+<<<<<<< HEAD
   
   // Calculate sales for FILTERED period
   const totalSalesThisPeriod = useMemo(
@@ -215,6 +266,19 @@ export default function OrderList() {
       value: filteredClaims.length, 
       icon: "↩️" 
     },
+=======
+  const totalSales = filteredOrders.reduce((sum, o) => sum + Number(o.total_price), 0);
+
+  const summaryData = [
+    { title: "Total Orders", value: filteredOrders.length, icon: "📝" },
+    { title: "Pending Orders", value: pendingOrders, icon: "⏳" },
+    { title: "Processing", value: processingOrders, icon: "🔄" },
+    { title: "Shipped", value: shippedOrders, icon: "🚚" },
+    { title: "Delivered", value: deliveredOrders, icon: "✅" },
+    { title: "Cancelled", value: cancelledOrders, icon: "❌" },
+    { title: "Total Sales", value: `UGX ${totalSales.toLocaleString()}`, icon: "💰" },
+    { title: "Returns", value: filteredClaims.length, icon: "↩️" },
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
   ];
 
   // Aggregate claims and delivered orders by date for return rate calculation
@@ -312,6 +376,7 @@ export default function OrderList() {
             <div className="text-[12px] text-gray-700 font-medium">{formattedDate}</div>
           </div>
 
+<<<<<<< HEAD
           {/* UPDATED: Summary Cards with period breakdown */}
           <div className="grid grid-cols-4 gap-4 mb-5">
             {summaryData.map((item, idx) => (
@@ -327,6 +392,15 @@ export default function OrderList() {
                       <p className="text-[10px] font-semibold text-blue-600">{item.periodValue}</p>
                     </div>
                   )}
+=======
+          {/* Summary Cards */}
+          <div className="grid grid-cols-4 gap-4 mb-5">
+            {summaryData.map((item, idx) => (
+              <div key={idx} className="flex items-center justify-between p-4 bg-white rounded-lg shadow hover:shadow-lg transition">
+                <div className="flex flex-col">
+                  <h3 className="text-[11px] font-semibold text-gray-700">{item.title}</h3>
+                  <p className="text-xs text-gray-500 mt-1">{item.value}</p>
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
                 </div>
                 <div className="text-lg">{item.icon}</div>
               </div>
@@ -372,7 +446,11 @@ export default function OrderList() {
             <div className="w-2/3">
               <div className="p-4 bg-white rounded-lg shadow h-full">
                 <h3 className="text-[11px] font-semibold text-gray-700 mb-2">Order List</h3>
+<<<<<<< HEAD
                 <OrderTable orders={filteredOrders} />
+=======
+                <OrderTable orders={filteredOrders} onRowClick={(id) => navigate(`/orders/${id}`)} />
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
               </div>
             </div>
           </div>

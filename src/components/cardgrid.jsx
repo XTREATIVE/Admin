@@ -7,6 +7,10 @@ import {
   isSameMonth,
   isSameYear,
 } from "date-fns";
+<<<<<<< HEAD
+=======
+import { motion } from "framer-motion";
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
 import { useNavigate } from "react-router-dom"; // import navigation hook
 import StatsCard from "../components/Cards";
 import AnalyticsCharts from "../components/2cardgrid";

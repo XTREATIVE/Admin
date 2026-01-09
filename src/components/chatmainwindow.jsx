@@ -110,8 +110,11 @@ export default function ChatMainWindow({
   // Unified send handler integrating context
   const doSend = async () => {
     if (input.trim() === '') return;
+<<<<<<< HEAD
     
     console.log('doSend called with input:', input.trim());
+=======
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
 
     // 1) Optimistic local append w/ pending flag
     const tempId = Date.now();
@@ -131,9 +134,13 @@ export default function ChatMainWindow({
 
     // 2) Persist via context
     try {
+<<<<<<< HEAD
       console.log('Calling sendMessage with content:', input.trim(), 'to user:', current.id);
       const saved = await sendMessage(optimistic.text, current.id);
       console.log('Message saved successfully:', saved);
+=======
+      const saved = await sendMessage(optimistic.text, current.id);
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
       // 3) Replace temp with real response (clear pending)
       setMessages(prev =>
         prev.map(m =>
@@ -144,6 +151,7 @@ export default function ChatMainWindow({
       );
     } catch (err) {
       console.error('Send failed', err);
+<<<<<<< HEAD
       // Mark error state on that message
       setMessages(prev =>
         prev.map(m =>
@@ -152,6 +160,9 @@ export default function ChatMainWindow({
             : m
         )
       );
+=======
+      // Optionally: mark error state on that message
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
     }
   };
 
@@ -196,6 +207,7 @@ export default function ChatMainWindow({
               );
             }
 
+<<<<<<< HEAD
             if (m.error) {
               return (
                 <div key={m.id} className={`relative flex flex-col ${isSent ? 'items-end' : 'items-start'}`}>
@@ -209,6 +221,8 @@ export default function ChatMainWindow({
               );
             }
 
+=======
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
             return (
               <div
                 key={m.id}
@@ -359,4 +373,8 @@ export default function ChatMainWindow({
       )}
     </>
   );
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06

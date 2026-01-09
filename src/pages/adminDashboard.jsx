@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import React, { useState, useMemo, useContext, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -564,10 +565,30 @@ const AdminDashboard = () => {
               <MessageCircle className="w-7 h-7 text-white group-hover:rotate-12 transition-transform" />
             </Link>
           </div>
+=======
+// pages/AdminDashboard.js
+import React from "react";
+import Sidebar from "../components/sidebar";
+import Header from "../components/header";
+import StatsCardsGrid from "../components/cardgrid";
+
+const AdminDashboard = () => {
+  return (
+    <div className="h-screen font-poppins">
+      <Header />
+      <div className="flex flex-1 overflow-hidden">
+        <Sidebar />
+        <main className="flex-1 p-4 bg-gray-100 ml-[80px]">
+          <StatsCardsGrid />
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
         </main>
       </div>
     </div>
   );
 };
 
+<<<<<<< HEAD
 export default AdminDashboard;
+=======
+export default AdminDashboard;
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06

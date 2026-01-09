@@ -2,6 +2,7 @@ import React, { useState, useMemo, useContext } from "react";
 import { FaCar } from "react-icons/fa";
 import { OrdersContext } from "../context/orderscontext";
 
+<<<<<<< HEAD
 // Utility: get "st"/"nd"/"rd"/"th" suffix for dates
 function getOrdinalSuffix(day) {
   if (day > 3 && day < 21) return "th";
@@ -22,6 +23,8 @@ function formatDate(dateObj) {
   return `${day}${ordinal} ${month} ${year}`;
 }
 
+=======
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
 // Map statuses to bg/text colors
 const getOrderStatusClasses = (status) => {
   switch (status.toLowerCase()) {
@@ -109,7 +112,11 @@ export default function OrderReports({ hideTabsWhenGeneratingPDF = false }) {
           <tbody>
             {filtered.map(o => {
               const id = `ORD${o.id + OFFSET}`;
+<<<<<<< HEAD
               const date = formatDate(new Date(o.created_at));
+=======
+              const date = new Date(o.created_at).toLocaleDateString("en-GB");
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
               const duration = getDuration(o.created_at);
               const total = `UGX ${Number(o.total_price).toLocaleString()}`;
               const items = o.items.length;

@@ -1,3 +1,7 @@
+<<<<<<< HEAD
+=======
+// src/components/LoginScreen.jsx
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Formik } from "formik";
@@ -32,9 +36,14 @@ const LoginScreen = () => {
       const data = await response.json();
 
       if (response.ok && data.access) {
+<<<<<<< HEAD
         // Persist tokens and log for debugging
         localStorage.setItem("authToken", data.access);
         console.log('Token stored:', data.access); // Debug log
+=======
+        // Persist tokens
+        localStorage.setItem("authToken", data.access);
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
         if (data.refresh) {
           localStorage.setItem("refreshToken", data.refresh);
         }
@@ -42,7 +51,11 @@ const LoginScreen = () => {
         setLoginError("");
         setLoginSuccess(true);
 
+<<<<<<< HEAD
         // Redirect to admin dashboard
+=======
+        // Redirect after a brief success message
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
         setTimeout(() => {
           navigate("/admin-dashboard");
         }, 2000);
@@ -65,6 +78,10 @@ const LoginScreen = () => {
 
   return (
     <div className="login-screen font-poppins">
+<<<<<<< HEAD
+=======
+      {/* Embedded CSS */}
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
       <style>{`
         /* Overall layout */
         .login-screen {
@@ -207,8 +224,17 @@ const LoginScreen = () => {
           animation: spin 1s linear infinite;
         }
         @keyframes spin {
+<<<<<<< HEAD
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
+=======
+          0% {
+            transform: rotate(0deg);
+          }
+          100% {
+            transform: rotate(360deg);
+          }
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
         }
         .login-footer {
           margin-top: 32px;
@@ -313,8 +339,13 @@ const LoginScreen = () => {
 
                 <button
                   type="submit"
+<<<<<<< HEAD
                   className="login-button"
                   disabled={isSubmitting}
+=======
+                    className="login-button"
+                    disabled={isSubmitting}
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
                 >
                   {isSubmitting ? "Signing In..." : "Sign In"}
                 </button>
@@ -340,4 +371,8 @@ const LoginScreen = () => {
   );
 };
 
+<<<<<<< HEAD
 export default LoginScreen;
+=======
+export default LoginScreen;
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06

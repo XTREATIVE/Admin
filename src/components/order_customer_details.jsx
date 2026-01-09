@@ -1,3 +1,7 @@
+<<<<<<< HEAD
+=======
+// OrderRightSection.js
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
 import React, { useContext } from "react";
 import mtnLogo from "../assets/mtn.jpg";
 import airtelLogo from "../assets/airrtel.jpg";
@@ -250,4 +254,8 @@ export default function CustomerDetailsCard({ order }) {
       <MapDetailsCard order={order} />
     </div>
   );
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06

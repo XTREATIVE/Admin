@@ -17,12 +17,19 @@ export const UserProvider = ({ children }) => {
         const res = await fetch("https://api-xtreative.onrender.com/users/list/", {
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }
         });
+<<<<<<< HEAD
         if (!res.ok) throw new Error(`Error fetching users: ${res.status} ${res.statusText}`);
         const data = await res.json();
         setUsers(data);
         console.log('Users fetched successfully:', data.length);
       } catch (err) {
         console.error("Error fetching users:", err);
+=======
+        if (!res.ok) throw new Error(`Error fetching users: ${res.statusText}`);
+        const data = await res.json();
+        setUsers(data);
+      } catch (err) {
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
         setError(err.message);
       } finally {
         setLoadingUsers(false);
@@ -42,6 +49,7 @@ export const UserProvider = ({ children }) => {
     setSendMessageError(null);
     try {
       const token = localStorage.getItem("authToken");
+<<<<<<< HEAD
       if (!token) throw new Error("No auth token found. Please log in.");
       
       console.log('Sending message to user:', toUserId, 'Content:', content);
@@ -85,6 +93,22 @@ export const UserProvider = ({ children }) => {
 
       // 2) Send message to conversation
       console.log('Sending message to conversation:', convId);
+=======
+      // 1) Create conversation as admin
+      const convRes = await fetch(
+        `https://api-xtreative.onrender.com/chatsapp/conversations/admin-user/`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ user_id: toUserId }),
+        }
+      );
+      if (!convRes.ok) throw new Error(`Error creating conversation: ${convRes.statusText}`);
+      const convData = await convRes.json();
+      const convId = convData.id;
+
+      // 2) Send message to conversation
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
       const msgRes = await fetch(
         `https://api-xtreative.onrender.com/chatsapp/conversations/${convId}/messages/create/`,
         {
@@ -95,7 +119,10 @@ export const UserProvider = ({ children }) => {
       );
       if (!msgRes.ok) throw new Error(`Error sending message: ${msgRes.statusText}`);
       const msgData = await msgRes.json();
+<<<<<<< HEAD
       console.log('Message sent successfully:', msgData);
+=======
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
 
       // Map API response into our message shape
       return {
@@ -108,7 +135,10 @@ export const UserProvider = ({ children }) => {
         timestamp: msgData.timestamp,
       };
     } catch (err) {
+<<<<<<< HEAD
       console.error('Error sending message:', err);
+=======
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
       setSendMessageError(err.message);
       throw err;
     } finally {

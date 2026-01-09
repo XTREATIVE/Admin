@@ -10,7 +10,10 @@ export const ClaimsProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const ordersContext = useContext(OrdersContext);
+<<<<<<< HEAD
   const API_BASE_URL = "https://api-xtreative.onrender.com";
+=======
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
 
   useEffect(() => {
     const fetchData = async () => {
@@ -143,7 +146,10 @@ export const ClaimsProvider = ({ children }) => {
             : "Pioneer Mall, Burton Street, Kampala, Uganda";
 
           return {
+<<<<<<< HEAD
             id: item.id, // Use the return id for approve/reject
+=======
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
             name: customerMap[item.customer] || `Customer ${item.customer}`,
             order_item: item.order_item, // Keep order_item for ID reference
             product_name: itemMap[item.order_item] || `Item ${item.order_item}`, // Use product name from orders
@@ -170,6 +176,7 @@ export const ClaimsProvider = ({ children }) => {
     fetchData();
   }, [ordersContext]);
 
+<<<<<<< HEAD
   // Approve claim function
   const approveClaim = async (claimId) => {
     try {
@@ -220,6 +227,10 @@ export const ClaimsProvider = ({ children }) => {
 
   return (
     <ClaimsContext.Provider value={{ claims, isLoading, error, approveClaim, rejectClaim }}>
+=======
+  return (
+    <ClaimsContext.Provider value={{ claims, isLoading, error }}>
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
       {children}
     </ClaimsContext.Provider>
   );

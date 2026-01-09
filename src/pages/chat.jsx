@@ -3,23 +3,35 @@ import Sidebar from '../components/sidebar';
 import Header from '../components/header';
 import ChatSidebar from '../components/chatsidebar';
 import ChatMainWindow from '../components/chatmainwindow';
+<<<<<<< HEAD
 import { dummyNotifications } from '../data/chatadata';
+=======
+import { dummyNotifications, initialMessages } from '../data/chatadata';
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
 import { UserContext } from '../context/usercontext';
 
 export default function ChatPage() {
   const { users, loadingUsers, error } = useContext(UserContext);
   const [selected, setSelected] = useState(null);
+<<<<<<< HEAD
   const [messages, setMessages] = useState([]);
+=======
+  const [messages, setMessages] = useState(initialMessages);
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
   const [input, setInput] = useState('');
   const [replyTo, setReplyTo] = useState(null);
   const [hoveredMessage, setHoveredMessage] = useState(null);
   const [menuOpenFor, setMenuOpenFor] = useState(null);
+<<<<<<< HEAD
   const [refreshInterval, setRefreshInterval] = useState(null);
   const [lastFetchedTime, setLastFetchedTime] = useState(null);
+=======
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
 
   const fileInputRef = useRef();
   const videoInputRef = useRef();
 
+<<<<<<< HEAD
   // Fetch notifications
   useEffect(() => {
     const fetchNotifications = async () => {
@@ -68,12 +80,38 @@ export default function ChatPage() {
   }, [users, loadingUsers, error, messages]);
 
   // Default to first customer
+=======
+  // Build contacts: only customers (case-insensitive), map to sidebar shape
+  const contacts = useMemo(() => {
+    if (loadingUsers || error) return [];
+    return users
+      .filter(u => u.role && u.role.toLowerCase() === 'customer')
+      .map(u => ({
+        id: u.id,
+        name: u.username,
+        // Find most recent message to/from that user
+        ...(() => {
+          const convo = [...messages].reverse().find(
+            m => m.from === u.id || m.to === u.id
+          );
+          return {
+            lastMessage: convo?.text || '',
+            time: convo?.time || '',
+          };
+        })(),
+        typing: false,
+      }));
+  }, [users, loadingUsers, error, messages]);
+
+  // Default to first customer once we have contacts
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
   useEffect(() => {
     if (!loadingUsers && !error && contacts.length > 0 && selected === null) {
       setSelected(contacts[0].id);
     }
   }, [contacts, loadingUsers, error, selected]);
 
+<<<<<<< HEAD
   // Fetch messages for selected contact from database
   const fetchMessages = async (forceRefresh = false) => {
     if (!selected) return;
@@ -217,10 +255,22 @@ export default function ChatPage() {
     const tempMessage = {
       id: Date.now(),
       from: 'admin',
+=======
+  // The currently selected contact object
+  const current = contacts.find(c => c.id === selected) || null;
+
+  // Handlers
+  const handleSend = () => {
+    if (input.trim() === '') return;
+    const newMessage = {
+      id: Date.now(),
+      from: 'me',
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
       to: selected,
       text: input.trim(),
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       read: false,
+<<<<<<< HEAD
       pending: true,
       timestamp: new Date().toISOString()
     };
@@ -458,6 +508,86 @@ export default function ChatPage() {
   };
 
   // Message actions
+=======
+      ...(replyTo && { replyTo: replyTo.id }),
+    };
+    setMessages(prev => [...prev, newMessage]);
+    setInput('');
+    setReplyTo(null);
+  };
+
+  const handleAttach = e => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+
+    const imageFiles = files.filter(file => file.type.startsWith('image/'));
+    const otherFiles = files.filter(file => !file.type.startsWith('image/'));
+
+    if (imageFiles.length > 0) {
+      Promise.all(
+        imageFiles.map(file =>
+          new Promise(resolve => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.readAsDataURL(file);
+          })
+        )
+      ).then(imageURLs => {
+        const newMessage = {
+          id: Date.now(),
+          from: 'me',
+          to: selected,
+          images: imageURLs,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          read: false,
+          ...(replyTo && { replyTo: replyTo.id }),
+        };
+        setMessages(prev => [...prev, newMessage]);
+      });
+    }
+
+    otherFiles.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const newMessage = {
+          id: Date.now(),
+          from: 'me',
+          to: selected,
+          attachments: [{ name: file.name, data: reader.result }],
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          read: false,
+          ...(replyTo && { replyTo: replyTo.id }),
+        };
+        setMessages(prev => [...prev, newMessage]);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    fileInputRef.current.value = '';
+  };
+
+  const handleAttachVideo = e => {
+    const file = e.target.files[0];
+    if (!file || !file.type.startsWith('video/')) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const newMessage = {
+        id: Date.now(),
+        from: 'me',
+        to: selected,
+        video: reader.result,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        read: false,
+        ...(replyTo && { replyTo: replyTo.id }),
+      };
+      setMessages(prev => [...prev, newMessage]);
+    };
+    reader.readAsDataURL(file);
+    videoInputRef.current.value = '';
+  };
+
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
   const handleAction = (action, message) => {
     setMenuOpenFor(null);
     switch (action) {
@@ -465,6 +595,7 @@ export default function ChatPage() {
         setReplyTo(message);
         break;
       case 'Delete':
+<<<<<<< HEAD
         setMessages(prev => prev.map(m => m.id === message.id ? { ...m, deleted: true } : m));
         break;
       case 'Copy':
@@ -472,6 +603,17 @@ export default function ChatPage() {
         break;
       case 'Forward':
         alert('Forward action not implemented.');
+=======
+        setMessages(prev =>
+          prev.map(m => (m.id === message.id ? { ...m, deleted: true } : m))
+        );
+        break;
+      case 'Copy':
+        navigator.clipboard.writeText(message.text || '').then(() => alert('Copied!'));
+        break;
+      case 'Forward':
+        alert('Forward action not implemented yet.');
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
         break;
       default:
         break;
@@ -490,12 +632,21 @@ export default function ChatPage() {
           contacts={contacts}
           selected={selected}
           setSelected={setSelected}
+<<<<<<< HEAD
           startConversation={startConversation}
+=======
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
         />
         {current && (
           <ChatMainWindow
             current={current}
+<<<<<<< HEAD
             messages={messages.filter(m => m.to === selected || m.from === selected)}
+=======
+            messages={messages.filter(
+              m => m.to === selected || m.from === selected
+            )}
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
             setMessages={setMessages}
             input={input}
             setInput={setInput}
@@ -516,4 +667,8 @@ export default function ChatPage() {
       </div>
     </div>
   );
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06

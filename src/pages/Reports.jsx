@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import React, { useState, useContext, useMemo } from "react";
 import { 
   FileText, 
@@ -709,11 +710,28 @@ const Reports = () => {
             </div>
           </div>
         </main>
+=======
+import React from "react";
+import Sidebar from "../components/sidebar";
+import Header from "../components/header";
+import ReportContent from "../components/reportscontent";
+
+const Reports = () => {
+  return (
+    <div className="h-screen font-poppins flex flex-col">
+      <Header />
+      <div className="flex flex-1 overflow-hidden">
+        <Sidebar />
+       <main className="flex-1 p-1 overflow-auto ml-[65px] bg-gray-100">
+                 <ReportContent />
+               </main>
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
       </div>
     </div>
   );
 };
 
+<<<<<<< HEAD
 // Statistics Card Component
 const StatCard = ({ icon, label, value, color }) => {
   const colorClasses = {
@@ -737,4 +755,6 @@ const StatCard = ({ icon, label, value, color }) => {
   );
 };
 
+=======
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
 export default Reports;

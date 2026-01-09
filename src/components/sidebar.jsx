@@ -44,7 +44,11 @@ const Sidebar = () => {
           <FiCreditCard size={15} />
           <span>Loans</span>
         </Link>
+<<<<<<< HEAD
         <Link to="/finance" className="sidebar-btn">
+=======
+        <Link to="/finance" className="sidebar-btn finance-btn">
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
           <FiDollarSign size={24} />
           <span>Finance</span>
         </Link>

@@ -1,3 +1,7 @@
+<<<<<<< HEAD
+=======
+// src/components/loansvendors.jsx
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
 import React, { useState, useContext } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { LoansContext } from '../context/loanscontext';
@@ -23,7 +27,11 @@ const LoanRepayments = () => {
   console.log('Loans:', loans);
 
   // Open modal with the full API loan object
+<<<<<<< HEAD
   const openModal = (loan) => {
+=======
+  const openModal = (loan, tabData) => {
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
     console.log('Opening modal with loan:', loan);
     setSelectedLoan(loan); // Pass the original loan object
     setIsModalOpen(true);
@@ -37,17 +45,27 @@ const LoanRepayments = () => {
 
   const getDataForTab = () => {
     switch (activeTab) {
+<<<<<<< HEAD
       case 'Loan Applications': {
+=======
+      case 'Loan Applications':
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
         const allLoans = Array.isArray(loans) ? loans : [];
         console.log('Loans for Loan Applications:', allLoans);
         return allLoans.map(app => {
           // Map guarantor vendor IDs to usernames, join with newline
+<<<<<<< HEAD
           const guarantorUsernames = Array.isArray(app.guarantors) && app.guarantors.length > 0
             ? app.guarantors
                 .map(guarantorId => {
                   const vendor = Array.isArray(vendors) ? vendors.find(v => v.id === guarantorId) : null;
                   return vendor ? vendor.username : 'Unknown';
                 })
+=======
+          const guarantorUsernames = Array.isArray(app.guarantor_details) && app.guarantor_details.length > 0
+            ? app.guarantor_details
+                .map(guarantorDetail => guarantorDetail.username)
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
                 .join('\n')
             : '-';
 
@@ -61,7 +79,10 @@ const LoanRepayments = () => {
             originalLoan: app, // Store the original loan for modal
           };
         });
+<<<<<<< HEAD
       }
+=======
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
       case 'Upcoming Due Loans':
         return repaymentBlocks.filter(r => r.status === 'Upcoming');
       case 'Overdue Loans':

@@ -1,3 +1,7 @@
+<<<<<<< HEAD
+=======
+// OrderLeftSection.jsx
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
 import React, { useState, useEffect, useContext } from "react";
 import { useParams } from "react-router-dom";
 import { CheckCircle } from "lucide-react";
@@ -38,9 +42,19 @@ const getWarehouseStatusClasses = (status) => {
   switch ((status || "").toLowerCase()) {
     case "pending":
       return "bg-yellow-100 text-yellow-800";
+<<<<<<< HEAD
     case "sent to warehouse":
       return "bg-gray-50 text-gray-800";
     case "confirmed warehouse":
+=======
+    case "processing":
+      return "bg-orange-100 text-orange-800";
+    case "packaging":
+      return "bg-amber-100 text-amber-800";
+    case "sent to warehouse":
+      return "bg-gray-50 text-gray-800";
+    case "shipped":
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
       return "bg-green-100 text-green-800";
     case "delivered":
       return "bg-teal-100 text-teal-800";
@@ -65,6 +79,7 @@ export default function OrderLeftSection() {
   const { orders, loading, error, refreshOrders } = useContext(OrdersContext);
   const { getProductById, loadingProducts, errorProducts } = useContext(ProductsContext);
 
+<<<<<<< HEAD
   // State: progress steps, current step index, warehouse statuses & loaders
   const [steps, setSteps] = useState([
     { label: "Pending", width: "w-0", color: "bg-yellow-500", active: false, status: "pending" },
@@ -163,10 +178,44 @@ export default function OrderLeftSection() {
         });
         setWarehouseStatuses(init);
         setIsSent(order.status.toLowerCase() === "sent to warehouse");
+=======
+  // State: simulate date-loading, progress steps, "ready to deliver", warehouse statuses & loaders
+  const [isDateLoading, setIsDateLoading] = useState(true);
+  const [steps, setSteps] = useState([
+    { label: "Payment Confirmed", width: "w-full", color: "bg-green-500" },
+    { label: "Order Confirmed", width: "w-full", color: "bg-green-500" },
+    { label: "Order Processing", width: "w-0", color: "bg-yellow-500", spinner: false },
+    { label: "Order Delivering", width: "w-0", color: "bg-blue-500" },
+    { label: "Order Delivered", width: "w-0", color: "bg-blue-500" },
+  ]);
+  const [isMarked, setIsMarked] = useState(false);
+  const [warehouseStatuses, setWarehouseStatuses] = useState({});
+  const [warehouseLoading, setWarehouseLoading] = useState({});  // per-item loader
+
+  // Simulate initial date loading (e.g. skeleton)
+  useEffect(() => {
+    const t = setTimeout(() => setIsDateLoading(false), 2000);
+    return () => clearTimeout(t);
+  }, []);
+
+  // Once orders & products loaded, initialize each item’s warehouse status
+  useEffect(() => {
+    if (!loading && !loadingProducts) {
+      const origId = parseInt(orderId, 10) - OFFSET;
+      const ord = orders.find(o => o.id === origId);
+      if (ord) {
+        const init = {};
+        const base = ord.status?.toLowerCase() ?? "unknown";
+        ord.items.forEach(item => {
+          init[item.id] = base;
+        });
+        setWarehouseStatuses(init);
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
       }
     }
   }, [loading, loadingProducts, orders, orderId]);
 
+<<<<<<< HEAD
   // Poll for status changes every 5 seconds
   useEffect(() => {
     fetchOrderStatus();
@@ -252,19 +301,50 @@ export default function OrderLeftSection() {
         setIsUpdating(false);
       }
     }
+=======
+  // Progress: when marking ready for delivery
+  const handleReadyToDeliver = () => {
+    setIsMarked(true);
+    setSteps(prev =>
+      prev.map((s, i) =>
+        i === 2 ? { ...s, width: "w-full", color: "bg-green-500", spinner: false } : s
+      )
+    );
+    // then trigger spinner on next step
+    setTimeout(() => {
+      setSteps(prev =>
+        prev.map((s, i) =>
+          i === 3 ? { ...s, width: "w-full", color: "bg-yellow-500", spinner: true } : s
+        )
+      );
+    }, 700);
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
   };
 
   // Confirm shipment per item with loader
   const handleConfirmShipment = async (itemId) => {
     const token = localStorage.getItem("authToken");
+<<<<<<< HEAD
     if (!token) return;
+=======
+    if (!token) {
+      console.error("No auth token");
+      return;
+    }
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
 
     setWarehouseLoading(prev => ({ ...prev, [itemId]: true }));
 
     try {
+<<<<<<< HEAD
       const origId = parseInt(orderId, 10) - OFFSET;
       const res = await fetch(
         `https://api-xtreative.onrender.com/orders/${origId}/confirm-warehouse/`,
+=======
+      const orig = parseInt(orderId, 10) - OFFSET;
+      const res = await fetch(
+        `https://api-xtreative.onrender.com/orders/orders/${orig}/confirm-warehouse/`,
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
         {
           method: "POST",
           headers: {
@@ -277,6 +357,7 @@ export default function OrderLeftSection() {
       if (res.ok) {
         setWarehouseStatuses(prev => ({ ...prev, [itemId]: "shipped" }));
         setWarehouseLoading(prev => ({ ...prev, [itemId]: false }));
+<<<<<<< HEAD
         refreshOrders?.();
       } else {
         console.error("API error:", await res.text());
@@ -284,10 +365,26 @@ export default function OrderLeftSection() {
       }
     } catch (e) {
       console.error("Network error:", e);
+=======
+        // Optionally update progress bar
+        setSteps(prev =>
+          prev.map((s, i) =>
+            i === 2 ? { ...s, width: "w-3/5", spinner: true } : s
+          )
+        );
+        refreshOrders?.();
+      } else {
+        console.error("API error");
+        setWarehouseLoading(prev => ({ ...prev, [itemId]: false }));
+      }
+    } catch (e) {
+      console.error("Network error", e);
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
       setWarehouseLoading(prev => ({ ...prev, [itemId]: false }));
     }
   };
 
+<<<<<<< HEAD
   // Mark order as sent to warehouse
   const handleMarkSent = async () => {
     const token = localStorage.getItem("authToken");
@@ -330,6 +427,10 @@ export default function OrderLeftSection() {
   };
 
   if (loading || loadingProducts) {
+=======
+  // Show loaders or errors
+  if (loading || loadingProducts || isDateLoading) {
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
     return <div className="text-center text-[11px] p-4">Loading order details…</div>;
   }
   if (error) {
@@ -339,6 +440,10 @@ export default function OrderLeftSection() {
     return <div className="text-center text-[11px] p-4 text-red-600">Error: {errorProducts}</div>;
   }
 
+<<<<<<< HEAD
+=======
+  // Locate order
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
   const origId = parseInt(orderId, 10) - OFFSET;
   const order = orders.find(o => o.id === origId);
   if (!order) {
@@ -353,7 +458,13 @@ export default function OrderLeftSection() {
 
   return (
     <div className="flex flex-col md:flex-row font-poppins text-[11px]">
+<<<<<<< HEAD
       <div className="w-full md:w-2/3 p-4">
+=======
+      {/* LEFT SECTION */}
+      <div className="w-full md:w-2/3 p-4">
+        {/* Header & Progress */}
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
         <div className="bg-white shadow rounded-lg mb-4">
           <div className="p-6">
             <div className="flex justify-between items-center mb-4">
@@ -363,15 +474,24 @@ export default function OrderLeftSection() {
                   <span className="px-2 py-1 bg-green-100 text-green-800 text-[10px] rounded">
                     {order.payment_status || "Paid"}
                   </span>
+<<<<<<< HEAD
                   <span className={`px-2 py-1 border border-yellow-500 text-yellow-500 text-[10px] rounded ${getWarehouseStatusClasses(order.status)}`}>
                     {capitalize(order.status || "Unknown")}
+=======
+                  <span className="px-2 py-1 border border-yellow-500 text-yellow-500 text-[10px] rounded">
+                    {order.status || "Unknown"}
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
                   </span>
                 </h4>
                 <p className="text-[11px] text-gray-500 mt-1">{createdDate}</p>
               </div>
             </div>
             <h4 className="mb-4 text-[10px] text-[#f9622c]">Progress</h4>
+<<<<<<< HEAD
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+=======
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
               {steps.map((s, i) => (
                 <div key={i}>
                   <div className="bg-gray-200 rounded-full h-1.5 overflow-hidden">
@@ -381,6 +501,12 @@ export default function OrderLeftSection() {
                   </div>
                   <div className="flex items-center gap-2 mt-2">
                     <p className="text-[10px]">{s.label}</p>
+<<<<<<< HEAD
+=======
+                    {s.spinner && (
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-yellow-500 border-t-transparent" />
+                    )}
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
                   </div>
                 </div>
               ))}
@@ -391,6 +517,7 @@ export default function OrderLeftSection() {
               Order Delivering date:
               <span className="ml-1 font-medium text-[#280300]">{shipDate}</span>
             </p>
+<<<<<<< HEAD
             {currentStep < steps.length - 1 && (
               <button
                 onClick={handleNextStep}
@@ -403,11 +530,28 @@ export default function OrderLeftSection() {
               <button disabled className="px-4 py-2 text-green-500 flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-green-500" />
                 Order Completed
+=======
+            {!isMarked ? (
+              <button
+                onClick={handleReadyToDeliver}
+                className="px-4 py-2 text-[11px] bg-[#f9622c] text-white rounded"
+              >
+                Mark As Ready For Delivery
+              </button>
+            ) : (
+              <button disabled className="px-4 py-2 text-green-500 flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                Out For Delivery
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
               </button>
             )}
           </div>
         </div>
 
+<<<<<<< HEAD
+=======
+        {/* Products Table */}
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
         <div className="bg-white shadow rounded-lg overflow-x-auto mb-4">
           <table className="min-w-full text-left text-gray-600">
             <thead className="bg-gray-50 uppercase text-gray-500 text-[10px]">
@@ -460,6 +604,10 @@ export default function OrderLeftSection() {
           </table>
         </div>
 
+<<<<<<< HEAD
+=======
+        {/* Warehouse Table */}
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
         <div className="bg-white shadow rounded-lg overflow-x-auto mb-4">
           <h5 className="px-4 py-2 text-[11px] font-medium">Warehouse</h5>
           <table className="min-w-full text-left text-gray-600 text-[10px]">
@@ -469,6 +617,10 @@ export default function OrderLeftSection() {
                 <th className="px-4 py-3">Quantity</th>
                 <th className="px-4 py-3">Price per item</th>
                 <th className="px-4 py-3">Amount</th>
+<<<<<<< HEAD
+=======
+                {/* Status column removed */}
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
                 <th className="px-4 py-3">Action</th>
               </tr>
             </thead>
@@ -477,6 +629,7 @@ export default function OrderLeftSection() {
                 <tr>
                   <td colSpan={5} className="px-4 py-6 text-center text-gray-500">
                     No product in the warehouse
+<<<<<<< HEAD
                     {markSentLoading ? (
                       <div className="ml-4 inline-block animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent" />
                     ) : (
@@ -487,6 +640,8 @@ export default function OrderLeftSection() {
                         {isSent ? 'Sent to Warehouse' : 'Mark as Sent to Warehouse'}
                       </button>
                     )}
+=======
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
                   </td>
                 </tr>
               </tbody>
@@ -539,12 +694,24 @@ export default function OrderLeftSection() {
           </table>
         </div>
 
+<<<<<<< HEAD
         <OrderTimeline steps={steps} currentStep={currentStep} />
       </div>
 
+=======
+        {/* Timeline */}
+        <OrderTimeline order={order} />
+      </div>
+
+      {/* RIGHT SECTION: Customer Details */}
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
       <div className="w-full md:w-1/3 p-4">
         <CustomerDetailsCard order={order} />
       </div>
     </div>
   );
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06

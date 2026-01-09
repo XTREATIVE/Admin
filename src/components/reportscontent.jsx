@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import React, { useState, useMemo, useEffect, useRef } from "react";
+=======
+import React, { useState, useMemo, useEffect, useRef, useContext } from "react";
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
 import { ChevronDown, Search } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -46,6 +50,10 @@ export default function ReportContent() {
   const [loanActiveTab, setLoanActiveTab] = useState("applications");
   const [financialActiveTab, setFinancialActiveTab] = useState("upcoming");
   const reportRef = useRef();
+<<<<<<< HEAD
+=======
+  const { products } = useContext(ProductsContext);
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
 
   // Convert topProductImg to Base64
   useEffect(() => {
@@ -315,7 +323,11 @@ export default function ReportContent() {
           { key: "summary", label: "Summary & Payout Leaderboard" },
         ];
         const activeFinancialTabObj = financialTabs.find((tab) => tab.key === financialActiveTab);
+<<<<<<< HEAD
         activeTabLabel = activeFinancialTabObj ? activeFinancialTabObj.label : "Unknown";
+=======
+        activeTabLabel = activeFinancialTabObj ? activeTabObj.label : "Unknown";
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
       } else {
         // For other report types (orders, product)
         activeTabLabel = reportType.charAt(0).toUpperCase() + reportType.slice(1);

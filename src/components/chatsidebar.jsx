@@ -22,6 +22,7 @@ export default function ChatSidebar({ contacts, selected, setSelected }) {
     return fuse.search(searchQuery).map(result => result.item);
   }, [searchQuery, fuse, contacts]);
 
+<<<<<<< HEAD
   // Fetch conversation history for each contact to show last message
   const conversationContacts = useMemo(() => {
     return filteredContacts.map(c => {
@@ -43,6 +44,15 @@ export default function ChatSidebar({ contacts, selected, setSelected }) {
         time: latestTime
       };
     }).filter(c => Boolean(c.lastMessage)); // Only show contacts with messages
+=======
+  // Only show contacts that have conversation history
+  // You can adjust the condition (lastMessage or messages array) as needed
+  const conversationContacts = useMemo(() => {
+    return filteredContacts.filter(c => 
+      Boolean(c.lastMessage) 
+      || (Array.isArray(c.messages) && c.messages.length > 0)
+    );
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
   }, [filteredContacts]);
 
   return (
@@ -117,4 +127,8 @@ export default function ChatSidebar({ contacts, selected, setSelected }) {
       </nav>
     </aside>
   );
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06

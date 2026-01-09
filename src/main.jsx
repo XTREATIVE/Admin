@@ -1,4 +1,7 @@
+<<<<<<< HEAD
 // src/main.jsx
+=======
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
@@ -17,11 +20,15 @@ import { LoansProvider } from './context/loanscontext';
 import { ClaimsProvider } from './context/claimscontext';
 import { PayoutsProvider } from './context/payoutscontext'
 import { CurrencyProvider } from './context/currencycontext'
+<<<<<<< HEAD
 import { DateProvider } from './context/datecontext'
+=======
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <CurrencyProvider>
+<<<<<<< HEAD
       <DateProvider>
         <UserProvider>
           <ProductProvider>
@@ -45,5 +52,28 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         </UserProvider>
       </DateProvider>
     </CurrencyProvider>
+=======
+      <LoansProvider>
+        <PayoutsProvider>
+          <PaymentProvider>
+            <AllProductsProvider>
+              <OrdersProvider>
+                <ClaimsProvider>
+                  <UserProvider>
+                    <ProductProvider>
+                      <BrowserRouter>
+                        <App />
+                      </BrowserRouter>
+                    </ProductProvider>
+                  </UserProvider>
+                </ClaimsProvider>
+              </OrdersProvider>
+            </AllProductsProvider>
+          </PaymentProvider>
+        </PayoutsProvider>
+      </LoansProvider>
+    </CurrencyProvider>
+    <ToastContainer position="bottom-right" autoClose={3000} />
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
   </React.StrictMode>
 );

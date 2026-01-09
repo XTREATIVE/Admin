@@ -1,5 +1,9 @@
 // src/context/ProductContext.js
+<<<<<<< HEAD
 import React, { createContext, useState } from "react";
+=======
+import React, { createContext, useState, useEffect } from "react";
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
 
 export const ProductContext = createContext({
   selectedProduct: null,

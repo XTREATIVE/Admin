@@ -1,11 +1,19 @@
+<<<<<<< HEAD
 // src/components/LoanDetails.jsx
+=======
+// src/components/loan_details_Tab.jsx
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
 import React, { useState, useContext } from 'react';
 import ReactDOM from 'react-dom';
 import { FiZoomIn } from 'react-icons/fi';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { LoansContext } from '../context/loanscontext';
 
+<<<<<<< HEAD
 export default function LoanDetails() {
+=======
+const LoanDetails = () => {
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
   const {
     vendors,
     loans,
@@ -30,8 +38,13 @@ export default function LoanDetails() {
 
   const renderDocs = (loan) => {
     const docs = [];
+<<<<<<< HEAD
     if (loan.national_id_photo) docs.push({ uri: loan.national_id_photo, label: 'National ID' });
     if (loan.business_documents) docs.push({ uri: loan.business_documents, label: 'Business Doc' });
+=======
+    if (loan.national_id_photo_url) docs.push({ uri: loan.national_id_photo_url, label: 'National ID' });
+    if (loan.business_documents_url) docs.push({ uri: loan.business_documents_url, label: 'Business Doc' });
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
 
     if (!docs.length) return <p className="text-gray-500 italic text-[11px]">No documents uploaded.</p>;
 
@@ -117,13 +130,21 @@ export default function LoanDetails() {
                 </div>
                 <div>
                   <p className="text-gray-500">Wallet Balance</p>
+<<<<<<< HEAD
                   <p className="font-medium">UGX {loan.vendor_balance?.toLocaleString('en-UG') || '–'}</p>
+=======
+                  <p className="font-medium">UGX {loan.current_balance?.toLocaleString('en-UG') || '–'}</p>
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
                 </div>
                 <div>
                   <p className="text-gray-500">Guarantors</p>
                   <p className="font-medium whitespace-pre-line">
+<<<<<<< HEAD
                     {(loan.guarantors || []).map(id => {
                       const g = vendors.find(v => v.id === id);
+=======
+                    {(loan.guarantor_details || []).map(g => {
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
                       return g ? g.username : 'Unknown';
                     }).join('\n') || '-'}
                   </p>
@@ -206,4 +227,10 @@ export default function LoanDetails() {
       </div>
     </div>
   );
+<<<<<<< HEAD
 }
+=======
+};
+
+export default LoanDetails;
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06

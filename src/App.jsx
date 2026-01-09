@@ -1,5 +1,11 @@
+<<<<<<< HEAD
 import React from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+=======
+// App.jsx
+import React from "react";
+import { Routes, Route } from "react-router-dom";
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
 import LoginScreen from "./pages/login.jsx";
 import AdminDashboard from "./pages/adminDashboard.jsx";
 import Vendors from "./pages/vendors.jsx";
@@ -20,6 +26,7 @@ import Finance from "./pages/finance.jsx";
 import Loans from "./pages/loans.jsx";
 import Profile from "./pages/profile.jsx"; 
 import Chat from "./pages/chat.jsx";
+<<<<<<< HEAD
 import Reset_Password from "./pages/reset_password.jsx";
 import { UserProvider } from "./context/usercontext";
 import ChatTestPage from "./pages/chatTestPage.jsx";
@@ -193,3 +200,49 @@ function App() {
 }
 
 export default App;
+=======
+import Reset_Password from "./pages/reset_password.jsx"
+
+// Import the custom navigation limiting hook
+import { useSingleStepNavigationLimit } from "./hooks/custom.jsx";
+
+
+function App() {
+  // Call the hook once at the top level so it affects the entire app.
+  useSingleStepNavigationLimit();
+
+  return (
+    <>
+      <Routes>
+        {/* Wrap the login route with PublicRoute */}
+        <Route path="/" element={<LoginScreen />} />
+        <Route path="/admin-dashboard" element={<AdminDashboard />} />
+        <Route path="/Settings" element={<Settings />} />
+        <Route path="/profile" element={<Profile />} /> {/* <-- New route added */}
+        <Route path="/Vendors" element={<Vendors />} />
+        <Route path="/Customers" element={<Customers />} />
+        <Route path="/products" element={<Products />} />
+        <Route path="/logout" element={<Logout />} />
+
+        <Route path="/Vendors/details" element={<VendorsDetails />} />
+        <Route path="/Customers/details" element={<CustomerDetails />} />
+        <Route path="/orders" element={<OrderList />} />
+        <Route path="/order/:orderId" element={<Order_Details />} />
+        <Route
+          path="/products/product/:publicId/:slug"
+          element={<ProductDetails />}
+        />
+        <Route path="/chat" element={<Chat />} />
+        <Route path="/reports" element={<Reports />} />
+        <Route path="/finance" element={<Finance />} />
+        <Route path="/loans" element={<Loans />} />
+        <Route path="/reset_password" element={<Reset_Password />} />
+      </Routes>
+      {/* ToastContainer should be rendered outside of <Routes> */}
+      <ToastContainer position="bottom-right" autoClose={3000} />
+    </>
+  );
+}
+
+export default App;
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06

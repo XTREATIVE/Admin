@@ -15,6 +15,18 @@ const ProductSection = ({
 }) => {
   const { setSelectedProduct } = useContext(ProductContext);
 
+<<<<<<< HEAD
+=======
+  // Show loader while fetching
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-40">
+        <Loader />
+      </div>
+    );
+  }
+
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
   // Basic filters
   const basicFilteredProducts = useMemo(() => {
     return products.filter((product) => {
@@ -59,6 +71,7 @@ const ProductSection = ({
   // Pagination
   const [productsPerPage, setProductsPerPage] = useState(12);
   const [currentPage, setCurrentPage] = useState(1);
+<<<<<<< HEAD
 
   // Show loader while fetching
   if (loading) {
@@ -68,6 +81,8 @@ const ProductSection = ({
       </div>
     );
   }
+=======
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
   const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
   const idxLast = currentPage * productsPerPage;
   const idxFirst = idxLast - productsPerPage;

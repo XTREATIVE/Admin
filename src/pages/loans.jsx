@@ -3,7 +3,11 @@ import React from 'react';
 import Sidebar from '../components/sidebar';
 import Header from '../components/header';
 // Swap out FinanceOverview for LoanOverview
+<<<<<<< HEAD
 import LoanOverview from '../components/loansoverview';
+=======
+import loansoverview from '../components/loansoverview';
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
 
 const Loans = () => {
   return (
@@ -22,4 +26,8 @@ const Loans = () => {
   );
 };
 
+<<<<<<< HEAD
 export default Loans;
+=======
+export default Loans;
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06

@@ -5,7 +5,10 @@ import {
   FaExclamationCircle,
   FaFilter,
 } from "react-icons/fa";
+<<<<<<< HEAD
 import defaultImg from "../assets/default.png";
+=======
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
 
 // Helper function: parse "dd/mm/yyyy" to a Date object
 function parseDate(dateStr) {
@@ -308,7 +311,11 @@ export default function VendorDetailsProducts({ vendor }) {
                   {/* Product Name & Details */}
                   <td className="px-4 py-3 flex items-center space-x-2 min-w-[200px]">
                     <img
+<<<<<<< HEAD
                       src={product.product_image_url || defaultImg}
+=======
+                      src={product.product_image_url || tshirtImg}
+>>>>>>> 803a45e8eb37a95a0768e6ff9712cc7a94521c06
                       alt={product.name}
                       className="w-10 h-10 object-cover rounded"
                     />
