@@ -36,6 +36,7 @@ export default defineConfig({
 
   // === Build optimizations ===
   build: {
+    outDir: "build",
     rollupOptions: {
       output: {
         // Group all node_modules into one big vendor chunk → better caching
