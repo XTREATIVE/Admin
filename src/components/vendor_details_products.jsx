@@ -59,7 +59,7 @@ export default function VendorDetailsProducts({ vendor }) {
   // Fetch the public products list from API on component mount
   useEffect(() => {
     setLoading(true);
-    fetch("https://api-xtreative-nwf7.onrender.com/products/listing/")
+    fetch("https://xtreativeapi.onrender.com/products/listing/")
       .then((response) => {
         if (!response.ok) {
           throw new Error("Error fetching products");

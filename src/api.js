@@ -1,4 +1,4 @@
-const API_BASE_URL = "https://api-xtreative-nwf7.onrender.com";
+const API_BASE_URL = "https://xtreativeapi.onrender.com";
 
 // Generic authenticated fetch helper
 export const authFetch = async (path, options = {}) => {

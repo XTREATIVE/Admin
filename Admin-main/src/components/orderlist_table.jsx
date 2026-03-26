@@ -53,7 +53,7 @@ const getDuration = (isoDateString) => {
 };
 
 // Base API endpoint pattern
-const API_STATUS_ENDPOINT = "https://api-xtreative.onrender.com/orders/{order_id}/status/";
+const API_STATUS_ENDPOINT = "https://xtreativeapi.onrender.com/orders/{order_id}/status/";
 
 const OrderTable = () => {
   const { orders, loading, error, refreshOrders } = useContext(OrdersContext);

@@ -7,7 +7,7 @@ import { FaStar } from "react-icons/fa";
 import ProductSection from "./product_section";
 import Loader from "../pages/Loader";
 
-const API_URL = "https://api-xtreative.onrender.com/products/listing/";
+const API_URL = "https://xtreativeapi.onrender.com/products/listing/";
 
 const FilterAndCard = () => {
   // Toggle states for filter sections

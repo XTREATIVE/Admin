@@ -186,7 +186,7 @@ const FinanceOverview = () => {
       // Try alternative endpoint
       try {
         console.log('Trying alternative endpoint: /products/listing/');
-        const response = await fetch('https://api-xtreative-nwf7.onrender.com/products/listing/', {
+        const response = await fetch('https://xtreativeapi.onrender.com/products/listing/', {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
             'Content-Type': 'application/json'

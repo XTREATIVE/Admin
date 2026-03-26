@@ -16,7 +16,7 @@ export const PayoutsProvider = ({ children }) => {
       setError(null);
       try {
         const token = localStorage.getItem('authToken');
-        const res = await fetch('https://api-xtreative-nwf7.onrender.com/admins/payouts/', {
+        const res = await fetch('https://xtreativeapi.onrender.com/admins/payouts/', {
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,

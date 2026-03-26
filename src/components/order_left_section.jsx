@@ -6,7 +6,7 @@
  * FIX 1 — Hardcoded confirm-warehouse URL (THE CORE FIX)
  *   BEFORE: tried two URLs in a loop using ${API_BASE} variable
  *   AFTER:  single hardcoded URL:
- *           https://api-xtreative.onrender.com/orders/orders/{id}/confirm-warehouse/
+ *           https://xtreativeapi.onrender.com/orders/orders/{id}/confirm-warehouse/
  *   WHY:    The API schema explicitly defines POST /orders/orders/{id}/confirm-warehouse/
  *           The fallback /orders/{id}/confirm-warehouse/ does not exist and caused silent 404s.
  *
@@ -31,7 +31,7 @@
  *
  * FIX 5 — update-status URLs (step 2→3) also hardcoded
  *   BEFORE: used ${API_BASE} variable in both fallback URLs
- *   AFTER:  both URLs use the full hardcoded https://api-xtreative.onrender.com base
+ *   AFTER:  both URLs use the full hardcoded https://xtreativeapi.onrender.com base
  * ────────────────────────────────────────────────────────────────────────────
  */
 
@@ -48,7 +48,7 @@ import { ProductsContext } from "../context/allproductscontext";
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 // FIX 1 & 5: Single hardcoded base — no variable substitution can break it.
-const API = "https://api-xtreative.onrender.com";
+const API = "https://xtreativeapi.onrender.com";
 const OFFSET = 1000;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -360,7 +360,7 @@ export default function OrderLeftSection() {
   //   StepActionButton already prevents clicks at step 0 via isVendorStep.
   //
   // FIX 1: confirm-warehouse URL is hardcoded — no variable, no loop, no fallback.
-  //   Exact URL: https://api-xtreative.onrender.com/orders/orders/{dbId}/confirm-warehouse/
+  //   Exact URL: https://xtreativeapi.onrender.com/orders/orders/{dbId}/confirm-warehouse/
   const handleNextStep = async () => {
     // FIX 2: Removed || currentStep === 0 from this guard
     if (currentStep >= STEPS.length - 1 || isUpdatingRef.current) return;
@@ -382,8 +382,8 @@ export default function OrderLeftSection() {
         //
         // FIX 1 (CORE FIX): Single hardcoded URL. No loop. No fallback.
         // API schema: POST /orders/orders/{order_id}/confirm-warehouse/
-        // Full URL:   https://api-xtreative.onrender.com/orders/orders/{dbId}/confirm-warehouse/
-        const confirmUrl = `https://api-xtreative.onrender.com/orders/orders/${dbId}/confirm-warehouse/`;
+        // Full URL:   https://xtreativeapi.onrender.com/orders/orders/{dbId}/confirm-warehouse/
+        const confirmUrl = `https://xtreativeapi.onrender.com/orders/orders/${dbId}/confirm-warehouse/`;
 
         res = await fetch(confirmUrl, {
           method:  "POST",
@@ -402,8 +402,8 @@ export default function OrderLeftSection() {
         //
         // FIX 5: Both URLs use hardcoded base (no ${API_BASE} variable)
         // Try custom update-status endpoint first, fall back to documented PATCH endpoint
-        const urlPrimary  = `https://api-xtreative.onrender.com/orders/${dbId}/update-status/`;
-        const urlFallback = `https://api-xtreative.onrender.com/orders/${dbId}/status/`;
+        const urlPrimary  = `https://xtreativeapi.onrender.com/orders/${dbId}/update-status/`;
+        const urlFallback = `https://xtreativeapi.onrender.com/orders/${dbId}/status/`;
 
         res = await fetch(urlPrimary, {
           method:  "PATCH",
@@ -454,7 +454,7 @@ export default function OrderLeftSection() {
     setWarehouseLoading(prev => ({ ...prev, [itemId]: true }));
     try {
       // Same hardcoded URL as handleNextStep step 1 — item_id in body
-      const confirmUrl = `https://api-xtreative.onrender.com/orders/orders/${dbId}/confirm-warehouse/`;
+      const confirmUrl = `https://xtreativeapi.onrender.com/orders/orders/${dbId}/confirm-warehouse/`;
       const res = await fetch(confirmUrl, {
         method:  "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },

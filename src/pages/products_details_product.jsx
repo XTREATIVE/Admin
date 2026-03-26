@@ -40,7 +40,7 @@ export default function ProductDetails() {
     (async () => {
       try {
         const res = await fetch(
-          `https://api-xtreative-nwf7.onrender.com/vendors/${selectedVendorId}/details/`
+          `https://xtreativeapi.onrender.com/vendors/${selectedVendorId}/details/`
         );
         if (!res.ok) throw new Error("Failed to load vendor");
         const data = await res.json();

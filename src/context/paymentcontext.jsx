@@ -9,7 +9,7 @@ export const PaymentProvider = ({ children }) => {
     async function fetchPaymentMethods() {
       try {
         const response = await fetch(
-          "https://api-xtreative-nwf7.onrender.com/customers/payment-methods/"
+          "https://xtreativeapi.onrender.com/customers/payment-methods/"
         );
         const data = await response.json();
         setPaymentMethods(data);

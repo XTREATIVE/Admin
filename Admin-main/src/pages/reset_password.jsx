@@ -34,7 +34,7 @@ const ResetPassword = () => {
   const handleReset = async (values, { setSubmitting }) => {
     try {
       const res = await fetch(
-        "https://api-xtreative.onrender.com/accounts/auth/password-reset/request/",
+        "https://xtreativeapi.onrender.com/accounts/auth/password-reset/request/",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

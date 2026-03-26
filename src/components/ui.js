@@ -17,7 +17,7 @@ import LoanRepayments from "./loansvendors";
 import { LoansContext } from "../context/loanscontext";
 
 /* ─── helpers ──────────────────────────────────────────────────── */
-const BASE = "https://api-xtreative-nwf7.onrender.com";
+const BASE = "https://xtreativeapi.onrender.com";
 const authHeader = () => ({
   "Content-Type": "application/json",
   Authorization: `Bearer ${localStorage.getItem("authToken")}`,

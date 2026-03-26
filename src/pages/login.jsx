@@ -5,7 +5,7 @@ import * as Yup from "yup";
 import { IoEyeOffOutline, IoEyeOutline } from "react-icons/io5";
 import logo from "../assets/logo.png";
 
-const API_URL = "https://api-xtreative-nwf7.onrender.com/accounts/admin/login/";
+const API_URL = "https://xtreativeapi.onrender.com/accounts/admin/login/";
 
 const LoginScreen = () => {
   const navigate = useNavigate();

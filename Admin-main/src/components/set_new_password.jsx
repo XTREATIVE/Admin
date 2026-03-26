@@ -40,7 +40,7 @@ const SetNewPassword = ({ resetToken, onCancel }) => {
 
     try {
       const res = await fetch(
-        "https://api-xtreative.onrender.com/accounts/auth/admin-password-reset/",
+        "https://xtreativeapi.onrender.com/accounts/auth/admin-password-reset/",
         {
           method: "POST",
           headers: {

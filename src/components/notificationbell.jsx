@@ -79,7 +79,7 @@ const NotificationBell = () => {
     }
     
     const allNotificationsData = await fetchWithAuth(
-      "https://api-xtreative-nwf7.onrender.com/notifications/all/"
+      "https://xtreativeapi.onrender.com/notifications/all/"
     );
 
     console.log('🔍 Raw API response:', allNotificationsData);
@@ -142,7 +142,7 @@ const NotificationBell = () => {
 
     try {
       const response = await fetch(
-        `https://api-xtreative-nwf7.onrender.com/notifications/${notificationId}/mark-read/`,
+        `https://xtreativeapi.onrender.com/notifications/${notificationId}/mark-read/`,
         {
           method: "PATCH",
           headers: {
@@ -180,7 +180,7 @@ const NotificationBell = () => {
 
     try {
       const response = await fetch(
-        "https://api-xtreative-nwf7.onrender.com/notifications/mark-all-read/",
+        "https://xtreativeapi.onrender.com/notifications/mark-all-read/",
         {
           method: "POST",
           headers: {

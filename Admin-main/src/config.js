@@ -2,7 +2,7 @@
 
 // Define the base URL for your API
 // src/config.js
-export const API_BASE_URL = 'https://api-xtreative.onrender.com';
+export const API_BASE_URL = 'https://xtreativeapi.onrender.com';
 export const POLLING_INTERVAL = 5000; 
 
 // Optional: Add other configuration variables if needed

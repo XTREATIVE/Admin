@@ -46,7 +46,7 @@ const OTPVerification = ({ isOpen, onClose, onSuccess }) => {
 
     try {
       const res = await fetch(
-        "https://api-xtreative-nwf7.onrender.com/accounts/auth/password-reset/admin-reset-verify-otp/",
+        "https://xtreativeapi.onrender.com/accounts/auth/password-reset/admin-reset-verify-otp/",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

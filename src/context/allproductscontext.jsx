@@ -12,7 +12,7 @@ export const AllProductsProvider = ({ children }) => {
     const fetchProducts = async () => {
       try {
         setLoadingProducts(true);
-        const res = await fetch("https://api-xtreative-nwf7.onrender.com/products/listing/");
+        const res = await fetch("https://xtreativeapi.onrender.com/products/listing/");
         if (!res.ok) {
           throw new Error(`Error: ${res.status}`);
         }
