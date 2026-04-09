@@ -58,7 +58,7 @@ export const LoansProvider = ({ children }) => {
     approveLoan: async (id) => {
       try {
         const token = localStorage.getItem('authToken');
-        const res = await fetch(`https://xtreativeapi.onrender.com/${id}/approve/`, {
+        const res = await fetch(`https://xtreativeapi.onrender.com/loan_app/${id}/approve/`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
         });

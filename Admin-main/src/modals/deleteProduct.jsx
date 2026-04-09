@@ -30,7 +30,7 @@ export default function DeleteProductModal({
 
     try {
       const response = await authFetch(
-        `https://xtreativeapi.onrender.com/products/admin/products/${product.id}/delete/`,
+        `/products/admin/products/${product.id}/delete/`,
         {
           method: "DELETE",
         }

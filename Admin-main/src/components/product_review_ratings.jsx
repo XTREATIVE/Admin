@@ -1,57 +1,27 @@
 // components/ReviewsRatings.jsx
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FaStar } from "react-icons/fa"; // For displaying star icons
+import { fetchReviews } from "../api";
 
-export default function ReviewsRatings() {
-  // This data mimics what is shown in the screenshot:
-  const reviews = [
-    {
-      name: "Alinatwe Joel",
-      rating: 5,
-      ratingText: "Excellent Quality",
-      location: "Uganda",
-      date: "16-11-2023",
-      review:
-        "Medium thickness. Did not shrink after wash. Good elasticity. XL size perfectly fits for 5.10 height and heavy body. Did not fade after wash. Only for maroon color t-shirt; color lightly gone in first wash but not faded. I bought 5 t-shirts in different colours. Highly recommended at such a low price.",
-    },
-    {
-      name: "Ahumuza Lillian",
-      rating: 4,
-      ratingText: "Good Quality",
-      location: "Rwanda",
-      date: "21-11-2023",
-      review:
-        "I liked the t-shirt; it's pure cotton and skin friendly, but the size is smaller compared to standard. Best rated.",
-    },
-    {
-      name: "Ahumuza Melan",
-      rating: 4,
-      ratingText: "Good Quality",
-      location: "Rwanda",
-      date: "21-12-2024",
-      review:
-        "I liked the t-shirt; it's pure cotton and skin friendly, but the size is smaller compared to standard. Best rated.",
-    },
-    {
-      name: "Ahumuza Melan",
-      rating: 4,
-      ratingText: "Good Quality",
-      location: "Rwanda",
-      date: "21-12-2024",
-      review:
-        "I liked the t-shirt; it's pure cotton and skin friendly, but the size is smaller compared to standard. Best rated.",
-    },
-    {
-      name: "Ahumuza Ian",
-      rating: 4,
-      ratingText: "Good Quality",
-      location: "Rwanda",
-      date: "21-11-2025",
-      review:
-        "I liked the t-shirt; it's pure cotton and skin friendly, but the size is smaller compared to standard. Best rated.",
-    },
-  ];
+export default function ReviewsRatings({ productId }) {
+  const [reviews, setReviews] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const loadReviews = async () => {
+      try {
+        const data = await fetchReviews(productId);
+        setReviews(data || []);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadReviews();
+  }, [productId]);
 
   // Pagination logic
   const [currentPage, setCurrentPage] = useState(1);
@@ -85,6 +55,9 @@ export default function ReviewsRatings() {
     );
   };
 
+  if (loading) return <div>Loading reviews...</div>;
+  if (error) return <div>Error: {error}</div>;
+
   return (
     <div className="bg-white p-4 rounded shadow">
       <h2 className="text-base sm:text-sm font-semibold mb-4">
@@ -93,7 +66,7 @@ export default function ReviewsRatings() {
 
       {currentPageData.map((review, index) => (
         <div
-          key={index}
+          key={review.id || index}
           className="border-b border-gray-200 pb-4 mb-4 last:border-0 last:pb-0 last:mb-0"
         >
           {/* Reviewer Info */}
@@ -101,16 +74,16 @@ export default function ReviewsRatings() {
             {/* Initials Avatar */}
             <div className="w-10 h-10 rounded-full bg-[#280300] flex items-center justify-center mr-3">
               <span className="text-[12px] font-bold text-[#f9622c]">
-                {getInitials(review.name)}
+                {getInitials(review.user?.name || review.name || 'Anonymous')}
               </span>
             </div>
             <div>
               <h3 className="text-[11px] font-medium leading-tight">
-                {review.name}
+                {review.user?.name || review.name || 'Anonymous'}
               </h3>
               {/* Star Icons */}
               <div className="flex text-yellow-500 text-[12px]">
-                {Array(review.rating)
+                {Array(review.rating || 5)
                   .fill(null)
                   .map((_, i) => (
                     <FaStar key={i} />
@@ -121,16 +94,16 @@ export default function ReviewsRatings() {
 
           {/* Rating Text */}
           <p className="text-[11px] font-semibold text-gray-800 mb-1">
-            {review.ratingText}
+            {review.rating_text || 'Good Quality'}
           </p>
 
           {/* Location and Date */}
           <p className="text-[11px] text-gray-600 mb-2">
-            Reviewed in {review.location} on {review.date}
+            Reviewed in {review.location || 'Unknown'} on {review.created_at ? new Date(review.created_at).toLocaleDateString() : review.date}
           </p>
 
           {/* Review Body */}
-          <p className="text-[11px] text-gray-700">{review.review}</p>
+          <p className="text-[11px] text-gray-700">{review.comment || review.review}</p>
         </div>
       ))}
 

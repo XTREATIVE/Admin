@@ -38,7 +38,7 @@ export default function DeleteVendor({ vendor, onClose, onDeleteConfirm, onDelet
 
     try {
       const response = await authFetch(
-        `https://xtreativeapi.onrender.com/vendors/${vendor.id}/delete/`,
+        `/vendors/${vendor.id}/delete/`,
         {
           method: "DELETE",
         }

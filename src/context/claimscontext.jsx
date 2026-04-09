@@ -1,175 +1,147 @@
-import React, { createContext, useState, useEffect, useContext } from "react";
+import React, { createContext, useState, useEffect, useContext, useCallback } from "react";
 import { OrdersContext } from "./orderscontext";
+import { authFetch } from "../api";   // Adjust import path as needed
 
-// Create Claims Context
 export const ClaimsContext = createContext();
 
-// Claims Provider Component
 export const ClaimsProvider = ({ children }) => {
   const [claims, setClaims] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const ordersContext = useContext(OrdersContext);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        const authToken = localStorage.getItem("authToken"); // Retrieve token from localStorage
+  const fetchClaims = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
 
-        if (!authToken) {
-          throw new Error("No authentication token found. Please log in.");
-        }
+      const { orders, loading: ordersLoading, error: ordersError, toAddressMap } = ordersContext || {};
 
-        // Check if OrdersContext is available
-        if (!ordersContext) {
-          throw new Error("OrdersContext is not available. Ensure ClaimsProvider is wrapped in OrdersProvider.");
-        }
+      if (ordersError) throw new Error(`Orders error: ${ordersError}`);
+      if (ordersLoading) return;
 
-        const { orders, loading: ordersLoading, error: ordersError, toAddressMap } = ordersContext;
-
-        // Log toAddressMap for debugging
-        console.log("toAddressMap:", toAddressMap);
-
-        // Check for orders error
-        if (ordersError) {
-          throw new Error(`Orders error: ${ordersError}`);
-        }
-
-        // Wait for orders to be loaded
-        if (ordersLoading) {
-          return; // Delay fetching until orders are loaded
-        }
-
-        // Create maps for item ID to product name, subtotal, quantity, and product ID
-        const itemMap = orders.reduce((map, order) => {
-          order.items.forEach((item) => {
-            map[item.id] = item.product_name;
-          });
-          return map;
-        }, {});
-
-        const subtotalMap = orders.reduce((map, order) => {
-          order.items.forEach((item) => {
-            map[item.id] = item.subtotal;
-          });
-          return map;
-        }, {});
-
-        const quantityMap = orders.reduce((map, order) => {
-          order.items.forEach((item) => {
-            map[item.id] = item.quantity;
-          });
-          return map;
-        }, {});
-
-        const productIdMap = orders.reduce((map, order) => {
-          order.items.forEach((item) => {
-            map[item.id] = item.product;
-          });
-          return map;
-        }, {});
-
-        // Fetch products to get image URLs
-        const productsResponse = await fetch("https://xtreativeapi.onrender.com/products/listing/", {
-          method: "GET",
-          headers: {
-            "Authorization": `Bearer ${authToken}`,
-            "Content-Type": "application/json",
-          },
+      // Build maps
+      const itemMap = {}, subtotalMap = {}, quantityMap = {}, productIdMap = {};
+      orders?.forEach((order) => {
+        order.items?.forEach((item) => {
+          itemMap[item.id] = item.product_name;
+          subtotalMap[item.id] = item.subtotal;
+          quantityMap[item.id] = item.quantity;
+          productIdMap[item.id] = item.product;
         });
+      });
 
-        if (!productsResponse.ok) {
-          throw new Error("Failed to fetch products");
-        }
+      const [productsData, customersData, claimsData] = await Promise.all([
+        authFetch("/products/listing/").catch(() => []),
+        authFetch("/customers/list/").catch(() => []),
+        authFetch("/returns/list/").catch((err) => { throw err; }),
+      ]);
 
-        const productsData = await productsResponse.json();
-        // Create a map of product ID to image URL
-        const imageMap = productsData.reduce((map, product) => {
-          map[product.id] = product.product_image_url;
-          return map;
-        }, {});
+      const imageMap = productsData.reduce((map, p) => { map[p.id] = p.product_image_url; return map; }, {});
+      const customerMap = customersData.reduce((map, c) => { 
+        map[c.id] = c.username || `Customer ${c.id}`; 
+        return map; 
+      }, {});
 
-        // Fetch customers
-        const customersResponse = await fetch("https://xtreativeapi.onrender.com/customers/list/", {
-          method: "GET",
-          headers: {
-            "Authorization": `Bearer ${authToken}`,
-            "Content-Type": "application/json",
-          },
-        });
+      const transformedClaims = claimsData.map((item) => ({
+        id: item.id,
+        name: customerMap[item.customer] || `Customer ${item.customer}`,
+        order_item: item.order_item,
+        product_name: itemMap[item.order_item] || `Item ${item.order_item}`,
+        reason: item.reason || "No reason provided",
+        time: new Date(item.created_at).toLocaleString(),
+        created_at: item.created_at,
+        status: item.status || "requested",
+        type: (item.status || "").toLowerCase() === "approved" ? "refund" : "claim",
+        giftPrice: subtotalMap[item.order_item] || "N/A",
+        quantity: quantityMap[item.order_item] || 1,
+        image: imageMap[productIdMap[item.order_item]] || null,
+        deliveryAddress: toAddressMap?.[item.order_item]?.trim() || "Pioneer Mall, Burton Street, Kampala, Uganda",
+      }));
 
-        if (!customersResponse.ok) {
-          throw new Error("Failed to fetch customers");
-        }
-
-        const customersData = await customersResponse.json();
-        // Create a map of customer ID to username
-        const customerMap = customersData.reduce((map, customer) => {
-          map[customer.id] = customer.username;
-          return map;
-        }, {});
-
-        // Fetch claims
-        const claimsResponse = await fetch("https://xtreativeapi.onrender.com/returns/list/", {
-          method: "GET",
-          headers: {
-            "Authorization": `Bearer ${authToken}`,
-            "Content-Type": "application/json",
-          },
-        });
-
-        if (!claimsResponse.ok) {
-          if (claimsResponse.status === 401) {
-            // Clear tokens on 401 Unauthorized
-            localStorage.removeItem("authToken");
-            localStorage.removeItem("refreshToken");
-            throw new Error("Authentication failed. Please log in again.");
-          }
-          throw new Error("Failed to fetch claims");
-        }
-
-        const claimsData = await claimsResponse.json();
-
-        // Transform API data to match component's expected format
-        const transformedClaims = claimsData.map((item) => {
-          // Log order_item and corresponding to_address for debugging
-          console.log(`order_item: ${item.order_item}, to_address: ${toAddressMap[item.order_item]}`);
-          
-          // Use to_address or fallback to default address
-          const deliveryAddress = toAddressMap[item.order_item] && toAddressMap[item.order_item].trim() !== ""
-            ? toAddressMap[item.order_item]
-            : "Pioneer Mall, Burton Street, Kampala, Uganda";
-
-          return {
-            name: customerMap[item.customer] || `Customer ${item.customer}`,
-            order_item: item.order_item, // Keep order_item for ID reference
-            product_name: itemMap[item.order_item] || `Item ${item.order_item}`, // Use product name from orders
-            reason: item.reason, // Include reason
-            time: new Date(item.created_at).toLocaleString(), // Format date
-            created_at: item.created_at, // Include raw created_at for graph
-            status: item.status, // Include status
-            type: item.status.toLowerCase() === "approved" ? "refund" : "claim", // Keep for compatibility
-            giftPrice: subtotalMap[item.order_item] || "N/A", // Use subtotal as giftPrice
-            quantity: quantityMap[item.order_item] || "1", // Use quantity from orders
-            image: imageMap[productIdMap[item.order_item]] || null, // Use product image URL
-            deliveryAddress // Use to_address or fallback
-          };
-        });
-
-        setClaims(transformedClaims);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
+      setClaims(transformedClaims);
+    } catch (err) {
+      console.error("Fetch claims error:", err);
+      setError(err.message || "Failed to load claims");
+    } finally {
+      setIsLoading(false);
+    }
   }, [ordersContext]);
 
+  useEffect(() => {
+    fetchClaims();
+  }, [fetchClaims]);
+
+  // Improved approve with better error detail
+  const approveClaim = async (returnId) => {
+    try {
+      setError(null);
+
+      // Try without body first (most common for simple status actions)
+      await authFetch(`/returns/approve/${returnId}/`, { 
+        method: "PATCH" 
+      });
+
+      setClaims((prev) =>
+        prev.map((c) => c.id === returnId ? { ...c, status: "approved", type: "refund" } : c)
+      );
+    } catch (err) {
+      console.error("Approve failed:", err);
+      let msg = err.message || "Failed to approve claim";
+
+      // Extract detailed validation error from DRF 400
+      if (err.message.includes("400") && err.response?.data) {
+        const data = err.response.data;
+        msg = data.detail || 
+              (typeof data === "object" ? Object.entries(data).map(([k,v]) => `${k}: ${v}`).join(", ") : msg);
+      } else if (err.message.includes("400")) {
+        msg = "Bad Request: Check if the claim can still be approved (maybe already processed).";
+      }
+
+      setError(msg);
+      throw err;
+    }
+  };
+
+  const rejectClaim = async (returnId) => {
+    try {
+      setError(null);
+
+      await authFetch(`/returns/api/returns/${returnId}/reject/`, { 
+        method: "PATCH" 
+      });
+
+      setClaims((prev) =>
+        prev.map((c) => c.id === returnId ? { ...c, status: "rejected", type: "claim" } : c)
+      );
+    } catch (err) {
+      console.error("Reject failed:", err);
+      let msg = err.message || "Failed to reject claim";
+
+      if (err.message.includes("400") && err.response?.data) {
+        const data = err.response.data;
+        msg = data.detail || 
+              (typeof data === "object" ? Object.entries(data).map(([k,v]) => `${k}: ${v}`).join(", ") : msg);
+      } else if (err.message.includes("400")) {
+        msg = "Bad Request: The server rejected the reject action.";
+      }
+
+      setError(msg);
+      throw err;
+    }
+  };
+
   return (
-    <ClaimsContext.Provider value={{ claims, isLoading, error }}>
+    <ClaimsContext.Provider
+      value={{
+        claims,
+        isLoading,
+        error,
+        approveClaim,
+        rejectClaim,
+        retryFetch: fetchClaims,
+      }}
+    >
       {children}
     </ClaimsContext.Provider>
   );
