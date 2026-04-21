@@ -18,12 +18,14 @@ import "react-toastify/dist/ReactToastify.css";
 import "./styles/index.css";
 import Finance from "./pages/finance.jsx";
 import Loans from "./pages/loans.jsx";
-import Profile from "./pages/profile.jsx"; 
+import Profile from "./pages/profile.jsx";
 import Chat from "./pages/chat.jsx";
 import Reset_Password from "./pages/reset_password.jsx";
+import SupportPage from "./pages/SupportPage.jsx"; // ✅ NEW
+
 import { useSingleStepNavigationLimit } from "./hooks/custom.jsx";
 
-// Custom ProtectedRoute component
+// ─── Protected Route ──────────────────────────────────────────────────────────
 const ProtectedRoute = ({ children }) => {
   const isAuthenticated = !!localStorage.getItem("authToken");
   const location = useLocation();
@@ -34,8 +36,11 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
+// ─── App ──────────────────────────────────────────────────────────────────────
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem("authToken"));
+  const [isAuthenticated, setIsAuthenticated] = useState(
+    !!localStorage.getItem("authToken")
+  );
   useSingleStepNavigationLimit();
 
   useEffect(() => {
@@ -49,11 +54,11 @@ function App() {
   return (
     <>
       <Routes>
-        {/* Public routes */}
+        {/* ── Public routes ── */}
         <Route path="/" element={<LoginScreen />} />
         <Route path="/reset_password" element={<Reset_Password />} />
 
-        {/* Protected routes - all pages enabled */}
+        {/* ── Protected routes ── */}
         <Route
           path="/admin-dashboard"
           element={
@@ -62,6 +67,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/reports"
           element={
@@ -70,6 +76,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/Vendors"
           element={
@@ -78,6 +85,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/Vendors/details"
           element={
@@ -86,6 +94,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/Customers"
           element={
@@ -94,6 +103,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/Customers/details"
           element={
@@ -102,6 +112,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/products"
           element={
@@ -110,6 +121,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/products/product/:publicId/:slug"
           element={
@@ -118,6 +130,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/orders"
           element={
@@ -126,6 +139,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/order/:orderId"
           element={
@@ -134,6 +148,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/finance"
           element={
@@ -142,6 +157,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/loans"
           element={
@@ -150,14 +166,7 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/chat"
-          element={
-            <ProtectedRoute>
-              <Chat />
-            </ProtectedRoute>
-          }
-        />
+
         <Route
           path="/Settings"
           element={
@@ -166,6 +175,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/profile"
           element={
@@ -174,6 +184,26 @@ function App() {
             </ProtectedRoute>
           }
         />
+
+        <Route
+          path="/chat"
+          element={
+            <ProtectedRoute>
+              <Chat />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* ✅ Support Tickets — opened by the chat icon in AdminDashboard */}
+        <Route
+          path="/support"
+          element={
+            <ProtectedRoute>
+              <SupportPage />
+            </ProtectedRoute>
+          }
+        />
+
         <Route
           path="/logout"
           element={
@@ -182,8 +212,11 @@ function App() {
             </ProtectedRoute>
           }
         />
+
+        {/* ── Fallback ── */}
         <Route path="*" element={<Navigate to="/admin-dashboard" replace />} />
       </Routes>
+
       <ToastContainer position="bottom-right" autoClose={3000} />
     </>
   );

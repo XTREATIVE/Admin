@@ -18,30 +18,31 @@ import "react-toastify/dist/ReactToastify.css";
 import "./styles/index.css";
 import Finance from "./pages/finance.jsx";
 import Loans from "./pages/loans.jsx";
-import Profile from "./pages/profile.jsx"; 
+import Profile from "./pages/profile.jsx";
 import Chat from "./pages/chat.jsx";
 import Reset_Password from "./pages/reset_password.jsx";
+import SupportPage from "./pages/SupportPage.jsx"; // ✅ NEW
 
-// Custom ProtectedRoute component
+import { useSingleStepNavigationLimit } from "./hooks/custom.jsx";
+
+// ─── Protected Route ──────────────────────────────────────────────────────────
 const ProtectedRoute = ({ children }) => {
-  const isAuthenticated = !!localStorage.getItem("authToken"); // Check if auth token exists
+  const isAuthenticated = !!localStorage.getItem("authToken");
   const location = useLocation();
 
   if (!isAuthenticated) {
-    // Redirect to login page and save the intended destination
     return <Navigate to="/" state={{ from: location }} replace />;
   }
   return children;
 };
 
-// Assuming useSingleStepNavigationLimit is intended to limit navigation steps
-import { useSingleStepNavigationLimit } from "./hooks/custom.jsx";
-
+// ─── App ──────────────────────────────────────────────────────────────────────
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem("authToken"));
-  useSingleStepNavigationLimit(); // Keep this if it serves a specific purpose
+  const [isAuthenticated, setIsAuthenticated] = useState(
+    !!localStorage.getItem("authToken")
+  );
+  useSingleStepNavigationLimit();
 
-  // Update authentication state if token changes (e.g., after logout)
   useEffect(() => {
     const handleStorageChange = () => {
       setIsAuthenticated(!!localStorage.getItem("authToken"));
@@ -53,11 +54,20 @@ function App() {
   return (
     <>
       <Routes>
-        {/* Public routes */}
+        {/* ── Public routes ── */}
         <Route path="/" element={<LoginScreen />} />
         <Route path="/reset_password" element={<Reset_Password />} />
 
-        {/* Reports page only - all other routes redirect to reports */}
+        {/* ── Protected routes ── */}
+        <Route
+          path="/admin-dashboard"
+          element={
+            <ProtectedRoute>
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+
         <Route
           path="/reports"
           element={
@@ -66,25 +76,147 @@ function App() {
             </ProtectedRoute>
           }
         />
-        
-        {/* All other routes redirect to reports */}
-        <Route path="/admin-dashboard" element={<Navigate to="/reports" replace />} />
-        <Route path="/Settings" element={<Navigate to="/reports" replace />} />
-        <Route path="/profile" element={<Navigate to="/reports" replace />} />
-        <Route path="/Vendors" element={<Navigate to="/reports" replace />} />
-        <Route path="/Customers" element={<Navigate to="/reports" replace />} />
-        <Route path="/products" element={<Navigate to="/reports" replace />} />
-        <Route path="/logout" element={<Navigate to="/reports" replace />} />
-        <Route path="/Vendors/details" element={<Navigate to="/reports" replace />} />
-        <Route path="/Customers/details" element={<Navigate to="/reports" replace />} />
-        <Route path="/orders" element={<Navigate to="/reports" replace />} />
-        <Route path="/order/:orderId" element={<Navigate to="/reports" replace />} />
-        <Route path="/products/product/:publicId/:slug" element={<Navigate to="/reports" replace />} />
-        <Route path="/chat" element={<Navigate to="/reports" replace />} />
-        <Route path="/finance" element={<Navigate to="/reports" replace />} />
-        <Route path="/loans" element={<Navigate to="/reports" replace />} />
-        <Route path="*" element={<Navigate to="/reports" replace />} />
+
+        <Route
+          path="/Vendors"
+          element={
+            <ProtectedRoute>
+              <Vendors />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/Vendors/details"
+          element={
+            <ProtectedRoute>
+              <VendorsDetails />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/Customers"
+          element={
+            <ProtectedRoute>
+              <Customers />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/Customers/details"
+          element={
+            <ProtectedRoute>
+              <CustomerDetails />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/products"
+          element={
+            <ProtectedRoute>
+              <Products />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/products/product/:publicId/:slug"
+          element={
+            <ProtectedRoute>
+              <ProductDetails />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/orders"
+          element={
+            <ProtectedRoute>
+              <OrderList />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/order/:orderId"
+          element={
+            <ProtectedRoute>
+              <Order_Details />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/finance"
+          element={
+            <ProtectedRoute>
+              <Finance />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/loans"
+          element={
+            <ProtectedRoute>
+              <Loans />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/Settings"
+          element={
+            <ProtectedRoute>
+              <Settings />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/chat"
+          element={
+            <ProtectedRoute>
+              <Chat />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* ✅ Support Tickets — opened by the chat icon in AdminDashboard */}
+        <Route
+          path="/support"
+          element={
+            <ProtectedRoute>
+              <SupportPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/logout"
+          element={
+            <ProtectedRoute>
+              <Logout />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* ── Fallback ── */}
+        <Route path="*" element={<Navigate to="/admin-dashboard" replace />} />
       </Routes>
+
       <ToastContainer position="bottom-right" autoClose={3000} />
     </>
   );

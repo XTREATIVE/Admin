@@ -36,13 +36,12 @@ import RecentTransactions from "../components/transactions";
 import { UserContext } from "../context/usercontext";
 import { ClaimsContext } from "../context/claimscontext";
 import { OrdersContext } from "../context/orderscontext";
-// Import API functions for dashboard data fetching
 import {
-  getTransactions, // API to fetch all payment transactions for recent activity
-  getAdminPayouts, // API to fetch pending payouts for admin dashboard
-  getLoansList, // API to fetch loan applications list
-  getVendorsList, // API to fetch vendors list for total count
-  getCustomersList, // API to fetch customers list for total count
+  getTransactions,
+  getAdminPayouts,
+  getLoansList,
+  getVendorsList,
+  getCustomersList,
 } from "../api.js";
 
 const AdminDashboard = () => {
@@ -50,7 +49,6 @@ const AdminDashboard = () => {
   const [range, setRange] = useState("today");
   const [customDate, setCustomDate] = useState(format(today, "yyyy-MM-dd"));
 
-  // API-fetched states
   const [revenueData, setRevenueData] = useState([]);
   const [salesData, setSalesData] = useState([]);
   const [totalVendors, setTotalVendors] = useState(0);
@@ -63,31 +61,26 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // From UserContext - for new registrations
   const { users = [], loadingUsers } = useContext(UserContext);
-
-  // From ClaimsContext - for returns
   const { claims = [], isLoading: loadingClaims } = useContext(ClaimsContext);
-
-  // From OrdersContext - for orders and sales calculation
   const { orders = [], loading: loadingOrders } = useContext(OrdersContext);
 
-  // Calculate totals from context data when they change
   useEffect(() => {
     if (orders.length > 0) {
       setTotalOrders(orders.length);
-      const totalSales = orders.reduce((sum, order) => sum + (Number(order.total_price) || 0), 0);
+      const totalSales = orders.reduce(
+        (sum, order) => sum + (Number(order.total_price) || 0),
+        0
+      );
       setTotalSalesAmount(totalSales);
     }
   }, [orders]);
 
-  // Fetch all dashboard data on mount with parallel error handling
   useEffect(() => {
     const fetchDashboardData = async () => {
       setLoading(true);
       setError(null);
 
-      // Initialize with fallback data
       const fallbackRevenueData = [
         { date: "2025-01", revenue: 4000 },
         { date: "2025-02", revenue: 3000 },
@@ -119,11 +112,8 @@ const AdminDashboard = () => {
 
       setRevenueData(fallbackRevenueData);
       setSalesData(fallbackSalesData);
-
-      // Set loading to false to render dashboard immediately with fallback data
       setLoading(false);
 
-      // Fetch data in parallel with error handling using imported API functions
       try {
         const results = await Promise.allSettled([
           getTransactions(),
@@ -133,57 +123,42 @@ const AdminDashboard = () => {
           getCustomersList(),
         ]);
 
-        // Handle transactions
-        if (results[0].status === 'fulfilled') {
-          const transactionsData = results[0].value;
-          const transactions = Array.isArray(transactionsData) ? transactionsData : (transactionsData?.results || []);
-          setTransactions(transactions);
+        if (results[0].status === "fulfilled") {
+          const d = results[0].value;
+          setTransactions(Array.isArray(d) ? d : d?.results || []);
         } else {
-          console.warn("Failed to fetch transactions:", results[0].reason.message);
           setTransactions([]);
         }
 
-        // Handle payouts
-        if (results[1].status === 'fulfilled') {
-          const payoutsData = results[1].value;
-          const payouts = Array.isArray(payoutsData) ? payoutsData : (payoutsData?.results || []);
-          setPendingPayouts(payouts);
+        if (results[1].status === "fulfilled") {
+          const d = results[1].value;
+          setPendingPayouts(Array.isArray(d) ? d : d?.results || []);
         } else {
-          console.warn("Failed to fetch payouts:", results[1].reason.message);
           setPendingPayouts([]);
         }
 
-        // Handle loans
-        if (results[2].status === 'fulfilled') {
-          const loansData = results[2].value;
-          const loans = Array.isArray(loansData) ? loansData : (loansData?.results || []);
-          setLoans(loans);
+        if (results[2].status === "fulfilled") {
+          const d = results[2].value;
+          setLoans(Array.isArray(d) ? d : d?.results || []);
         } else {
-          console.warn("Failed to fetch loans:", results[2].reason.message);
           setLoans([]);
         }
 
-        // Handle vendors
-        if (results[3].status === 'fulfilled') {
-          const vendorsData = results[3].value;
-          setTotalVendors(vendorsData.count || vendorsData.results?.length || 0);
+        if (results[3].status === "fulfilled") {
+          const d = results[3].value;
+          setTotalVendors(d.count || d.results?.length || 0);
         } else {
-          console.warn("Failed to fetch vendors:", results[3].reason.message);
           setTotalVendors(0);
         }
 
-        // Handle customers
-        if (results[4].status === 'fulfilled') {
-          const customersData = results[4].value;
-          setTotalCustomers(customersData.count || customersData.results?.length || 0);
+        if (results[4].status === "fulfilled") {
+          const d = results[4].value;
+          setTotalCustomers(d.count || d.results?.length || 0);
         } else {
-          console.warn("Failed to fetch customers:", results[4].reason.message);
           setTotalCustomers(0);
         }
-
       } catch (err) {
         console.error("Critical error in dashboard data fetching:", err);
-        // Don't set error state - use fallback data instead
       }
     };
 
@@ -234,58 +209,79 @@ const AdminDashboard = () => {
   }, [range, customDate]);
 
   const filteredTransactions = useMemo(
-    () => (Array.isArray(transactions) ? transactions : []).filter((t) => inRange(t.created_at || t.timestamp || t.date)),
+    () =>
+      (Array.isArray(transactions) ? transactions : []).filter((t) =>
+        inRange(t.created_at || t.timestamp || t.date)
+      ),
     [transactions, range, customDate]
   );
 
   const filteredLoans = useMemo(
-    () => (Array.isArray(loans) ? loans : []).filter((l) => inRange(l.created_at || l.applied_at || l.date)),
+    () =>
+      (Array.isArray(loans) ? loans : []).filter((l) =>
+        inRange(l.created_at || l.applied_at || l.date)
+      ),
     [loans, range, customDate]
   );
 
   const filteredPendingPayouts = useMemo(
-    () => (Array.isArray(pendingPayouts) ? pendingPayouts : []).filter((p) => inRange(p.settlement_date || p.created_at || p.date)),
+    () =>
+      (Array.isArray(pendingPayouts) ? pendingPayouts : []).filter((p) =>
+        inRange(p.settlement_date || p.created_at || p.date)
+      ),
     [pendingPayouts, range, customDate]
   );
 
   const filteredClaims = useMemo(
-    () => (Array.isArray(claims) ? claims : []).filter((c) => inRange(c.created_at)),
+    () =>
+      (Array.isArray(claims) ? claims : []).filter((c) =>
+        inRange(c.created_at)
+      ),
     [claims, range, customDate]
   );
 
   const filteredOrders = useMemo(
-    () => orders.filter((o) => {
-      const parsed = parseISO(o.created_at);
-      const dateObj = isNaN(parsed) ? new Date(o.created_at) : parsed;
-      return inRange(dateObj);
-    }),
+    () =>
+      orders.filter((o) => {
+        const parsed = parseISO(o.created_at);
+        const dateObj = isNaN(parsed) ? new Date(o.created_at) : parsed;
+        return inRange(dateObj);
+      }),
     [orders, range, today, customDate]
   );
 
   const totalRevenueThisPeriod = useMemo(
-    () => filteredTransactions.reduce((sum, t) => sum + Number(t.amount || 0), 0),
+    () =>
+      filteredTransactions.reduce((sum, t) => sum + Number(t.amount || 0), 0),
     [filteredTransactions]
   );
 
   const totalSalesThisPeriod = useMemo(
-    () => filteredOrders.reduce((sum, o) => sum + Number(o.total_price || 0), 0),
+    () =>
+      filteredOrders.reduce((sum, o) => sum + Number(o.total_price || 0), 0),
     [filteredOrders]
   );
 
   const loanApplicationsCount = filteredLoans.length;
   const pendingPayoutsCount = filteredPendingPayouts.length;
   const pendingReturnsCount = filteredClaims.filter(
-    c => c.status?.toLowerCase() === "requested" || c.status?.toLowerCase() === "pending"
+    (c) =>
+      c.status?.toLowerCase() === "requested" ||
+      c.status?.toLowerCase() === "pending"
   ).length;
 
   const newVendors = useMemo(() => {
     if (loadingUsers || !users.length) return 0;
-    return users.filter((u) => u.role === "Vendor" && inRange(u.date_joined)).length;
+    return users.filter(
+      (u) => u.role === "Vendor" && inRange(u.date_joined)
+    ).length;
   }, [users, loadingUsers, range, customDate, today]);
 
   const newCustomers = useMemo(() => {
     if (loadingUsers || !users.length) return 0;
-    return users.filter((u) => u.role === "Customer" && inRange(u.date_joined)).length;
+    return users.filter(
+      (u) => u.role === "Customer" && inRange(u.date_joined)
+    ).length;
   }, [users, loadingUsers, range, customDate, today]);
 
   const dashboardCards = [
@@ -376,7 +372,9 @@ const AdminDashboard = () => {
       <div className="h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-xl font-medium text-gray-700">Loading dashboard data...</p>
+          <p className="text-xl font-medium text-gray-700">
+            Loading dashboard data...
+          </p>
         </div>
       </div>
     );
@@ -386,7 +384,9 @@ const AdminDashboard = () => {
     return (
       <div className="h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <p className="text-xl font-medium text-red-600 mb-4">Error loading dashboard</p>
+          <p className="text-xl font-medium text-red-600 mb-4">
+            Error loading dashboard
+          </p>
           <p className="text-gray-600">{error}</p>
           <button
             onClick={() => window.location.reload()}
@@ -417,7 +417,9 @@ const AdminDashboard = () => {
                 <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent mb-2">
                   Welcome back, Admin! 👋
                 </h1>
-                <p className="text-gray-600">Here's what's happening with your platform for {formattedDate}.</p>
+                <p className="text-gray-600">
+                  Here's what's happening with your platform for {formattedDate}.
+                </p>
               </div>
               <div className="relative">
                 <select
@@ -447,48 +449,48 @@ const AdminDashboard = () => {
               </div>
             )}
 
-            {/* Dashboard Cards Grid - Improved Layout */}
+            {/* Dashboard Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-10">
               {dashboardCards.map((card, idx) => {
                 const Icon = card.icon;
                 return (
                   <div key={idx} className="relative group">
-                    {/* Glow effect */}
                     <div
                       className={`absolute -inset-0.5 bg-gradient-to-r ${card.gradient} rounded-xl blur opacity-20 group-hover:opacity-40 transition duration-500`}
                     ></div>
-                    
-                    {/* Card content */}
                     <div className="relative bg-white rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 p-5 border border-gray-100 h-full">
-                      {/* Top section with icon and change indicator */}
                       <div className="flex items-start justify-between mb-4">
-                        <div className={`p-3 rounded-xl bg-gradient-to-br ${card.iconBg} shadow-sm`}>
+                        <div
+                          className={`p-3 rounded-xl bg-gradient-to-br ${card.iconBg} shadow-sm`}
+                        >
                           <Icon className={`w-6 h-6 ${card.iconColor}`} />
                         </div>
                         {card.change && (
                           <div className="flex items-center gap-1 px-2.5 py-1 bg-green-50 rounded-full">
                             <TrendingUp className="w-3.5 h-3.5 text-green-600" />
-                            <span className="text-xs font-bold text-green-600">{card.change}</span>
+                            <span className="text-xs font-bold text-green-600">
+                              {card.change}
+                            </span>
                           </div>
                         )}
                       </div>
-
-                      {/* Title */}
-                      <h3 className="text-gray-600 text-sm font-semibold mb-2">{card.title}</h3>
-                      
-                      {/* Value */}
-                      <p className="text-2xl font-extrabold text-gray-900 mb-1 truncate">{card.value}</p>
-                      
-                      {/* Subtitle */}
+                      <h3 className="text-gray-600 text-sm font-semibold mb-2">
+                        {card.title}
+                      </h3>
+                      <p className="text-2xl font-extrabold text-gray-900 mb-1 truncate">
+                        {card.value}
+                      </p>
                       {card.subtitle && (
                         <p className="text-xs text-gray-500">{card.subtitle}</p>
                       )}
                       {card.title.includes("Earnings") && (
-                        <p className="text-xs text-gray-500 mt-1">for {formattedDate}</p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          for {formattedDate}
+                        </p>
                       )}
-
-                      {/* Bottom gradient accent */}
-                      <div className={`absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r ${card.gradient} rounded-b-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300`}></div>
+                      <div
+                        className={`absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r ${card.gradient} rounded-b-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300`}
+                      ></div>
                     </div>
                   </div>
                 );
@@ -497,43 +499,85 @@ const AdminDashboard = () => {
 
             {/* Charts Section */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
-              {/* Sales Volume Chart */}
               <div className="bg-white/90 backdrop-blur rounded-2xl shadow-xl p-8 border border-gray-200/50">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Monthly Sales Volume</h2>
-                <p className="text-gray-500 text-sm mb-6">Track your sales performance</p>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                  Monthly Sales Volume
+                </h2>
+                <p className="text-gray-500 text-sm mb-6">
+                  Track your sales performance
+                </p>
                 <ResponsiveContainer width="100%" height={320}>
                   <BarChart data={salesData}>
                     <defs>
-                      <linearGradient id="colorBar" x1="0" y1="0" x2="0" y2="1">
+                      <linearGradient
+                        id="colorBar"
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
+                      >
                         <stop offset="0%" stopColor="#f97316" />
                         <stop offset="100%" stopColor="#ef4444" />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis dataKey="date" tickFormatter={(tick) => tick.split("-")[1]} stroke="#9ca3af" />
+                    <XAxis
+                      dataKey="date"
+                      tickFormatter={(tick) => tick.split("-")[1]}
+                      stroke="#9ca3af"
+                    />
                     <YAxis stroke="#9ca3af" />
-                    <Tooltip formatter={(v) => `UGX ${Number(v).toLocaleString()}`} />
-                    <Bar dataKey="salesVolume" fill="url(#colorBar)" radius={[12, 12, 0, 0]} />
+                    <Tooltip
+                      formatter={(v) => `UGX ${Number(v).toLocaleString()}`}
+                    />
+                    <Bar
+                      dataKey="salesVolume"
+                      fill="url(#colorBar)"
+                      radius={[12, 12, 0, 0]}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
 
-              {/* Revenue Chart */}
               <div className="bg-white/90 backdrop-blur rounded-2xl shadow-xl p-8 border border-gray-200/50">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Monthly Revenue</h2>
-                <p className="text-gray-500 text-sm mb-6">Revenue performance overview</p>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                  Monthly Revenue
+                </h2>
+                <p className="text-gray-500 text-sm mb-6">
+                  Revenue performance overview
+                </p>
                 <ResponsiveContainer width="100%" height={320}>
                   <AreaChart data={revenueData}>
                     <defs>
-                      <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
-                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                      <linearGradient
+                        id="colorRevenue"
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
+                      >
+                        <stop
+                          offset="5%"
+                          stopColor="#3b82f6"
+                          stopOpacity={0.4}
+                        />
+                        <stop
+                          offset="95%"
+                          stopColor="#3b82f6"
+                          stopOpacity={0}
+                        />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis dataKey="date" tickFormatter={(tick) => tick.split("-")[1]} stroke="#9ca3af" />
+                    <XAxis
+                      dataKey="date"
+                      tickFormatter={(tick) => tick.split("-")[1]}
+                      stroke="#9ca3af"
+                    />
                     <YAxis stroke="#9ca3af" />
-                    <Tooltip formatter={(v) => `UGX ${Number(v).toLocaleString()}`} />
+                    <Tooltip
+                      formatter={(v) => `UGX ${Number(v).toLocaleString()}`}
+                    />
                     <Area
                       type="monotone"
                       dataKey="revenue"
@@ -550,7 +594,9 @@ const AdminDashboard = () => {
             {/* Recent Activity */}
             <div className="bg-white/90 backdrop-blur rounded-2xl shadow-xl p-8 border border-gray-200/50">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">Recent Activity</h2>
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Recent Activity
+                </h2>
               </div>
               <div className="max-h-96 overflow-y-auto">
                 <RecentTransactions transactions={filteredTransactions} />
@@ -558,9 +604,13 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          {/* Floating Chat Button */}
+          {/* ✅ Floating Support Button — now links to /support instead of /chat */}
           <div className="fixed bottom-8 right-8 z-50">
-            <Link to="/chat" className="w-16 h-16 bg-gradient-to-br from-orange-500 to-red-500 rounded-full shadow-2xl hover:shadow-orange-500/50 hover:scale-110 transition-all duration-300 flex items-center justify-center group">
+            <Link
+              to="/support"
+              className="w-16 h-16 bg-gradient-to-br from-orange-500 to-red-500 rounded-full shadow-2xl hover:shadow-orange-500/50 hover:scale-110 transition-all duration-300 flex items-center justify-center group"
+              title="Support Tickets"
+            >
               <MessageCircle className="w-7 h-7 text-white group-hover:rotate-12 transition-transform" />
             </Link>
           </div>
