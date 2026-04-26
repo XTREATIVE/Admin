@@ -17,46 +17,51 @@ import {
 } from "lucide-react";
 import Sidebar from "../components/sidebar";
 import Header from "../components/header";
+import { authFetch } from "../api"; // ✅ use your central authFetch
 
-// ─── API helpers ─────────────────────────────────────────────────────────────
-// Replace BASE_URL and getAuthHeaders with your project's equivalents
-const BASE_URL = "http://127.0.0.1:8000";
-
-const getAuthHeaders = () => {
-  const token = localStorage.getItem("token");
-  return {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Token ${token}` } : {}),
-  };
+// ─── API helpers (all use authFetch so token key & scheme are consistent) ─────
+const api = {
+  getTickets: () => authFetch("/support/tickets/"),
+  getTicket: (id) => authFetch(`/support/tickets/${id}/`),
+  createTicket: (body) =>
+    authFetch("/support/tickets/", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  replyTicket: (id, body) =>
+    authFetch(`/support/tickets/${id}/reply/`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  resolveTicket: (id) =>
+    authFetch(`/support/tickets/${id}/`, {
+      method: "PATCH",
+      body: JSON.stringify({ status: "resolved" }),
+    }),
 };
 
-const api = {
-  getTickets: () =>
-    fetch(`${BASE_URL}/support/tickets/`, { headers: getAuthHeaders() }).then(
-      (r) => r.json()
-    ),
-  getTicket: (id) =>
-    fetch(`${BASE_URL}/support/tickets/${id}/`, {
-      headers: getAuthHeaders(),
-    }).then((r) => r.json()),
-  createTicket: (body) =>
-    fetch(`${BASE_URL}/support/tickets/`, {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify(body),
-    }).then((r) => r.json()),
-  replyTicket: (id, body) =>
-    fetch(`${BASE_URL}/support/tickets/${id}/reply/`, {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify(body),
-    }).then((r) => r.json()),
-  resolveTicket: (id) =>
-    fetch(`${BASE_URL}/support/tickets/${id}/`, {
-      method: "PATCH",
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ status: "resolved" }),
-    }).then((r) => r.json()),
+// ─── Helper: check admin from stored user object ──────────────────────────────
+const getIsAdmin = () => {
+  const roleFlag = localStorage.getItem("isAdmin");
+  if (roleFlag === "true") return true;
+
+  try {
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    return !!(user.is_staff || user.is_superuser || user.role === "admin");
+  } catch (_) {}
+
+  // Decode JWT if present
+  const token = localStorage.getItem("authToken");
+  if (!token) return false;
+  try {
+    const parts = token.split(".");
+    if (parts.length === 3) {
+      const payload = JSON.parse(atob(parts[1]));
+      return !!(payload.is_staff || payload.is_superuser || payload.role === "admin");
+    }
+  } catch (_) {}
+
+  return false;
 };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -70,13 +75,13 @@ const STATUS_STYLES = {
   open: "bg-blue-50 text-blue-700 border border-blue-200",
   resolved: "bg-green-50 text-green-700 border border-green-200",
   pending: "bg-yellow-50 text-yellow-700 border border-yellow-200",
+  in_progress: "bg-purple-50 text-purple-700 border border-purple-200",
 };
 
 const CATEGORIES = ["order", "billing", "technical", "shipping", "other"];
 const PRIORITIES = ["low", "medium", "high"];
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
-
 const Badge = ({ className, children }) => (
   <span
     className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize ${className}`}
@@ -109,9 +114,13 @@ const NewTicketModal = ({ onClose, onCreated }) => {
     setError(null);
     try {
       const ticket = await api.createTicket(form);
-      onCreated(ticket);
+      if (ticket?.id) {
+        onCreated(ticket);
+      } else {
+        setError("Unexpected response from server. Please try again.");
+      }
     } catch (err) {
-      setError("Failed to create ticket. Please try again.");
+      setError(err.message || "Failed to create ticket. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -236,10 +245,23 @@ const TicketDetail = ({ ticket, onBack, onUpdated, isAdmin }) => {
   const [sending, setSending] = useState(false);
   const [resolving, setResolving] = useState(false);
   const [localTicket, setLocalTicket] = useState(ticket);
+  const [loadingDetail, setLoadingDetail] = useState(false);
 
   useEffect(() => {
-    setLocalTicket(ticket);
-  }, [ticket]);
+    const loadDetail = async () => {
+      setLoadingDetail(true);
+      try {
+        const full = await api.getTicket(ticket.id);
+        setLocalTicket(full);
+      } catch (err) {
+        console.error("Failed to load ticket detail:", err);
+        setLocalTicket(ticket);
+      } finally {
+        setLoadingDetail(false);
+      }
+    };
+    loadDetail();
+  }, [ticket.id]);
 
   const handleReply = async () => {
     if (!replyBody.trim()) return;
@@ -249,15 +271,20 @@ const TicketDetail = ({ ticket, onBack, onUpdated, isAdmin }) => {
         body: replyBody,
         is_internal: isInternal,
       });
-      setLocalTicket((prev) => ({
-        ...prev,
-        messages: [...(prev.messages || []), msg],
-      }));
+      if (msg?.id) {
+        setLocalTicket((prev) => ({
+          ...prev,
+          messages: [...(prev.messages || []), msg],
+        }));
+      } else {
+        const full = await api.getTicket(localTicket.id);
+        setLocalTicket(full);
+      }
       setReplyBody("");
       setIsInternal(false);
       onUpdated();
     } catch (err) {
-      console.error("Reply failed:", err);
+      console.error("Reply failed:", err.message);
     } finally {
       setSending(false);
     }
@@ -270,13 +297,30 @@ const TicketDetail = ({ ticket, onBack, onUpdated, isAdmin }) => {
       setLocalTicket(updated);
       onUpdated();
     } catch (err) {
-      console.error("Resolve failed:", err);
+      console.error("Resolve failed:", err.message);
     } finally {
       setResolving(false);
     }
   };
 
   const messages = localTicket.messages || [];
+
+  if (loadingDetail) {
+    return (
+      <div className="flex flex-col h-full">
+        <div className="bg-white border-b border-gray-200 px-6 py-4">
+          <button
+            onClick={onBack}
+            className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 mb-3 transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Back to tickets
+          </button>
+        </div>
+        <Spinner />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -305,9 +349,13 @@ const TicketDetail = ({ ticket, onBack, onUpdated, isAdmin }) => {
                 ) : (
                   <CheckCircle className="w-3 h-3 mr-1" />
                 )}
-                {localTicket.status}
+                {localTicket.status?.replace("_", " ")}
               </Badge>
-              <Badge className={PRIORITY_STYLES[localTicket.priority] || PRIORITY_STYLES.medium}>
+              <Badge
+                className={
+                  PRIORITY_STYLES[localTicket.priority] || PRIORITY_STYLES.medium
+                }
+              >
                 {localTicket.priority}
               </Badge>
               <span className="flex items-center gap-1 text-xs text-gray-500">
@@ -325,20 +373,22 @@ const TicketDetail = ({ ticket, onBack, onUpdated, isAdmin }) => {
             </div>
           </div>
 
-          {isAdmin && localTicket.status === "open" && (
-            <button
-              onClick={handleResolve}
-              disabled={resolving}
-              className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-xl text-sm font-semibold hover:bg-green-600 transition-colors disabled:opacity-60"
-            >
-              {resolving ? (
-                <RefreshCw className="w-4 h-4 animate-spin" />
-              ) : (
-                <CheckCircle className="w-4 h-4" />
-              )}
-              Mark Resolved
-            </button>
-          )}
+          {isAdmin &&
+            (localTicket.status === "open" ||
+              localTicket.status === "in_progress") && (
+              <button
+                onClick={handleResolve}
+                disabled={resolving}
+                className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-xl text-sm font-semibold hover:bg-green-600 transition-colors disabled:opacity-60"
+              >
+                {resolving ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <CheckCircle className="w-4 h-4" />
+                )}
+                Mark Resolved
+              </button>
+            )}
         </div>
       </div>
 
@@ -377,9 +427,7 @@ const TicketDetail = ({ ticket, onBack, onUpdated, isAdmin }) => {
                 )}
                 <p
                   className={`text-sm leading-relaxed ${
-                    isAdminMsg && !isInternalMsg
-                      ? "text-white"
-                      : "text-gray-800"
+                    isAdminMsg && !isInternalMsg ? "text-white" : "text-gray-800"
                   }`}
                 >
                   {msg.body}
@@ -409,7 +457,7 @@ const TicketDetail = ({ ticket, onBack, onUpdated, isAdmin }) => {
       </div>
 
       {/* Reply box */}
-      {localTicket.status === "open" && (
+      {localTicket.status !== "resolved" && localTicket.status !== "closed" ? (
         <div className="bg-white border-t border-gray-200 px-6 py-4">
           {isAdmin && (
             <div className="flex items-center gap-3 mb-3">
@@ -469,18 +517,16 @@ const TicketDetail = ({ ticket, onBack, onUpdated, isAdmin }) => {
               )}
             </button>
           </div>
-          <p className="text-xs text-gray-400 mt-1.5">
-            Ctrl + Enter to send
-          </p>
+          <p className="text-xs text-gray-400 mt-1.5">Ctrl + Enter to send</p>
         </div>
-      )}
-
-      {localTicket.status === "resolved" && (
+      ) : (
         <div className="bg-green-50 border-t border-green-100 px-6 py-4 text-center">
           <p className="text-sm text-green-700 font-medium flex items-center justify-center gap-2">
             <CheckCircle className="w-4 h-4" />
-            This ticket was resolved on{" "}
-            {new Date(localTicket.resolved_at).toLocaleDateString()}
+            This ticket was resolved
+            {localTicket.resolved_at
+              ? ` on ${new Date(localTicket.resolved_at).toLocaleDateString()}`
+              : ""}
           </p>
         </div>
       )}
@@ -488,7 +534,7 @@ const TicketDetail = ({ ticket, onBack, onUpdated, isAdmin }) => {
   );
 };
 
-// ─── Ticket List Item ─────────────────────────────────────────────────────────
+// ─── Ticket Card ──────────────────────────────────────────────────────────────
 const TicketCard = ({ ticket, onClick, isSelected }) => (
   <button
     onClick={onClick}
@@ -503,11 +549,16 @@ const TicketCard = ({ ticket, onClick, isSelected }) => (
         {ticket.subject}
       </p>
       <Badge className={STATUS_STYLES[ticket.status] || STATUS_STYLES.open}>
-        {ticket.status}
+        {ticket.status?.replace("_", " ")}
       </Badge>
     </div>
 
     <p className="text-xs text-gray-400 font-mono mb-2">{ticket.ticket_number}</p>
+
+    <p className="text-xs text-gray-500 mb-2 flex items-center gap-1">
+      <User className="w-3 h-3" />
+      {ticket.submitted_by}
+    </p>
 
     <div className="flex items-center gap-2 flex-wrap">
       <Badge className={PRIORITY_STYLES[ticket.priority] || PRIORITY_STYLES.medium}>
@@ -532,24 +583,27 @@ const TicketCard = ({ ticket, onClick, isSelected }) => (
 const SupportPage = () => {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [showNewModal, setShowNewModal] = useState(false);
   const [filterStatus, setFilterStatus] = useState("");
   const [filterPriority, setFilterPriority] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
-  // Detect admin role — adjust this to match your auth/context setup
-  const isAdmin = !!localStorage.getItem("isAdmin");
+  const isAdmin = getIsAdmin();
 
   const fetchTickets = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const data = await api.getTickets();
       const list = Array.isArray(data) ? data : data.results || [];
       setTickets(list);
     } catch (err) {
-      console.error("Failed to fetch tickets:", err);
+      console.error("Failed to fetch tickets:", err.message);
       setTickets([]);
+      setError(err.message || "Failed to load tickets.");
     } finally {
       setLoading(false);
     }
@@ -565,14 +619,17 @@ const SupportPage = () => {
     setSelectedTicket(ticket);
   };
 
-  const handleTicketUpdated = () => {
-    fetchTickets();
-  };
-
   const filteredTickets = tickets.filter((t) => {
     if (filterStatus && t.status !== filterStatus) return false;
     if (filterPriority && t.priority !== filterPriority) return false;
     if (filterCategory && t.category !== filterCategory) return false;
+    if (
+      searchQuery &&
+      !t.subject?.toLowerCase().includes(searchQuery.toLowerCase()) &&
+      !t.ticket_number?.toLowerCase().includes(searchQuery.toLowerCase()) &&
+      !t.submitted_by?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+      return false;
     return true;
   });
 
@@ -595,9 +652,16 @@ const SupportPage = () => {
               <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
                 <MessageCircle className="w-6 h-6 text-orange-500" />
                 Support Tickets
+                {isAdmin && (
+                  <span className="ml-2 text-xs font-semibold px-2 py-0.5 bg-orange-100 text-orange-700 rounded-full">
+                    Admin View
+                  </span>
+                )}
               </h1>
               <p className="text-sm text-gray-500 mt-0.5">
-                Manage and respond to customer support requests
+                {isAdmin
+                  ? "View and respond to all customer support requests"
+                  : "Manage and track your support requests"}
               </p>
             </div>
 
@@ -643,10 +707,16 @@ const SupportPage = () => {
           </div>
 
           <div className="flex flex-1 overflow-hidden">
-            {/* Left panel — ticket list */}
+            {/* Left panel */}
             <div className="w-80 flex-shrink-0 border-r border-gray-200 bg-white/60 flex flex-col overflow-hidden">
-              {/* Filters */}
               <div className="p-3 border-b border-gray-100 space-y-2">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search tickets or users…"
+                  className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-orange-400"
+                />
                 <div className="flex items-center gap-2 text-xs text-gray-500 font-semibold">
                   <Filter className="w-3 h-3" />
                   Filters
@@ -659,7 +729,9 @@ const SupportPage = () => {
                   >
                     <option value="">Status</option>
                     <option value="open">Open</option>
+                    <option value="in_progress">In Progress</option>
                     <option value="resolved">Resolved</option>
+                    <option value="closed">Closed</option>
                   </select>
                   <select
                     value={filterPriority}
@@ -686,16 +758,39 @@ const SupportPage = () => {
                     ))}
                   </select>
                 </div>
+
+                {(filterStatus || filterPriority || filterCategory || searchQuery) && (
+                  <button
+                    onClick={() => {
+                      setFilterStatus("");
+                      setFilterPriority("");
+                      setFilterCategory("");
+                      setSearchQuery("");
+                    }}
+                    className="w-full text-xs text-orange-600 font-semibold py-1 hover:underline"
+                  >
+                    Clear filters
+                  </button>
+                )}
               </div>
 
-              {/* Ticket list */}
               <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                {error && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
+                    {error}
+                  </div>
+                )}
+
                 {loading ? (
                   <Spinner />
                 ) : filteredTickets.length === 0 ? (
                   <div className="text-center py-12">
                     <MessageCircle className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                    <p className="text-sm text-gray-400">No tickets found</p>
+                    <p className="text-sm text-gray-400 font-medium">
+                      {tickets.length === 0
+                        ? "No tickets yet"
+                        : "No tickets match filters"}
+                    </p>
                   </div>
                 ) : (
                   filteredTickets.map((t) => (
@@ -710,14 +805,14 @@ const SupportPage = () => {
               </div>
             </div>
 
-            {/* Right panel — ticket detail */}
+            {/* Right panel */}
             <div className="flex-1 overflow-hidden flex flex-col">
               {selectedTicket ? (
                 <TicketDetail
                   key={selectedTicket.id}
                   ticket={selectedTicket}
                   onBack={() => setSelectedTicket(null)}
-                  onUpdated={handleTicketUpdated}
+                  onUpdated={fetchTickets}
                   isAdmin={isAdmin}
                 />
               ) : (
