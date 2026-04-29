@@ -12,7 +12,7 @@ const RecentTransactions = () => {
         // Use Django TransactionFilterView
         // /payments/transactions/?transaction_type=purchase
         const data = await authFetch(
-          "/payments/transactions/?transaction_type=purchase"
+          "/payments/transactions-list/?transaction_type=purchase"
         );
 
         // Depending on your serializer, data might be a list or { results: [...] }

@@ -21,7 +21,8 @@ import Loans from "./pages/loans.jsx";
 import Profile from "./pages/profile.jsx";
 import Chat from "./pages/chat.jsx";
 import Reset_Password from "./pages/reset_password.jsx";
-import SupportPage from "./pages/SupportPage.jsx"; // ✅ NEW
+import SupportPage from "./pages/SupportPage.jsx";
+import TransactionsPage from "./pages/TransactionsPage.jsx"; // ✅ NEW
 
 import { useSingleStepNavigationLimit } from "./hooks/custom.jsx";
 
@@ -163,6 +164,16 @@ function App() {
           element={
             <ProtectedRoute>
               <Loans />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* ✅ Transactions — full transaction history with status polling */}
+        <Route
+          path="/transactions"
+          element={
+            <ProtectedRoute>
+              <TransactionsPage />
             </ProtectedRoute>
           }
         />
