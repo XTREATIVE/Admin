@@ -20,6 +20,13 @@ export const authFetch = async (path, options = {}) => {
     headers,
   });
 
+  if (res.status === 401) {
+    // Token expired or invalid, clear token and redirect to login
+    localStorage.removeItem("authToken");
+    window.location.href = "/login"; // Adjust path as needed
+    throw new Error("Session expired. Please log in again.");
+  }
+
   if (!res.ok) {
     let message = `Request failed: ${res.status} ${res.statusText}`;
     try {

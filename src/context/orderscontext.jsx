@@ -1,4 +1,5 @@
 import React, { createContext, useState, useEffect } from "react";
+import { authFetch } from "../api.js";
 
 export const OrdersContext = createContext();
 
@@ -12,20 +13,7 @@ export const OrdersProvider = ({ children }) => {
     const fetchOrders = async () => {
       try {
         setLoading(true);
-        const token = localStorage.getItem("authToken");
-        if (!token) {
-          throw new Error("No auth token found. Please log in.");
-        }
-        const res = await fetch("https://xtreativeapi.onrender.com/orders/list/", {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        if (!res.ok) {
-          throw new Error(`Server responded ${res.status}`);
-        }
-        const data = await res.json();
+        const data = await authFetch("/orders/list/");
         setOrders(data);
 
         // Create a map of item ID to to_address
