@@ -228,7 +228,7 @@ function LoanModal({ loanId, onClose }) {
         if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
         return r.json();
       });
-    safeFetch(`${BASE}/loan_app/loan/${loanId}/`)
+    safeFetch(`${BASE}/loan_app/loans/${loanId}/details/`)
       .then(d => {
         setDetail(d);
         return Promise.allSettled([
